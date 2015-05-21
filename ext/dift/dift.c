@@ -258,7 +258,7 @@ static uint64_t rec_dequeue( dift_context* dc ) {
 
     register uint64_t ret;
 
-    if( unlikely((uint64_t)dc->deqptr & ~CHUNK_BITSIZEMASK == 0) )
+    if( unlikely(((uint64_t)dc->deqptr & ~CHUNK_BITSIZEMASK) == 0) )
         next_block( dc );
     ret = *dc->deqptr;
     dc->deqptr++;
@@ -614,7 +614,7 @@ static void init_queue( void ) {
     int i;
     for( i = 0; i < Q_CHUNKS_SIZE; ++i ) {
         q_chunks_flag[i] = CHUNK_AVAILABLE;
-        q_chunks_ptr[i]  = &q_records[ (i * SIZE_OF_CHUNK)/sizeof(uint32_t) ];
+        q_chunks_ptr[i]  = &q_records[ (i * SIZE_OF_CHUNK)/sizeof(uint64_t) ];
     }
     
     // ask for next abailable chunk;
@@ -625,7 +625,7 @@ static void init_queue( void ) {
 }
 
 static void init_case_mapping( void ) {
-    int j;
+    uint32_t j;
     uint16_t i;
     for(j = 0 ; j < sizeof(case_mapping) ; j++)
         case_mapping[j] = 0xff;
@@ -643,9 +643,9 @@ static void init_dift_context( dift_context *dc ) {
     dc->deqptr = NULL;
 
     // allocation for memory taint
-    dc->mem_dirty_tbl = (CONTAMINATION_RECORD*)calloc( phys_ram_size * sizeof(CONTAMINATION_RECORD) + ((uint64_t)1 << PAGENO_BITS), 1 );
+    dc->mem_dirty_tbl = (CONTAMINATION_RECORD*)calloc( phys_ram_size * sizeof(CONTAMINATION_RECORD) /*+ ((uint64_t)1 << PAGENO_BITS)*/, 1 );
     if( dc->mem_dirty_tbl == NULL ) {
-        fprintf( stderr, "Not enough memory for mem_dirty_tbl\n" );
+        fprintf( stderr, "Not enough memory for mem_dirty_tbl, need %016lx bytes\n", phys_ram_size * sizeof(CONTAMINATION_RECORD) + ((uint64_t)1 << PAGENO_BITS) );
         exit( 1 );
     }
 
@@ -666,6 +666,7 @@ static void init_dift_context( dift_context *dc ) {
 
 static void* dift_analysis_mainloop( void* arg ) {
     // do nothing
+    return NULL;
 }
 
 /// DIFT PUBLIC API: All of APIs are named with the prefix "dift_"

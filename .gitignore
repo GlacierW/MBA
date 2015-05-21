@@ -106,3 +106,4 @@ TAGS
 /tests/qemu-iotests/common.env
 *.sh
 imgs/*
+*.swp

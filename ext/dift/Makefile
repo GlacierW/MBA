@@ -1,11 +1,11 @@
 CPP       = g++
 CC        = gcc
-OBJ       = gtest_main.o dift.o dift_unittest.o
-LINKOBJ   = gtest_main.o dift.o dift_unittest.o
-LINKFLAGS = -lgtest -lpthread -lgcov
+OBJ       = gtest_main.o dift_unittest.o #dift.o
+LINKOBJ   = gtest_main.o dift_unittest.o #dift.o
+LINKFLAGS = -lpthread -lgcov -lgtest 
 BIN       = gtest_dift
-CXXFLAGS  = -Wall -fprofile-arcs -ftest-coverage
-CFLAGS    = -Wall -fprofile-arcs -ftest-coverage
+CXXFLAGS  = -Wall
+CFLAGS    = -Wall
 RM        = rm -f
 GCOV_FILE = *.gcno *.gcda *.gcov
 
@@ -13,7 +13,7 @@ GCOV_FILE = *.gcno *.gcda *.gcov
 
 all: $(BIN)
 
-clean: clean-custom
+clean: 
 	${RM} $(OBJ) $(BIN) $(GCOV_FILE)
 
 $(BIN): $(OBJ)
@@ -22,8 +22,8 @@ $(BIN): $(OBJ)
 gtest_main.o: gtest_main.cc
 	$(CPP) -c gtest_main.cc -o gtest_main.o $(CXXFLAGS)
 
-dift.o: dift.c
-	$(CPP) -c dift.c -o dift.o $(CXXFLAGS)
+#dift.o: dift.c
+#	$(CPP) -c dift.c -o dift.o $(CXXFLAGS)
 
 dift_unittest.o: dift_unittest.cc
 	$(CPP) -c dift_unittest.cc -o dift_unittest.o $(CXXFLAGS)

@@ -3415,21 +3415,6 @@ typedef struct CoroutineIOCompletion {
     Coroutine *coroutine;
     int ret;
 } CoroutineIOCompletion;
-=======
->>>>>>> master
-
-            if (strcmp(backing_file_full, filename_full) == 0) {
-                retval = curr_bs->backing_hd;
-                break;
-            }
-        }
-    }
-
-    g_free(filename_full);
-    g_free(backing_file_full);
-    g_free(filename_tmp);
-    return retval;
-}
 
 int bdrv_get_backing_file_depth(BlockDriverState *bs)
 {
