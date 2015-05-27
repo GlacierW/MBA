@@ -236,60 +236,6 @@ const char* REG_NAME[] = {
     "RIP", "ES",  "CS",  "SS",  "DS",  "FS",  "GS",  "TMP"
 };
 
-/// DIFT Private API
-static uint64_t* next_block( dift_context *dc ) {
-
-    q_chunks_flag[dc->prev_tail] = CHUNK_AVAILABLE;
-    while(unlikely(q_chunks_flag[dc->tail] != CHUNK_FILLED))
-    {
-        if( sleepness )
-            usleep(1000);
-        else
-            asm volatile("pause");
-    }
-    q_chunks_flag[dc->tail] = CHUNK_CONSUMING;
-    dc->deqptr = q_chunks_ptr[dc->tail];
-    dc->prev_tail = dc->tail;
-    dc->tail = (dc->tail + 1) % Q_CHUNKS_SIZE;
-    return dc->deqptr;
-}
-
-static uint64_t rec_dequeue( dift_context* dc ) {
-
-    register uint64_t ret;
-
-    if( unlikely(((uint64_t)dc->deqptr & ~CHUNK_BITSIZEMASK) == 0) )
-        next_block( dc );
-    ret = *dc->deqptr;
-    dc->deqptr++;
-
-    return ret;
-}
-
-static void kick_enqptr(void) {
-
-    if(((uint64_t)enqptr & ~CHUNK_BITSIZEMASK) == 0)
-        return;
-
-    asm volatile ("mfence":::"memory");
-    q_chunks_flag[prev_head] = CHUNK_FILLED;
-
-    // Ask for next available chunk
-    while(q_chunks_flag[head] != CHUNK_AVAILABLE)
-    {
-        asm volatile("pause");
-    }
-
-    q_chunks_flag[head] = CHUNK_FILLING;
-    enqptr = (uint64_t*)q_chunks_ptr[head];
-    prev_head = head;
-    head = (head + 1) % Q_CHUNKS_SIZE;
-}
-
-static void wait_dift_analysis( void ) { 
-    while( !dift_thread_ok_signal );
-}
-
 /// Pre-generate routine for TCG usage
 static void gen_rt_finish_curr_block( void ) {
     
@@ -308,11 +254,12 @@ static void gen_rt_finish_curr_block( void ) {
     out8(s, 0x48);
     out8(s, 0xa3);
     out64(s, &enqptr);  // mov [&enqptr], rax
-        
+     
     out8(s, 0xa1);
     out64(s, &prev_head);   // mov eax, [&prev_head]
     
     out8(s, 0x48);
+    out8(s, 0xc1);
     out8(s, 0xe0);
     out8(s, 0x03);      // shl rax, 0x3
 
@@ -324,7 +271,7 @@ static void gen_rt_finish_curr_block( void ) {
     out8(s, 0x01);
     out8(s, 0xc2);      // add rdx, rax
 
-    out8(s, 0x7c);
+    out8(s, 0xc7);
     out8(s, 0x02);
     out32(s, CHUNK_FILLED); // mov [rdx], CHUNK_FILLED
 
@@ -345,6 +292,7 @@ static void gen_rt_get_next_enqptr( void ) {
     out64(s, &head);    // mov rax, [&head]
     
     out8(s, 0x48);
+    out8(s, 0xc1);
     out8(s, 0xe0);
     out8(s, 0x03);      // shl rax, 0x3
 
@@ -376,6 +324,7 @@ static void gen_rt_get_next_enqptr( void ) {
     out64(s, &head);    // mov rax, [&head]
     
     out8(s, 0x48);
+    out8(s, 0xc1);
     out8(s, 0xe0);
     out8(s, 0x03);      // shl rax, 0x3
 
@@ -614,14 +563,15 @@ static void init_queue( void ) {
     int i;
     for( i = 0; i < Q_CHUNKS_SIZE; ++i ) {
         q_chunks_flag[i] = CHUNK_AVAILABLE;
-        q_chunks_ptr[i]  = &q_records[ (i * SIZE_OF_CHUNK)/sizeof(uint64_t) ];
+        q_chunks_ptr[i] = &q_records[ (i * SIZE_OF_CHUNK)/sizeof(uint64_t) ];
     }
     
     // ask for next abailable chunk;
     q_chunks_flag[0] = CHUNK_FILLING;
 
     enqptr = (uint64_t*)q_chunks_ptr[0];
-    head   = 1;
+    head = 1;
+    prev_head = 0;
 }
 
 static void init_case_mapping( void ) {
@@ -637,7 +587,7 @@ static void init_dift_context( dift_context *dc ) {
 
 	bzero(dc, sizeof(struct dift_context));
 	
-	dc->tail      = 0;
+	dc->tail = 0;
     dc->prev_tail = Q_CHUNKS_SIZE - 1;
 
     dc->deqptr = NULL;
@@ -667,6 +617,60 @@ static void init_dift_context( dift_context *dc ) {
 static void* dift_analysis_mainloop( void* arg ) {
     // do nothing
     return NULL;
+}
+
+/// DIFT Private API
+static uint64_t* next_block( dift_context *dc ) {
+
+    q_chunks_flag[dc->prev_tail] = CHUNK_AVAILABLE;
+    while(unlikely(q_chunks_flag[dc->tail] != CHUNK_FILLED))
+    {   
+        if( sleepness )
+            usleep(1000);
+        else
+            asm volatile("pause");
+    }
+    q_chunks_flag[dc->tail] = CHUNK_CONSUMING;
+    dc->deqptr = q_chunks_ptr[dc->tail];
+    dc->prev_tail = dc->tail;
+    dc->tail = (dc->tail + 1) % Q_CHUNKS_SIZE;
+    return dc->deqptr;
+}
+
+static uint64_t rec_dequeue( dift_context* dc ) {
+
+    register uint64_t ret;
+
+    if( unlikely(((uint64_t)dc->deqptr & ~CHUNK_BITSIZEMASK) == 0) )
+        next_block( dc );
+    ret = *dc->deqptr;
+    dc->deqptr++;
+
+    return ret;
+}
+
+static void kick_enqptr(void) {
+
+    if(((uint64_t)enqptr & ~CHUNK_BITSIZEMASK) == 0)
+        return;
+
+    asm volatile ("mfence":::"memory");
+    q_chunks_flag[prev_head] = CHUNK_FILLED;
+
+    // Ask for next available chunk
+    while(q_chunks_flag[head] != CHUNK_AVAILABLE)
+    {
+        asm volatile("pause");
+    }
+
+    q_chunks_flag[head] = CHUNK_FILLING;
+    enqptr = (uint64_t*)q_chunks_ptr[head];
+    prev_head = head;
+    head = (head + 1) % Q_CHUNKS_SIZE;
+}
+
+static void wait_dift_analysis( void ) { 
+    while( !dift_thread_ok_signal );
 }
 
 /// DIFT PUBLIC API: All of APIs are named with the prefix "dift_"
