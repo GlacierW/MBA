@@ -61,6 +61,12 @@
 
 #include "elf.h"
 
+/* Modified by Glacier */
+#if defined(__DIFT_ENABLED__)
+#include "ext/dift/dift.h"
+#endif
+/***********************/
+
 /* Forward declarations for functions declared in tcg-target.c and used here. */
 static void tcg_target_init(TCGContext *s);
 static void tcg_target_qemu_prologue(TCGContext *s);
@@ -247,6 +253,12 @@ TCGLabel *gen_new_label(void)
 {
     TCGContext *s = &tcg_ctx;
     TCGLabel *l = tcg_malloc(sizeof(TCGLabel));
+
+/* Modified by Glacier */
+#if defined(__DIFT_ENABLED__)
+    label_or_helper_appeared = 1;
+#endif
+/***********************/
 
     *l = (TCGLabel){
         .id = s->nb_labels++
@@ -705,6 +717,12 @@ void tcg_gen_callN(TCGContext *s, void *func, TCGArg ret,
     info = g_hash_table_lookup(s->helpers, (gpointer)func);
     flags = info->flags;
     sizemask = info->sizemask;
+
+/* Modified by Glacier */
+#if defined(__DIFT_ENABLED__)
+    label_or_helper_appeared = 1;
+#endif
+/***********************/
 
 #if defined(__sparc__) && !defined(__arch64__) \
     && !defined(CONFIG_TCG_INTERPRETER)
