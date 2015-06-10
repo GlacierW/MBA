@@ -213,7 +213,7 @@ int dift_code_cntr = 0;
 int dift_code_loc;
 int label_or_helper_appeared;
 
-uint32_t dift_code_buffer[CONFIG_MAX_TB_ESTI * CONFIG_IF_CODES_PER_TB] __attribute__((aligned(4096)));    // The size of the allocation should be fixed
+uint64_t dift_code_buffer[CONFIG_MAX_TB_ESTI * CONFIG_IF_CODES_PER_TB] __attribute__((aligned(4096)));    // The size of the allocation should be fixed
 
 /// DIFT part 
 dift_context dc[1] __attribute__((aligned(4096)));
@@ -236,7 +236,7 @@ const char* REG_NAME[] = {
     "RIP", "ES",  "CS",  "SS",  "DS",  "FS",  "GS",  "TMP"
 };
 
-/// Pre-generate routine for TCG usage
+/// Pre-generate routine for DIFT TCG usage
 static void gen_rt_finish_curr_block( void ) {
     
     uint8_t* s;
@@ -614,12 +614,7 @@ static void init_dift_context( dift_context *dc ) {
 #endif
 }
 
-static void* dift_analysis_mainloop( void* arg ) {
-    // do nothing
-    return NULL;
-}
-
-/// DIFT Private API
+/// DIFT Private API - Queue manipulation
 static uint64_t* next_block( dift_context *dc ) {
 
     q_chunks_flag[dc->prev_tail] = CHUNK_AVAILABLE;
@@ -673,6 +668,144 @@ static void wait_dift_analysis( void ) {
     while( !dift_thread_ok_signal );
 }
 
+/// DIFT Private API - Memory taint operation
+static inline void set_mem_dirty( dift_context* dc, uint64_t addr, CONTAMINATION_RECORD contamination, int is_append ) {
+}
+
+static inline void and_mem_dirty( dift_context* dc, uint64_t addr, CONTAMINATION_RECORD contamination ) {
+}
+
+static inline CONTAMINATION_RECORD get_mem_dirty( dift_context* dc, uint64_t addr ) {
+    return 1;
+}
+
+/// DIFT Private API - Disk taint operation
+static void set_hd_dirty_or( dift_context* dc, uint64_t hdaddr, CONTAMINATION_RECORD contamination ) {
+}
+
+static void set_hd_dirty_and( dift_context* dc, uint64_t hdaddr, CONTAMINATION_RECORD contamination ) {
+}
+
+static CONTAMINATION_RECORD get_hd_dirty( dift_context* dc, uint64_t hdaddr ) {
+    return 1;
+}
+
+/// DIFT Private API - MEM <--> HD taint propogation
+static void copy_contamination_mem_hd( dift_context* dc, uint64_t wa, uint64_t hdaddr, uint64_t len ) {
+}
+
+static void copy_contamination_hd_mem( dift_context* dc, uint64_t hdaddr, uint64_t ra, uint64_t len ) {
+}
+
+#define DEQ_FROM_CODE() (*(ptr_code++))
+#define DEQ_FROM_ADDR() (*(ptr_code++))
+
+#define THREADED_DISPATCH() \
+{ \
+   *(uint64_t*)&rec = DEQ_FROM_CODE(); \
+    goto *dispatch[rec.case_nb]; \
+}
+
+static void interpret_dift_codes_rest( dift_context* dc, uint64_t* ptr_code ) {
+#include "dift-policy-head.h"
+    THREADED_DISPATCH();
+#include "dift-policy.h"
+
+rt_rec_end:
+    return;
+}
+
+#undef DEQ_FROM_CODE
+#undef DEQ_FROM_ADDR
+#undef THREADED_DISPATCH
+
+#define DEQ_FROM_CODE() (*(ptr_code++))
+#define DEQ_FROM_ADDR() (*(ptr_addr++))
+
+#define THREADED_DISPATCH() \
+{ \
+   *(uint64_t*)&rec = DEQ_FROM_CODE(); \
+    goto *dispatch[rec.case_nb]; \
+}
+
+static void interpret_dift_codes( dift_context* dc, uint64_t* ptr_addr ) {
+#include "dift-policy-head.h"
+    uint64_t* ptr_code;
+    uint64_t* ptr_code_end;
+
+    uint64_t end_bakup;
+    uint64_t loc_cntr;
+
+    uint64_t loc, cntr;
+
+    loc_cntr = rec_dequeue( dc );
+    loc      = ((loc_cntr & 0xffffffffffffff00) >> 8);
+    cntr     = loc_cntr & 0xff;
+
+    ptr_code = dift_code_buffer + (loc * CONFIG_IF_CODES_PER_TB);
+    ptr_code_end = ptr_code + cntr;
+    end_bakup = *ptr_code_end;
+    *ptr_code_end = REC_END;
+
+    THREADED_DISPATCH();
+#include "dift-policy.h"
+
+rt_rec_end:
+        *ptr_code_end = end_bakup;
+        interpret_dift_codes_rest( dc, ptr_addr );
+}
+
+static void* analysis_mainloop( void* arg ) {
+
+    sigset_t signal_mask;
+    uint64_t data;
+    uint64_t  q_addrs[4096];
+    uint64_t* q_addrs_top = q_addrs;
+
+    sigfillset( &signal_mask );
+    sigprocmask( SIG_BLOCK, &signal_mask, NULL );
+
+    int cntr = 0;
+    int dist;
+    int idleness = 0;
+
+    while(1) {
+        if( (cntr++ & 0xfffff) == 0 ) {
+            dist = head - dc->tail;
+            if(dist < 0)
+                dist += Q_CHUNKS_SIZE;
+
+            sleepness = 0;
+            if( dist < 100 )
+                idleness++;
+            else
+                idleness = 0;
+            if( idleness > 12 )
+                sleepness = 1;
+        }
+
+        data = rec_dequeue( dc );
+        if( unlikely(data == (REC_END_SYMBOL | REC_SYNC)) ) {
+            // A SYNC indicates that:
+            // 1. It is preceded by a BEFORE_BLOCK_BEGIN, so all IF-codes had been processed.
+            // 2. The emulation thread is NOT in the execution of any code blocks.
+            // 3. dift_thread_ok_signal has been set to zero
+            // 3. Emuation thread is spinning on dift_thread_ok_signal (waiting for 1)
+
+            dift_thread_ok_signal = 1;
+            dc->deqptr = NULL;
+        } else if( unlikely(data == (REC_END_SYMBOL | REC_BEFORE_BLOCK_BEGIN)) ) {
+            *(q_addrs_top++) = REC_END;
+            interpret_dift_codes( dc, q_addrs );
+            q_addrs_top = q_addrs;
+        } else {
+            *( q_addrs_top++ ) = data;
+        }
+    }
+
+    return NULL;
+}
+
 /// DIFT PUBLIC API: All of APIs are named with the prefix "dift_"
 void dift_rec_enqueue( uint64_t data_in ) {
 
@@ -712,7 +845,7 @@ void dift_sync( void ) {
     dift_thread_ok_signal = 0;
 }
 
-int dift_start() {
+int dift_start( void ) {
     
     int err;
 
@@ -722,7 +855,7 @@ int dift_start() {
     init_case_mapping();
     init_dift_context(dc);
 
-    if( (err = pthread_create(&dift_thread, NULL, dift_analysis_mainloop, NULL)) )
+    if( (err = pthread_create(&dift_thread, NULL, analysis_mainloop, NULL)) )
         return -1;
     return 0;
 }

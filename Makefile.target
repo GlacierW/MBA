@@ -46,6 +46,13 @@ else
 TARGET_TYPE=system
 endif
 
+
+## Modified by Glacier ##
+ifdef CONFIG_DIFT
+QEMU_CFLAGS+=-D__DIFT_ENABLED__
+endif
+#########################
+
 $(QEMU_PROG).stp-installed: $(SRC_PATH)/trace-events
 	$(call quiet-command,$(TRACETOOL) \
 		--format=stap \
@@ -153,9 +160,10 @@ GENERATED_HEADERS += hmp-commands.h qmp-commands-old.h
 
 endif # CONFIG_SOFTMMU
 
-# DIFT support
-#obj-y += ext/dift/dift.o
-#dift.o: QEMU_CFLAGS+=-O3
+## Modified by Glacier ##
+obj-y += ext/dift/dift.o
+dift.o: QEMU_CFLAGS+=-O3
+#########################
 
 # Workaround for http://gcc.gnu.org/PR55489, see configure.
 %/translate.o: QEMU_CFLAGS += $(TRANSLATE_OPT_CFLAGS)

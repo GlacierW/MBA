@@ -1,9 +1,9 @@
     int i, j, k, l;
 
     uint64_t s;
-    uint64_t wa, ra, haddr;
+    uint64_t wa, ra, hdaddr;
 
-    struct record rec;
+    dift_record rec;
 
     CONTAMINATION_RECORD t = 0;
 
@@ -21,8 +21,8 @@
         [REG_REG_OO_APPEND_MO32] =  &&rt_reg_reg_oo_append_mo32,
         [REG_REG_OO_APPEND_MO64] =  &&rt_reg_reg_oo_append_mo64,
         [REG_REG_MIX_APPEND_MO16] = &&rt_reg_reg_mix_append_mo16,
-        [REG_REG_MIX_APPEND_MO32] = &&rt_reg_reg_mix_append_mo16,
-        [REG_REG_MIX_APPEND_MO64] = &&rt_reg_reg_mix_append_mo16,
+        [REG_REG_MIX_APPEND_MO32] = &&rt_reg_reg_mix_append_mo32,
+        [REG_REG_MIX_APPEND_MO64] = &&rt_reg_reg_mix_append_mo64,
 
         [REG_MEM_OO_ASSIGN_MO8] =   &&rt_reg_mem_oo_assign_mo8,
         [REG_MEM_OO_ASSIGN_MO16] =  &&rt_reg_mem_oo_assign_mo16,
@@ -54,10 +54,10 @@
         [MEM_REG_MIX_APPEND_MO32] = &&rt_mem_reg_mix_append_mo32,
         [MEM_REG_MIX_APPEND_MO64] = &&rt_mem_reg_mix_append_mo64,
 
-        [MEM_MEM_OO_ASSIGN_MO8] =   &&rt_mem_mem_assign_mo8,
-        [MEM_MEM_OO_ASSIGN_MO16] =  &&rt_mem_mem_assign_mo16,
-        [MEM_MEM_OO_ASSIGN_MO32] =  &&rt_mem_mem_assign_mo32,
-        [MEM_MEM_OO_ASSIGN_MO64] =  &&rt_mem_mem_assign_mo64,
+        [MEM_MEM_OO_ASSIGN_MO8] =   &&rt_mem_mem_oo_assign_mo8,
+        [MEM_MEM_OO_ASSIGN_MO16] =  &&rt_mem_mem_oo_assign_mo16,
+        [MEM_MEM_OO_ASSIGN_MO32] =  &&rt_mem_mem_oo_assign_mo32,
+        [MEM_MEM_OO_ASSIGN_MO64] =  &&rt_mem_mem_oo_assign_mo64,
 
         [REG_IM_CLEAR_MO8] =        &&rt_reg_im_clear_mo8,
         [REG_IM_CLEAR_MO16] =       &&rt_reg_im_clear_mo16,

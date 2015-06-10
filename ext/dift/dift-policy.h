@@ -177,7 +177,7 @@ rt_reg_mem_oo_assign_mo32:
 
 rt_reg_mem_oo_assign_mo64:
     ra = DEQ_FROM_ADDR();
-    i = rec.vl.r2m_m2r.reg;
+    i = rec.v1.r2m_m2r.reg;
 
     *(uint64_t*)&dc->reg_dirty_tbl[i][0] = *(uint64_t*)&dc->mem_dirty_tbl[ra];
 
@@ -721,7 +721,7 @@ rt_rec_contaminate_mem_and:
     j = ((*(uint64_t*)&rec) & 0x000000000000ff00) >> 8;
     l = ((*(uint64_t*)&rec) & 0x0000ffffffff0000) >> 16;
     for(i = 0 ; i < l ; i++)
-        and_mem_dirty(dc, wa + i, j, 1);
+        and_mem_dirty(dc, wa + i, j);
     THREADED_DISPATCH();
 
 rt_rec_contaminate_hd_or:

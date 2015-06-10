@@ -4619,6 +4619,8 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
 #if defined(__DIFT_ENABLED__)
 /// Herein defined the set of DIFT TCG_IR generation functions
 /// All of these functions should be named with "gen_dift" prefix
+#define WADDR 1
+#define RADDR 0
 
 static void gen_dift_sync_i64( DisasContext* s ) {
     if( !label_or_helper_appeared )
@@ -4632,8 +4634,6 @@ static void gen_enqueue_i64( DisasContext* s, uint64_t arg ) {
         tcg_gen_op1_i64( INDEX_op_qemu_dift_enq_i64, arg );
 }
 
-#define WADDR 1
-#define RADDR 0
 static void gen_dift_enqueue_addr( DisasContext* s, int is_wa ) {
     if( is_wa ) 
         tcg_gen_op0( INDEX_op_qemu_dift_enq_wa );

@@ -337,6 +337,9 @@ vhdx=""
 quorum=""
 numa=""
 tcmalloc="no"
+## Modified by Glacier ##
+dift="no"
+#########################
 
 # parse CC options first
 for opt do
@@ -1139,6 +1142,10 @@ for opt do
   ;;
   --enable-tcmalloc) tcmalloc="yes"
   ;;
+  ## Modified by Glacier ##
+  --enable-dift) dift="yes"
+  ;;
+  #########################
   *)
       echo "ERROR: unknown option $opt"
       echo "Try '$0 --help' for more information"
@@ -1414,6 +1421,7 @@ Advanced options (experts only):
   --enable-numa            enable libnuma support
   --disable-tcmalloc       disable tcmalloc support
   --enable-tcmalloc        enable tcmalloc support
+  --enable_dift            enable dynamic information flow tracking
 
 NOTE: The object files are built at the place where configure is launched
 EOF
@@ -4476,6 +4484,9 @@ echo "snappy support    $snappy"
 echo "bzip2 support     $bzip2"
 echo "NUMA host support $numa"
 echo "tcmalloc support  $tcmalloc"
+## Modified by Glacier ##
+echo "dift support      $dift"
+#########################
 
 if test "$sdl_too_old" = "yes"; then
 echo "-> Your SDL version is too old - please upgrade to have SDL support"
@@ -5348,6 +5359,12 @@ fi
 if test "$target_bsd_user" = "yes" ; then
   echo "CONFIG_BSD_USER=y" >> $config_target_mak
 fi
+
+## Modified by Glacier ##
+if test "$dift" = "yes"; then
+  echo "CONFIG_DIFT=yes" >> $config_target_mak
+fi
+#########################
 
 # generate QEMU_CFLAGS/LDFLAGS for targets
 

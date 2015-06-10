@@ -285,7 +285,7 @@ extern CONTAMINATION_RECORD cpu_get_hd_dirty(uint64_t hdaddr);
 extern int collect_taint(uint64_t start, uint64_t end, CONTAMINATION_RECORD taint, void* arg);
 
 extern CONTAMINATION_RECORD hd_dirty_tbl[];
-extern uint32_t dift_code_buffer[];
+extern uint64_t dift_code_buffer[];
 extern int dift_code_top;
 extern int dift_code_cntr;
 extern int dift_code_loc;
@@ -298,6 +298,8 @@ extern void dift_contaminate_memory_or(uint64_t, uint64_t, CONTAMINATION_RECORD)
 extern void dift_contaminate_memory_and(uint64_t, uint64_t, CONTAMINATION_RECORD);
 extern void dift_contaminate_hd_or(uint64_t, uint64_t, CONTAMINATION_RECORD);
 extern void dift_contaminate_hd_and(uint64_t, uint64_t, CONTAMINATION_RECORD);
+
+extern void dift_rec_enqueue( uint64_t data_in );
 
 ///
 /// Flush the record queue if needed.
