@@ -107,3 +107,4 @@ TAGS
 *.sh
 imgs/*
 *.swp
+ext/dift/gtest_dift

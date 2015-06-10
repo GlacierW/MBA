@@ -68,7 +68,7 @@
 #define HD_L2_INDEX(addr)   ((addr) & ~HD_L2_INDEX_MASK)
 #define HD_PAGE(addr)       ((hd_l1_dirty_tbl[HD_L1_INDEX(addr)]))
 
-struct record {
+struct dift_record {
 
     uint8_t case_nb;
 

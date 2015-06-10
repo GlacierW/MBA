@@ -1210,10 +1210,11 @@ void memory_region_init_ram(MemoryRegion *mr,
     mr->destructor = memory_region_destructor_ram;
     mr->ram_addr = qemu_ram_alloc(size, mr, errp);
 
-    // for debug DSNS
+    /* Modified by Glacier */
     printf("memory_region_init_ram: ram alloc %016lx bytes for %s \n", size, name);
     printf("mr->ram_addr = %016lx, qemu_get_ram_ptr = %p, qemu_get_ram_ptr_at_0 = %p\n", mr->ram_addr, qemu_get_ram_ptr(mr->ram_addr), qemu_get_ram_ptr(0));
     //phys_ram_base = (uintptr_t)qemu_get_ram_ptr(mr->ram_addr);
+    /***********************/
 }
 
 void memory_region_init_resizeable_ram(MemoryRegion *mr,

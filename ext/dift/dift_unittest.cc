@@ -6,7 +6,6 @@
 
 #include "dift.c"
 
-
 TEST( DiftUnitTest, DIFT_CONTEXT_INITILIZATION ) {
     
     // setup the global variable
