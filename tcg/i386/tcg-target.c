@@ -402,6 +402,12 @@ static inline int tcg_target_const_match(tcg_target_long val, TCGType type,
 #define JCC_JLE 0xe
 #define JCC_JG  0xf
 
+/* Modified by Glacier */
+#if defined(__DIFT_ENABLED__)
+#include "../../ext/dift/dift.h"
+#endif
+/***********************/
+
 static const uint8_t tcg_cond_to_jcc[] = {
     [TCG_COND_EQ] = JCC_JE,
     [TCG_COND_NE] = JCC_JNE,
@@ -1962,6 +1968,25 @@ static inline void tcg_out_op(TCGContext *s, TCGOpcode opc,
     case INDEX_op_qemu_st_i64:
         tcg_out_qemu_st(s, args, 1);
         break;
+/* Modified by Glacier */
+#if defined(__DIFT_ENABLED__)
+    case INDEX_op_qemu_dift_enq_i64:
+        tcg_out_qemu_dift_enq_i64( s, args );
+        break;
+    case INDEX_op_qemu_dift_enq_ra:
+        tcg_out_qemu_dift_enq_raddr( s );
+        break;
+    case INDEX_op_qemu_dift_enq_wa:
+        tcg_out_qemu_dift_enq_waddr( s );
+        break;
+    case INDEX_op_qemu_dift_inc_diftcodes:
+        tcg_out_qemu_dift_inc_diftcodes( s, args );
+        break;
+    case INDEX_op_qemu_dift_tb_begin:
+        tcg_out_qemu_dift_tb_begin( s, args );
+        break;
+#endif
+/***********************/
 
     OP_32_64(mulu2):
         tcg_out_modrm(s, OPC_GRP3_Ev + rexw, EXT3_MUL, args[3]);
@@ -2069,6 +2094,86 @@ static inline void tcg_out_op(TCGContext *s, TCGOpcode opc,
 
 #undef OP_32_64
 }
+
+/* Modified by Glacier */
+#if defined(__DIFT_ENABLED__)
+
+/// all of the assembly comment is presented in Intel syntax
+static void tcg_out_qemu_dift_enq_i64( TCGContext* s, const TCGArg* args ) {
+
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0xba);
+    tcg_out64(s, (uint64_t)args[0]); // mov rdx, args[0]
+
+    tcg_out8(s, 0xe8);
+    tcg_out32(s, (uint32_t)(rt_enqueue_one_rec - (s->code_ptr + 4))); // call rt_enqueue_one_rec
+}
+
+static void tcg_out_qemu_dift_enq_raddr( TCGContext* s ) {
+
+    tcg_out8(s, 0xe8);
+    tcg_out32(s, (uint32_t)(rt_enqueue_raddr - (s->code_ptr + 4))); // call rt_enqueue_raddr
+}
+
+static void tcg_out_qemu_dift_enq_waddr( TCGContext* s ) {
+    
+    tcg_out8(s, 0xe8);
+    tcg_out32(s, (uint32_t)(rt_enqueue_waddr - (s->code_ptr + 4))); // call rt_enqueue_waddr
+}
+
+static void tcg_out_qemu_dift_inc_diftcodes( TCGContext* s, const TCGArg* args ) {
+
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0xb8);
+    tcg_out64(s, (uint64_t)args[0]); // mov rax, args[0]
+
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0xa3);
+    tcg_out64(s, (uint64_t)&dift_code_cntr); // mov [&dift_code_cntr], rax
+}
+
+static void tcg_out_qemu_dift_tb_begin( TCGContext* s, const TCGArg* args ) {
+
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0xba);
+    tcg_out64(s, REC_END_SYMBOL | REC_BEFORE_BLOCK_BEGIN);              // mov rdx, REC_BEFORE_BLOCK_BEGIN
+
+    tcg_out8(s 0xe8);
+    tcg_out32(s, (uint32_t)(rt_enqueue_one_rec - (s->code_ptr + 4)));   // call rt_enqueue_one_rec
+    
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0xa1);
+    tcg_out64(s, (uint64_t)&dift_code_loc);     // mov rax, [&dift_code_loc]
+
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0x89);
+    tcg_out8(s, 0xc2);                          // mov rdx, rax
+
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0xa1);
+    tcg_out64(s, (uint64_t)&dift_code_cntr);    // mov rax, [&dift_code_cntr]
+
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0x09);
+    tcg_out8(s, 0xc2);                          // or rdx, rax
+    
+    tcg_out8(s 0xe8);
+    tcg_out32(s, (uint32_t)(rt_enqueue_one_rec - (s->code_ptr + 4)));   // call rt_enqueue_one_rec
+
+    tcg_out8(s, 0xb8); 
+    tcg_out32(s, (uint32_t)(args[0] / CONFIG_IF_CODES_PER_TB) << 8);    // mov eax, (args[0]/CONFIG_IF_CODES_PER_TB) << 8
+
+    tcg_out8(s, 0xa3);
+    tcg_out64(s, (uint64_t)&dift_code_loc)                              // mov [&dift_code_loc], eax
+    
+    tcg_out8(s, 0x31);
+    tcg_out8(s, 0xc0);                          // xor eax, eax
+    
+    tcg_out8(s, 0xa3);
+    tcg_out64(s, (uint64_t)&dift_code_cntr);    // mov [&dift_code_cntr], eax
+}
+#endif
+/***********************/
 
 static const TCGTargetOpDef x86_op_defs[] = {
     { INDEX_op_exit_tb, { } },
@@ -2196,6 +2301,15 @@ static const TCGTargetOpDef x86_op_defs[] = {
     { INDEX_op_qemu_ld_i64, { "r", "r", "L", "L" } },
     { INDEX_op_qemu_st_i64, { "L", "L", "L", "L" } },
 #endif
+/* Modified by Glacier */
+#if defined(__DIFT_ENABLED__)
+    { INDEX_op_qemu_dift_enq_i64, {} },
+    { INDEX_op_qemu_dift_enq_ra, {} },
+    { INDEX_op_qemu_dift_enq_wa, {} },
+    { INDEX_op_qemu_dift_inc_diftcodes, {} },
+    { INDEX_op_qemu_dift_tb_begin, {} },
+#endif    
+/***********************/
     { -1 },
 };
 

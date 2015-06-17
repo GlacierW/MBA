@@ -176,6 +176,15 @@ struct TranslationBlock {
        jmp_first */
     struct TranslationBlock *jmp_next[2];
     struct TranslationBlock *jmp_first;
+
+/* Modified by Glacier */
+    uint64_t next_pc;
+#if defined(__DIFT_ENABLED__)
+    int virt_safe;
+    int dift_code_loc;
+    int dift_code_idx;
+#endif
+/***********************/  
 };
 
 #include "exec/spinlock.h"

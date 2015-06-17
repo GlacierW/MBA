@@ -1,8 +1,8 @@
  /***********************************************************
   * Dynamic Information Flow Tracking(DIFT) Implementation
-  * Originated from Chiwei Wang, 2009/02/16
+  * Originated from Chiwei Wang (Glacier), 2009/02/16
   *
-  * Upgraded by Chiawei Wang, 2015/04/23
+  * Upgraded by Chiawei Wang (Jack), 2015/04/23
   ***********************************************************/
 
 #include <pthread.h>
@@ -12,14 +12,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <strings.h>
+#include <string.h>
 #include <unistd.h>
 #include <sys/mman.h>
 #include <assert.h>
 #include <stdint.h>
 
-
+/// we try to make DIFT as standalone as possible
 //#include "../../target-i386/cpu.h"
 //#include "../../tcg/tcg.h"
+
 #include "dift.h"
 //#include "ifcode-translator.h"
 
@@ -65,16 +67,19 @@ uint8_t* rt_enqueue_waddr		= pre_generated_routine + 2048;
 uint8_t* rt_qemu_ld				= pre_generated_routine + 2560;
 uint8_t* rt_qemu_st				= pre_generated_routine + 3072;
 
-volatile uint64_t* enqptr __attribute__((aligned(4096)));
-volatile uint64_t  head, prev_head;
 uint64_t last_mem_read_addr;
 uint64_t last_mem_write_addr;
+
+volatile uint64_t* enqptr __attribute__((aligned(4096)));
+volatile uint64_t  head, prev_head;
+
 volatile uint64_t clean_source;
 volatile uint64_t null_sink;
+
 volatile int nic_rx_taint;
 volatile int nic_tx_taintcheck;
-uint8_t case_mapping[1 << (sizeof(uint16_t) * 8)];
 
+uint8_t case_mapping[1 << (sizeof(uint16_t) * 8)];
 uint16_t case_list[] ={
 
     // encoding:
@@ -211,13 +216,9 @@ uint16_t case_list[] ={
 int dift_code_top  = 1;  // Loc 0 is reserved for the workaround in add_file_taint
 int dift_code_cntr = 0;
 int dift_code_loc;
-int label_or_helper_appeared;
-
 uint64_t dift_code_buffer[CONFIG_MAX_TB_ESTI * CONFIG_IF_CODES_PER_TB] __attribute__((aligned(4096)));    // The size of the allocation should be fixed
 
-/// DIFT part 
-dift_context dc[1] __attribute__((aligned(4096)));
-static pthread_t dift_thread;
+int label_or_helper_appeared;
 
 /// DIFT Communication
 uint64_t          q_records[CONFIG_SIZE_OF_QUEUE / sizeof(uint64_t)] __attribute__((aligned(4096)));
@@ -227,7 +228,11 @@ volatile uint32_t dift_thread_ok_signal = 0;
 
 int sleepness = 0;
 
-/// Logging
+/// DIFT Context
+dift_context dc[1] __attribute__((aligned(4096)));
+static pthread_t dift_thread;
+
+/// DIFT Logging
 FILE* fp_dift_log;
 
 const char* REG_NAME[] = {
@@ -235,6 +240,7 @@ const char* REG_NAME[] = {
     "R8",  "R9",  "R10", "R11", "R12", "R13", "R14", "R15",
     "RIP", "ES",  "CS",  "SS",  "DS",  "FS",  "GS",  "TMP"
 };
+
 
 /// Pre-generate routine for DIFT TCG usage
 static void gen_rt_finish_curr_block( void ) {
@@ -593,7 +599,7 @@ static void init_dift_context( dift_context *dc ) {
     dc->deqptr = NULL;
 
     // allocation for memory taint
-    dc->mem_dirty_tbl = (CONTAMINATION_RECORD*)calloc( phys_ram_size * sizeof(CONTAMINATION_RECORD) /*+ ((uint64_t)1 << PAGENO_BITS)*/, 1 );
+    dc->mem_dirty_tbl = (CONTAMINATION_RECORD*)calloc( phys_ram_size /*+ ((uint64_t)1 << PAGENO_BITS)*/, sizeof(CONTAMINATION_RECORD) );
     if( dc->mem_dirty_tbl == NULL ) {
         fprintf( stderr, "Not enough memory for mem_dirty_tbl, need %016lx bytes\n", phys_ram_size * sizeof(CONTAMINATION_RECORD) + ((uint64_t)1 << PAGENO_BITS) );
         exit( 1 );
@@ -603,10 +609,10 @@ static void init_dift_context( dift_context *dc ) {
     null_sink    = 0x0000FFFFFFFFFFFF;
 
     // allocation for harddisk taint
-    dc->hd_l1_dirty_tbl = (CONTAMINATION_RECORD**)calloc( 1 << HD_L1_INDEX_BITS, 1 );
+    dc->hd_l1_dirty_tbl = (CONTAMINATION_RECORD**)calloc( 1 << HD_L1_INDEX_BITS, sizeof(CONTAMINATION_RECORD*) );
     if( dc->hd_l1_dirty_tbl == NULL ) {
-        fprintf(stderr, "Not enough memory for hd_l1_dirty_tbl\n");
-        exit(1);
+        fprintf( stderr, "Not enough memory for hd_l1_dirty_tbl\n" );
+        exit( 1 );
     }
 
 #if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
@@ -670,33 +676,112 @@ static void wait_dift_analysis( void ) {
 
 /// DIFT Private API - Memory taint operation
 static inline void set_mem_dirty( dift_context* dc, uint64_t addr, CONTAMINATION_RECORD contamination, int is_append ) {
+
+    if( is_append )
+        dc->mem_dirty_tbl[addr] |= contamination;
+    else
+        dc->mem_dirty_tbl[addr]  = contamination;
 }
 
 static inline void and_mem_dirty( dift_context* dc, uint64_t addr, CONTAMINATION_RECORD contamination ) {
+    dc->mem_dirty_tbl[addr] &= contamination;
 }
 
-static inline CONTAMINATION_RECORD get_mem_dirty( dift_context* dc, uint64_t addr ) {
-    return 1;
+static inline CONTAMINATION_RECORD get_mem_dirty( dift_context* dc, uint64_t addr ) {   
+    return dc->mem_dirty_tbl[addr];
 }
 
 /// DIFT Private API - Disk taint operation
+static CONTAMINATION_RECORD* alloc_hd_dirty_page( void ) {
+ 
+    CONTAMINATION_RECORD* rec = (CONTAMINATION_RECORD*)calloc( (1 << HD_L2_INDEX_BITS), sizeof(CONTAMINATION_RECORD) );
+
+    if( rec == NULL ) {
+        fprintf( stderr, "Not enough memory for alloc_hd_dirty_page\n" );
+        exit( 1 );
+    }
+
+    return rec;
+}
+
 static void set_hd_dirty_or( dift_context* dc, uint64_t hdaddr, CONTAMINATION_RECORD contamination ) {
+
+    if( dc->hd_l1_dirty_tbl[HD_L1_INDEX(hdaddr)] == NULL ) {
+        if( contamination == 0 )
+            return;
+        dc->hd_l1_dirty_tbl[HD_L1_INDEX(hdaddr)] = alloc_hd_dirty_page();
+    }
+
+    dc->hd_l1_dirty_tbl[HD_L1_INDEX(hdaddr)][HD_L2_INDEX(hdaddr)] |= contamination;
 }
 
 static void set_hd_dirty_and( dift_context* dc, uint64_t hdaddr, CONTAMINATION_RECORD contamination ) {
+
+    if( dc->hd_l1_dirty_tbl[HD_L1_INDEX(hdaddr)] == NULL ) 
+        return;
+
+    dc->hd_l1_dirty_tbl[HD_L1_INDEX(hdaddr)][HD_L2_INDEX(hdaddr)] &= contamination;
 }
 
 static CONTAMINATION_RECORD get_hd_dirty( dift_context* dc, uint64_t hdaddr ) {
-    return 1;
+    
+    CONTAMINATION_RECORD* hd_l2_dirty_tbl = NULL;
+
+    if( (hd_l2_dirty_tbl = dc->hd_l1_dirty_tbl[HD_L1_INDEX(hdaddr)]) == NULL )
+        return 0;
+    return hd_l2_dirty_tbl[HD_L2_INDEX(hdaddr)];
 }
 
-/// DIFT Private API - MEM <--> HD taint propogation
-static void copy_contamination_mem_hd( dift_context* dc, uint64_t wa, uint64_t hdaddr, uint64_t len ) {
+/// DIFT Private API - MEM <--> HD taint propogation (copy_contamination_DST_SRC)
+static void copy_contamination_hd_mem( dift_context* dc, uint64_t ra, uint64_t hdaddr, uint64_t len ) {
+
+    uint64_t progress = ((hdaddr + (1 << HD_L2_INDEX_BITS)) & HD_L2_INDEX_MASK) - hdaddr;
+
+    while( len ) {
+
+        progress = progress < len ? progress : len;
+
+        if( dc->hd_l1_dirty_tbl[HD_L1_INDEX(hdaddr)] == NULL )
+            dc->hd_l1_dirty_tbl[HD_L1_INDEX(hdaddr)] = alloc_hd_dirty_page();
+
+        memcpy( 
+            &dc->hd_l1_dirty_tbl[HD_L1_INDEX(hdaddr)][HD_L2_INDEX(hdaddr)],
+            &dc->mem_dirty_tbl[ra],
+            progress * sizeof(CONTAMINATION_RECORD) );
+
+        len    -= progress;
+        ra     += progress;
+        hdaddr += progress;
+
+        progress = ((hdaddr + (1 << HD_L2_INDEX_BITS)) & HD_L2_INDEX_MASK) - hdaddr;
+    }
 }
 
-static void copy_contamination_hd_mem( dift_context* dc, uint64_t hdaddr, uint64_t ra, uint64_t len ) {
+static void copy_contamination_mem_hd( dift_context* dc, uint64_t hdaddr, uint64_t wa, uint64_t len ) {
+    
+    uint64_t progress = ((hdaddr + (1 << HD_L2_INDEX_BITS)) & HD_L2_INDEX_MASK) - hdaddr;
+
+    while( len ) {
+
+        progress = progress < len ? progress : len;
+
+        if( dc->hd_l1_dirty_tbl[HD_L1_INDEX(hdaddr)] == NULL )
+            bzero( &dc->mem_dirty_tbl[wa], progress * sizeof(CONTAMINATION_RECORD) );
+        else
+            memcpy( 
+                &dc->mem_dirty_tbl[wa],
+                &dc->hd_l1_dirty_tbl[HD_L1_INDEX(hdaddr)][HD_L2_INDEX(hdaddr)],
+                progress * sizeof(CONTAMINATION_RECORD) );
+
+        len    -= progress;
+        wa     += progress;
+        hdaddr += progress;
+
+        progress = ((hdaddr + (1 << HD_L2_INDEX_BITS)) & HD_L2_INDEX_MASK) - hdaddr;
+    }
 }
 
+/// DIFT Private API - Taint information interpretation
 #define DEQ_FROM_CODE() (*(ptr_code++))
 #define DEQ_FROM_ADDR() (*(ptr_code++))
 
@@ -806,7 +891,7 @@ static void* analysis_mainloop( void* arg ) {
     return NULL;
 }
 
-/// DIFT PUBLIC API: All of APIs are named with the prefix "dift_"
+/// DIFT Public API - All of the public APIs are named with the prefix "dift_"
 void dift_rec_enqueue( uint64_t data_in ) {
 
     *(enqptr++) = data_in;
@@ -829,6 +914,17 @@ void dift_rec_enqueue( uint64_t data_in ) {
     }
 }
 
+uint8_t dift_rec_case_nb( uint8_t dst_type, uint8_t src_type, uint8_t ot, uint8_t effect ) {
+
+    uint8_t ret = case_mapping[((0xc0 | src_type << 4 | dst_type << 2 | ot) << 8) | effect];
+    if( ret == 0xff ) { 
+        fprintf( stderr, "No matching DIFT record case: \n" );
+        fprintf( stderr, "dst_type : %d, src_type : %d, ot : %d, effect : %d\n", dst_type, src_type, ot, effect );
+        exit( 1 );
+    }
+    return ret;
+}
+
 void dift_sync( void ) {
     if( dift_code_loc != 0 ) {
         dift_rec_enqueue( REC_END_SYMBOL | REC_BEFORE_BLOCK_BEGIN );
@@ -839,7 +935,7 @@ void dift_sync( void ) {
     kick_enqptr();
     wait_dift_analysis();
 
-    dift_code_loc  = 0;
+    dift_code_loc = 0;
     dift_code_cntr = 0;
     
     dift_thread_ok_signal = 0;

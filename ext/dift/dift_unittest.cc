@@ -4,7 +4,30 @@
 #include <fcntl.h>
 #include <errno.h>
 
+extern "C" {
 #include "dift.c"
+}
+
+static void dump_func_insn( const char* func_name, uint8_t* func_ptr ) {
+
+    int fd = -1;
+    int rt_sz;
+
+    ASSERT_NE( -1, (fd = open("rt_dump", O_RDWR | O_CREAT, S_IRWXU | S_IRWXG | S_IRWXO)) );
+    ftruncate( fd, 0 );
+
+    printf( "\n=============== %s ==============\n", func_name );
+    fflush( stdout );
+
+    for( rt_sz = 512 - 1; rt_sz >=0 && func_ptr[rt_sz] != 0xc3; --rt_sz );
+    write( fd, func_ptr, rt_sz + 1 ); // rt_sz as index, thereby + 1
+    system( "ndisasm -b 64 rt_dump" );
+
+    printf( "=================================\n" );
+    fflush( stdout );
+
+    unlink( "rt_dump" );
+}
 
 TEST( DiftUnitTest, DIFT_CONTEXT_INITILIZATION ) {
     
@@ -61,27 +84,6 @@ TEST( DiftUnitTest, DIFT_QUEUE_INITIALIZATION ) {
     }
 
     ASSERT_EQ( q_records, enqptr );
-}
-
-static void dump_func_insn( const char* func_name, uint8_t* func_ptr ) {
-
-    int fd = -1;
-    int rt_sz;
-
-    ASSERT_NE( -1, (fd = open("rt_dump", O_RDWR | O_CREAT, S_IRWXU | S_IRWXG | S_IRWXO)) );
-    ftruncate( fd, 0 );
-
-    printf( "\n=============== %s ==============\n", func_name );
-    fflush( stdout );
-
-    for( rt_sz = 512 - 1; rt_sz >=0 && func_ptr[rt_sz] != 0xc3; --rt_sz );
-    write( fd, func_ptr, rt_sz + 1 ); // rt_sz as index, thereby + 1
-    system( "ndisasm -b 64 rt_dump" );
-
-    printf( "=================================\n" );
-    fflush( stdout );
-
-    unlink( "rt_dump" );
 }
 
 TEST( DiftUnitTest, DIFT_PREGEN_ROUTINE ) {
@@ -243,3 +245,83 @@ TEST( DiftUnitTest, TCG_RWADDR_ENQUEUE ) {
     ASSERT_EQ( 0x4141414141414141, *old_enqptr );
     ASSERT_EQ( 0x4242424242424242, *(old_enqptr + 1) );
 }
+
+TEST( DiftUnitTest, GET_DIFT_CASE ) {
+
+    ASSERT_EQ( 
+        REG_REG_OO_ASSIGN_MO32,
+        dift_rec_case_nb(OPT_REG, OPT_REG, MO_32, EFFECT_ONE_TO_ONE | EFFECT_ASSIGN) );
+
+    ASSERT_EQ( 
+        REG_MEM_OO_APPEND_MO64,
+        dift_rec_case_nb(OPT_REG, OPT_MEM, MO_64, EFFECT_ONE_TO_ONE | EFFECT_APPEND) );
+
+    ASSERT_EQ( 
+        MEM_REG_MIX_APPEND_MO16,
+        dift_rec_case_nb(OPT_MEM, OPT_REG, MO_16, EFFECT_MIX | EFFECT_APPEND) );
+
+    ASSERT_EQ( 
+        MEM_MEM_OO_ASSIGN_MO8,
+        dift_rec_case_nb(OPT_MEM, OPT_MEM, MO_8, EFFECT_ONE_TO_ONE | EFFECT_ASSIGN) );
+}
+
+TEST( DiftUnitTest, MEM_TAINTING ) {
+
+    printf( "Check inital taint status of memory address 0x0000000000000000 clean ... " );
+    ASSERT_EQ( 0x0, get_mem_dirty(dc, 0x0000000000000000) );
+    printf( "Done\n" );
+
+    printf( "Set addr tainted with tag 0x1 ... " );
+    set_mem_dirty( dc, 0x0000000000000000, 0x1, 0 );
+    ASSERT_EQ( 0x1, get_mem_dirty(dc, 0x0000000000000000) );
+    printf( "Done\n" );
+
+    printf( "Append addr with taint tag 0x2, giving 0x3 tag ... " );
+    set_mem_dirty( dc, 0x0000000000000000, 0x2, 1 );
+    ASSERT_EQ( 0x3, get_mem_dirty(dc, 0x0000000000000000) );
+    printf( "Done\n" );
+
+    printf( "And addr with taint tag 0x1, giving 0x1 tag ... " );
+    and_mem_dirty( dc, 0x0000000000000000, 0x1 );
+    ASSERT_EQ( 0x1, get_mem_dirty(dc, 0x0000000000000000) );
+    printf( "Done\n" );
+}
+
+TEST( DiftUnitTest, HD_TAINTING ) {
+    
+    printf( "Check inital taint status of disk address 0x0000000000000000 clean ... " );
+    ASSERT_EQ( 0x0, get_hd_dirty(dc, 0x0000000000000000) );
+    printf( "Done\n" );
+
+    printf( "Set addr tainted with tag 0x4 ... " );
+    set_hd_dirty_or( dc, 0x0000000000000000, 0x4 );
+    ASSERT_EQ( 0x4, get_hd_dirty(dc, 0x0000000000000000) );
+    printf( "Done\n" );
+
+    printf( "Append addr with taint tag 0x8, giving 0xC tag ... " );
+    set_hd_dirty_or( dc, 0x0000000000000000, 0x8 );
+    ASSERT_EQ( 0xc, get_hd_dirty(dc, 0x0000000000000000) );
+    printf( "Done\n" );
+
+    printf( "And addr with taint tag 0x4, giving 0x4 tag ... " );
+    set_hd_dirty_and( dc, 0x0000000000000000, 0x4 );
+    ASSERT_EQ( 0x4, get_hd_dirty(dc, 0x0000000000000000) );
+    printf( "Done\n" );
+}
+
+TEST( DiftUnitTest, HD_MEM_TAINTING ) {
+
+    printf( "Taint-copy 1 byte from MEM:0000000000000000(tag = 0x1) to HD:0x0000000000001000 ... " );
+    copy_contamination_hd_mem( dc, 0x0000000000000000, 0x0000000000001000, 1 );
+    ASSERT_EQ( 0x1, get_hd_dirty(dc, 0x0000000000001000) );
+    printf( "Done\n" );
+}
+
+TEST( DiftUnitTest, MEM_HD_TAINTING ) {
+ 
+    printf( "Taint-copy 1 byte from HD:0000000000000000(tag = 0x4) to MEM:0x0000000000001000 ... " );
+    copy_contamination_mem_hd( dc, 0x0000000000000000, 0x0000000000001000, 1 );
+    ASSERT_EQ( 0x4, get_mem_dirty(dc, 0x0000000000001000) );
+    printf( "Done\n" );
+}
+

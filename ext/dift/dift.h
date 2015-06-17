@@ -56,7 +56,7 @@
 
 ///
 /// We use 2-layer page table to record the harddisk taint status
-/// Since the initial image is 16GB size, the address need 36 bits to cover 
+/// Since the initial image is 16GB size, the address need 36 bits to cover the addressing space
 /// (same as PAE except that we use only 2-layer page translation)
 #define HD_L1_INDEX_BITS    24
 #define HD_L2_INDEX_BITS    12
@@ -224,9 +224,9 @@ enum {
 extern uint64_t phys_ram_base;
 extern uint64_t phys_ram_size;
 
-extern uint64_t q_records[];
-extern volatile uint64_t q_chunks_flag[];
+extern uint64_t  q_records[];
 extern uint64_t* q_chunks_ptr[];
+extern volatile uint64_t q_chunks_flag[];
 extern volatile uint64_t *enqptr;
 extern volatile uint64_t head, prev_head;
 
@@ -291,15 +291,16 @@ extern int dift_code_cntr;
 extern int dift_code_loc;
 extern int label_or_helper_appeared;
 
-extern uint8_t dift_case_nb(uint8_t, uint8_t, uint8_t, uint8_t);
 extern int dift_start(void);
-extern int dift_is_reg_clean(void);
+
+extern void    dift_rec_enqueue( uint64_t data_in );
+extern uint8_t dift_rec_case_nb(uint8_t, uint8_t, uint8_t, uint8_t);
+
 extern void dift_contaminate_memory_or(uint64_t, uint64_t, CONTAMINATION_RECORD);
 extern void dift_contaminate_memory_and(uint64_t, uint64_t, CONTAMINATION_RECORD);
 extern void dift_contaminate_hd_or(uint64_t, uint64_t, CONTAMINATION_RECORD);
 extern void dift_contaminate_hd_and(uint64_t, uint64_t, CONTAMINATION_RECORD);
 
-extern void dift_rec_enqueue( uint64_t data_in );
 
 ///
 /// Flush the record queue if needed.
