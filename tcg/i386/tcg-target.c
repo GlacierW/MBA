@@ -1558,6 +1558,19 @@ static void tcg_out_qemu_ld(TCGContext *s, const TCGArg *args, bool is64)
     tcg_out_tlb_load(s, addrlo, addrhi, mem_index, s_bits,
                      label_ptr, offsetof(CPUTLBEntry, addr_read));
 
+/* Modified by Glacier */
+#if defined(__DIFT_ENABLED__)
+    // [&last_mem_read_addr] = TCG_REG_L1  (TCG_REG_L0 is now available), comments in Intel syntax
+	tcg_out8(s, 0x48);
+	tcg_out8(s, 0xb8 + TCG_REG_L0 );
+	tcg_out64(s, &last_mem_read_addr);	// mov TCG_REG_L0, &last_mem_read_addr
+
+	tcg_out8(s, 0x48);
+	tcg_out8(s, 0x8b);					
+	tcg_out8(s, (0x0 << 6) | (TCG_REG_L1 << 3) | (TCG_REG_L0));	// mov [TCG_REG_L0], TCG_REG_L1
+#endif
+/***********************/  
+
     /* TLB Hit.  */
     tcg_out_qemu_ld_direct(s, datalo, datahi, TCG_REG_L1, 0, 0, opc);
 
@@ -1690,9 +1703,23 @@ static void tcg_out_qemu_st(TCGContext *s, const TCGArg *args, bool is64)
 
     tcg_out_tlb_load(s, addrlo, addrhi, mem_index, s_bits,
                      label_ptr, offsetof(CPUTLBEntry, addr_write));
+ 
+/* Modified by Glacier */
+#if defined(__DIFT_ENABLED__)
+    // [&last_mem_write_addr] = TCG_REG_L1  (TCG_REG_L0 is now available), comments in Intel syntax
+	tcg_out8(s, 0x48);
+	tcg_out8(s, 0xb8 + TCG_REG_L0 );
+	tcg_out64(s, &last_mem_write_addr);	// mov TCG_REG_L0, &last_mem_write_addr
 
+	tcg_out8(s, 0x48);
+	tcg_out8(s, 0x8b);					
+	tcg_out8(s, (0x0 << 6) | (TCG_REG_L1 << 3) | (TCG_REG_L0));	// mov [TCG_REG_L0], TCG_REG_L1
+#endif
+/***********************/  
+   
     /* TLB Hit.  */
     tcg_out_qemu_st_direct(s, datalo, datahi, TCG_REG_L1, 0, 0, opc);
+
 
     /* Record the current context of a store into ldst label */
     add_qemu_ldst_label(s, false, oi, datalo, datahi, addrlo, addrhi,

@@ -723,14 +723,14 @@ static void set_hd_dirty_and( dift_context* dc, uint64_t hdaddr, CONTAMINATION_R
     dc->hd_l1_dirty_tbl[HD_L1_INDEX(hdaddr)][HD_L2_INDEX(hdaddr)] &= contamination;
 }
 
-static CONTAMINATION_RECORD get_hd_dirty( dift_context* dc, uint64_t hdaddr ) {
+/*static CONTAMINATION_RECORD get_hd_dirty( dift_context* dc, uint64_t hdaddr ) {
     
     CONTAMINATION_RECORD* hd_l2_dirty_tbl = NULL;
 
     if( (hd_l2_dirty_tbl = dc->hd_l1_dirty_tbl[HD_L1_INDEX(hdaddr)]) == NULL )
         return 0;
     return hd_l2_dirty_tbl[HD_L2_INDEX(hdaddr)];
-}
+}*/
 
 /// DIFT Private API - MEM <--> HD taint propogation (copy_contamination_DST_SRC)
 static void copy_contamination_hd_mem( dift_context* dc, uint64_t ra, uint64_t hdaddr, uint64_t len ) {

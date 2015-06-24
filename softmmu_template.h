@@ -177,6 +177,12 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
     uintptr_t haddr;
     DATA_TYPE res;
 
+/* Modified by Glacier */
+#if defined(__DIFT_ENABLED__)
+    uint64_t addr3;
+#endif
+/***********************/
+
     /* Adjust the given return address.  */
     retaddr -= GETPC_ADJ;
 
@@ -203,6 +209,12 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
         }
         iotlbentry = &env->iotlb[mmu_idx][index];
 
+/* Modified by Glacier */
+#if defined(__DIFT_ENABLED__)
+        last_mem_read_addr = clean_source;
+#endif
+/***********************/
+
         /* ??? Note that the io helpers always read data in the target
            byte ordering.  We should push the LE/BE request down into io.  */
         res = glue(io_read, SUFFIX)(env, iotlbentry, addr, retaddr);
@@ -226,8 +238,21 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
         addr2 = addr1 + DATA_SIZE;
         /* Note the adjustment at the beginning of the function.
            Undo that for the recursion.  */
+
         res1 = helper_le_ld_name(env, addr1, oi, retaddr + GETPC_ADJ);
+/* Modified by Glacier */
+#if defined(__DIFT_ENABLED__)
+        /// To remember addr1, which is the real access address, from recursion
+        addr3 = last_mem_read_addr;
+#endif
+/***********************/
+
         res2 = helper_le_ld_name(env, addr2, oi, retaddr + GETPC_ADJ);
+/* Modified by Glacier */
+#if defined(__DIFT_ENABLED__)
+        last_mem_read_addr = addr3;
+#endif
+/***********************/
         shift = (addr & (DATA_SIZE - 1)) * 8;
 
         /* Little-endian combine.  */
@@ -243,6 +268,11 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
     }
 
     haddr = addr + env->tlb_table[mmu_idx][index].addend;
+/* Modified by Glacier */
+#if defined(__DIFT_ENABLED__)
+    last_mem_read_addr = haddr;
+#endif
+/***********************/    
 #if DATA_SIZE == 1
     res = glue(glue(ld, LSUFFIX), _p)((uint8_t *)haddr);
 #else
@@ -392,6 +422,12 @@ void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
     target_ulong tlb_addr = env->tlb_table[mmu_idx][index].addr_write;
     uintptr_t haddr;
 
+/* Modified by Glacier */
+#if defined(__DIFT_ENABLED__)
+    uint64_t haddr_begin = 0;
+#endif
+/***********************/
+
     /* Adjust the given return address.  */
     retaddr -= GETPC_ADJ;
 
@@ -417,6 +453,12 @@ void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
         }
         iotlbentry = &env->iotlb[mmu_idx][index];
 
+/* Modified by Glacier */
+#if defined(__DIFT_ENABLED__)
+        last_mem_write_addr = null_sink;
+#endif
+/***********************/
+
         /* ??? Note that the io helpers always read data in the target
            byte ordering.  We should push the LE/BE request down into io.  */
         val = TGT_LE(val);
@@ -438,18 +480,26 @@ void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
         /* Note: relies on the fact that tlb_fill() does not remove the
          * previous page from the TLB cache.  */
 
-		/* Modified by DSNS */
+/* Modified by Glacier */
         //for (i = DATA_SIZE - 1; i >= 0; i--) {
         for (i = 0; i < DATA_SIZE; i++ ) {
-		/********************/
-
+/********************/
             /* Little-endian extract.  */
             uint8_t val8 = val >> (i * 8);
             /* Note the adjustment at the beginning of the function.
                Undo that for the recursion.  */
             glue(helper_ret_stb, MMUSUFFIX)(env, addr + i, val8,
                                             oi, retaddr + GETPC_ADJ);
+/* Modified by Glacier */
+#if defined(__DIFT_ENABLED)
+            if( i == 0 )
+                haddr_begin = last_mem_write_addr;
+            else
+                last_mem_write_addr = haddr_begin;
+#endif
+/***********************/            
         }
+
         return;
     }
 
@@ -461,6 +511,13 @@ void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
     }
 
     haddr = addr + env->tlb_table[mmu_idx][index].addend;
+
+/* Modified by Glacier */
+#if defined(__DIFT_ENABLED__)
+        last_mem_write_addr = haddr;
+#endif
+/***********************/
+
 #if DATA_SIZE == 1
     glue(glue(st, SUFFIX), _p)((uint8_t *)haddr, val);
 #else
