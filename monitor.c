@@ -1025,7 +1025,7 @@ int monitor_get_cpu_index(void)
     return cpu->cpu_index;
 }
 
-static void hmp_info_registers(Monitor *mon, const QDict *qdict)
+void hmp_info_registers(Monitor *mon, const QDict *qdict)
 {
     CPUState *cpu;
     CPUArchState *env;

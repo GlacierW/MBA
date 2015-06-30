@@ -1245,8 +1245,6 @@ FWCfgState *pc_memory_init(MachineState *machine,
      * with older qemus that used qemu_ram_alloc().
      */
     ram = g_malloc(sizeof(*ram));
-    // for debug  DSNS
-    printf("pc_memory_init: ram = %p, size = %016lx\n", ram, machine->ram_size);
     memory_region_allocate_system_memory(ram, NULL, "pc.ram",
                                          machine->ram_size);
     *ram_memory = ram;

@@ -151,8 +151,6 @@ void *qemu_anon_ram_alloc(size_t size, uint64_t *alignment)
 
     trace_qemu_anon_ram_alloc(size, ptr);
 
-    // for debug DSNS
-    printf("phys_mem_alloc = qemu_anon_ram_alloc: size = %016lx\n", size);
     return ptr;
 }
 

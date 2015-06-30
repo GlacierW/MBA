@@ -62,7 +62,7 @@
 #include "elf.h"
 
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
 #include "ext/dift/dift.h"
 #endif
 /***********************/
@@ -255,7 +255,7 @@ TCGLabel *gen_new_label(void)
     TCGLabel *l = tcg_malloc(sizeof(TCGLabel));
 
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
     label_or_helper_appeared = 1;
 #endif
 /***********************/
@@ -719,7 +719,7 @@ void tcg_gen_callN(TCGContext *s, void *func, TCGArg ret,
     sizemask = info->sizemask;
 
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
     label_or_helper_appeared = 1;
 #endif
 /***********************/

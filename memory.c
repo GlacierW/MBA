@@ -1211,10 +1211,13 @@ void memory_region_init_ram(MemoryRegion *mr,
     mr->ram_addr = qemu_ram_alloc(size, mr, errp);
 
 /* Modified by Glacier */
-    printf("memory_region_init_ram: ram alloc %016lx bytes for %s \n", size, name);
-    printf("mr->ram_addr = %016lx, qemu_get_ram_ptr = %p, qemu_get_ram_ptr_at_0 = %p\n", mr->ram_addr, qemu_get_ram_ptr(mr->ram_addr), qemu_get_ram_ptr(0));
-#if defined(__DIFT_ENABLED__)
-    phys_ram_base = (uint64_t)qemu_get_ram_ptr(mr->ram_addr);
+    qemu_log("memory_region_init_ram: ram alloc %016lx bytes for %s \n", size, name);
+    qemu_log("mr->ram_addr = %016lx, qemu_get_ram_ptr = %p, qemu_get_ram_ptr_at_0 = %p\n", mr->ram_addr, qemu_get_ram_ptr(mr->ram_addr), qemu_get_ram_ptr(0));
+#if defined(CONFIG_DIFT)
+	if( !phys_ram_base && !phys_ram_size ) {
+	    phys_ram_base = (uint64_t)qemu_get_ram_ptr(mr->ram_addr);
+		phys_ram_size = size;
+	}
 #endif
 /***********************/
 }

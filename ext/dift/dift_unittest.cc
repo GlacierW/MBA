@@ -86,6 +86,70 @@ TEST( DiftUnitTest, DIFT_QUEUE_INITIALIZATION ) {
     ASSERT_EQ( q_records, enqptr );
 }
 
+#define dump_case_nb(name) \
+	printf( #name ": %016x\n", case_list[name] )
+
+TEST( DiftUnitTest, DIFT_DUMP_CASE ) {
+	dump_case_nb(INSIDE_REG_ASSIGN);
+	dump_case_nb(INSIDE_REG_APPEND);
+	dump_case_nb(REG_REG_OO_ASSIGN_MO8);
+	dump_case_nb(REG_REG_OO_ASSIGN_MO16);
+	dump_case_nb(REG_REG_OO_ASSIGN_MO32);
+	dump_case_nb(REG_REG_OO_ASSIGN_MO64);
+	dump_case_nb(REG_REG_OO_APPEND_MO8);
+	dump_case_nb(REG_REG_OO_APPEND_MO16);
+	dump_case_nb(REG_REG_OO_APPEND_MO32);
+	dump_case_nb(REG_REG_OO_APPEND_MO64);
+	dump_case_nb(REG_REG_MIX_APPEND_MO8);
+	dump_case_nb(REG_REG_MIX_APPEND_MO16);
+	dump_case_nb(REG_REG_MIX_APPEND_MO32);
+	dump_case_nb(REG_REG_MIX_APPEND_MO64);
+	dump_case_nb(REG_MEM_OO_ASSIGN_MO8);
+	dump_case_nb(REG_MEM_OO_ASSIGN_MO16);
+	dump_case_nb(REG_MEM_OO_ASSIGN_MO32);
+	dump_case_nb(REG_MEM_OO_ASSIGN_MO64);
+	dump_case_nb(REG_MEM_OO_APPEND_MO8);
+	dump_case_nb(REG_MEM_OO_APPEND_MO16);
+	dump_case_nb(REG_MEM_OO_APPEND_MO32);
+	dump_case_nb(REG_MEM_OO_APPEND_MO64);
+	dump_case_nb(REG_MEM_MIX_ASSIGN_MO16);
+	dump_case_nb(REG_MEM_MIX_ASSIGN_MO32);
+	dump_case_nb(REG_MEM_MIX_ASSIGN_MO64);
+	dump_case_nb(REG_MEM_MIX_APPEND_MO8);
+	dump_case_nb(REG_MEM_MIX_APPEND_MO16);
+	dump_case_nb(REG_MEM_MIX_APPEND_MO32);
+	dump_case_nb(REG_MEM_MIX_APPEND_MO64);
+	dump_case_nb(MEM_REG_OO_ASSIGN_MO8);
+	dump_case_nb(MEM_REG_OO_ASSIGN_MO16);
+	dump_case_nb(MEM_REG_OO_ASSIGN_MO32);
+	dump_case_nb(MEM_REG_OO_ASSIGN_MO64);
+	dump_case_nb(MEM_REG_OO_APPEND_MO8);
+	dump_case_nb(MEM_REG_OO_APPEND_MO16);
+	dump_case_nb(MEM_REG_OO_APPEND_MO32);
+	dump_case_nb(MEM_REG_OO_APPEND_MO64);
+	dump_case_nb(MEM_REG_MIX_ASSIGN_MO16);
+	dump_case_nb(MEM_REG_MIX_ASSIGN_MO32);
+	dump_case_nb(MEM_REG_MIX_ASSIGN_MO64);
+	dump_case_nb(MEM_REG_MIX_APPEND_MO8);
+	dump_case_nb(MEM_REG_MIX_APPEND_MO16);
+	dump_case_nb(MEM_REG_MIX_APPEND_MO32);
+	dump_case_nb(MEM_REG_MIX_APPEND_MO64);
+	dump_case_nb(MEM_MEM_OO_ASSIGN_MO8);
+	dump_case_nb(MEM_MEM_OO_ASSIGN_MO16);
+	dump_case_nb(MEM_MEM_OO_ASSIGN_MO32);
+	dump_case_nb(MEM_MEM_OO_ASSIGN_MO64);
+	dump_case_nb(REG_IM_CLEAR_MO8);
+	dump_case_nb(REG_IM_CLEAR_MO16);
+	dump_case_nb(REG_IM_CLEAR_MO32);
+	dump_case_nb(REG_IM_CLEAR_MO64);
+	dump_case_nb(MEM_IM_CLEAR_MO8);
+	dump_case_nb(MEM_IM_CLEAR_MO16);
+	dump_case_nb(MEM_IM_CLEAR_MO32);
+	dump_case_nb(MEM_IM_CLEAR_MO64);
+	dump_case_nb(MEM_HD);
+	dump_case_nb(HD_MEM);
+}
+
 TEST( DiftUnitTest, DIFT_PREGEN_ROUTINE ) {
     
     // This test require human recognition due to the ad-hoc string format mapping

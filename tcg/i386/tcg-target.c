@@ -403,7 +403,7 @@ static inline int tcg_target_const_match(tcg_target_long val, TCGType type,
 #define JCC_JG  0xf
 
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
 #include "../../ext/dift/dift.h"
 #endif
 /***********************/
@@ -1559,14 +1559,14 @@ static void tcg_out_qemu_ld(TCGContext *s, const TCGArg *args, bool is64)
                      label_ptr, offsetof(CPUTLBEntry, addr_read));
 
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
     // [&last_mem_read_addr] = TCG_REG_L1  (TCG_REG_L0 is now available), comments in Intel syntax
 	tcg_out8(s, 0x48);
 	tcg_out8(s, 0xb8 + TCG_REG_L0 );
-	tcg_out64(s, &last_mem_read_addr);	// mov TCG_REG_L0, &last_mem_read_addr
+	tcg_out64(s, (uint64_t)&last_mem_read_addr);	// mov TCG_REG_L0, &last_mem_read_addr
 
 	tcg_out8(s, 0x48);
-	tcg_out8(s, 0x8b);					
+	tcg_out8(s, 0x89);					
 	tcg_out8(s, (0x0 << 6) | (TCG_REG_L1 << 3) | (TCG_REG_L0));	// mov [TCG_REG_L0], TCG_REG_L1
 #endif
 /***********************/  
@@ -1705,14 +1705,14 @@ static void tcg_out_qemu_st(TCGContext *s, const TCGArg *args, bool is64)
                      label_ptr, offsetof(CPUTLBEntry, addr_write));
  
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
     // [&last_mem_write_addr] = TCG_REG_L1  (TCG_REG_L0 is now available), comments in Intel syntax
 	tcg_out8(s, 0x48);
 	tcg_out8(s, 0xb8 + TCG_REG_L0 );
-	tcg_out64(s, &last_mem_write_addr);	// mov TCG_REG_L0, &last_mem_write_addr
+	tcg_out64(s, (uint64_t)&last_mem_write_addr);	// mov TCG_REG_L0, &last_mem_write_addr
 
 	tcg_out8(s, 0x48);
-	tcg_out8(s, 0x8b);					
+	tcg_out8(s, 0x89);					
 	tcg_out8(s, (0x0 << 6) | (TCG_REG_L1 << 3) | (TCG_REG_L0));	// mov [TCG_REG_L0], TCG_REG_L1
 #endif
 /***********************/  
@@ -1749,6 +1749,86 @@ static void tcg_out_qemu_st(TCGContext *s, const TCGArg *args, bool is64)
     }
 #endif
 }
+
+/* Modified by Glacier */
+#if defined(CONFIG_DIFT)
+
+/// all of the assembly comment is presented in Intel syntax
+static void tcg_out_qemu_dift_enq_i64( TCGContext* s, const TCGArg* args ) {
+
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0xba);
+    tcg_out64(s, (uint64_t)args[0]); // mov rdx, args[0]
+
+    tcg_out8(s, 0xe8);
+    tcg_out32(s, (uint32_t)(rt_enqueue_one_rec - (s->code_ptr + 4))); // call rt_enqueue_one_rec
+}
+
+static void tcg_out_qemu_dift_enq_raddr( TCGContext* s ) {
+
+    tcg_out8(s, 0xe8);
+    tcg_out32(s, (uint32_t)(rt_enqueue_raddr - (s->code_ptr + 4))); // call rt_enqueue_raddr
+}
+
+static void tcg_out_qemu_dift_enq_waddr( TCGContext* s ) {
+    
+    tcg_out8(s, 0xe8);
+    tcg_out32(s, (uint32_t)(rt_enqueue_waddr - (s->code_ptr + 4))); // call rt_enqueue_waddr
+}
+
+static void tcg_out_qemu_dift_inc_diftcodes( TCGContext* s, const TCGArg* args ) {
+
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0xb8);
+    tcg_out64(s, (uint64_t)args[0]); // mov rax, args[0]
+
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0xa3);
+    tcg_out64(s, (uint64_t)&dift_code_cntr); // mov [&dift_code_cntr], rax
+}
+
+static void tcg_out_qemu_dift_tb_begin( TCGContext* s, const TCGArg* args ) {
+
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0xba);
+    tcg_out64(s, REC_END_SYMBOL | REC_BEFORE_BLOCK_BEGIN);              // mov rdx, REC_BEFORE_BLOCK_BEGIN
+
+    tcg_out8(s, 0xe8);
+    tcg_out32(s, (uint32_t)(rt_enqueue_one_rec - (s->code_ptr + 4)));   // call rt_enqueue_one_rec
+    
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0xa1);
+    tcg_out64(s, (uint64_t)&dift_code_loc);     // mov rax, [&dift_code_loc]
+
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0x89);
+    tcg_out8(s, 0xc2);                          // mov rdx, rax
+
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0xa1);
+    tcg_out64(s, (uint64_t)&dift_code_cntr);    // mov rax, [&dift_code_cntr]
+
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0x09);
+    tcg_out8(s, 0xc2);                          // or rdx, rax
+    
+    tcg_out8(s, 0xe8);
+    tcg_out32(s, (uint32_t)(rt_enqueue_one_rec - (s->code_ptr + 4)));   // call rt_enqueue_one_rec
+
+    tcg_out8(s, 0xb8); 
+    tcg_out32(s, (uint32_t)(args[0] / CONFIG_IF_CODES_PER_TB) << 8);    // mov eax, (args[0]/CONFIG_IF_CODES_PER_TB) << 8
+
+    tcg_out8(s, 0xa3);
+    tcg_out64(s, (uint64_t)&dift_code_loc);                             // mov [&dift_code_loc], eax
+    
+    tcg_out8(s, 0x31);
+    tcg_out8(s, 0xc0);                          // xor eax, eax
+    
+    tcg_out8(s, 0xa3);
+    tcg_out64(s, (uint64_t)&dift_code_cntr);    // mov [&dift_code_cntr], eax
+}
+#endif
+/***********************/
 
 static inline void tcg_out_op(TCGContext *s, TCGOpcode opc,
                               const TCGArg *args, const int *const_args)
@@ -1996,7 +2076,7 @@ static inline void tcg_out_op(TCGContext *s, TCGOpcode opc,
         tcg_out_qemu_st(s, args, 1);
         break;
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
     case INDEX_op_qemu_dift_enq_i64:
         tcg_out_qemu_dift_enq_i64( s, args );
         break;
@@ -2121,86 +2201,6 @@ static inline void tcg_out_op(TCGContext *s, TCGOpcode opc,
 
 #undef OP_32_64
 }
-
-/* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
-
-/// all of the assembly comment is presented in Intel syntax
-static void tcg_out_qemu_dift_enq_i64( TCGContext* s, const TCGArg* args ) {
-
-    tcg_out8(s, 0x48);
-    tcg_out8(s, 0xba);
-    tcg_out64(s, (uint64_t)args[0]); // mov rdx, args[0]
-
-    tcg_out8(s, 0xe8);
-    tcg_out32(s, (uint32_t)(rt_enqueue_one_rec - (s->code_ptr + 4))); // call rt_enqueue_one_rec
-}
-
-static void tcg_out_qemu_dift_enq_raddr( TCGContext* s ) {
-
-    tcg_out8(s, 0xe8);
-    tcg_out32(s, (uint32_t)(rt_enqueue_raddr - (s->code_ptr + 4))); // call rt_enqueue_raddr
-}
-
-static void tcg_out_qemu_dift_enq_waddr( TCGContext* s ) {
-    
-    tcg_out8(s, 0xe8);
-    tcg_out32(s, (uint32_t)(rt_enqueue_waddr - (s->code_ptr + 4))); // call rt_enqueue_waddr
-}
-
-static void tcg_out_qemu_dift_inc_diftcodes( TCGContext* s, const TCGArg* args ) {
-
-    tcg_out8(s, 0x48);
-    tcg_out8(s, 0xb8);
-    tcg_out64(s, (uint64_t)args[0]); // mov rax, args[0]
-
-    tcg_out8(s, 0x48);
-    tcg_out8(s, 0xa3);
-    tcg_out64(s, (uint64_t)&dift_code_cntr); // mov [&dift_code_cntr], rax
-}
-
-static void tcg_out_qemu_dift_tb_begin( TCGContext* s, const TCGArg* args ) {
-
-    tcg_out8(s, 0x48);
-    tcg_out8(s, 0xba);
-    tcg_out64(s, REC_END_SYMBOL | REC_BEFORE_BLOCK_BEGIN);              // mov rdx, REC_BEFORE_BLOCK_BEGIN
-
-    tcg_out8(s 0xe8);
-    tcg_out32(s, (uint32_t)(rt_enqueue_one_rec - (s->code_ptr + 4)));   // call rt_enqueue_one_rec
-    
-    tcg_out8(s, 0x48);
-    tcg_out8(s, 0xa1);
-    tcg_out64(s, (uint64_t)&dift_code_loc);     // mov rax, [&dift_code_loc]
-
-    tcg_out8(s, 0x48);
-    tcg_out8(s, 0x89);
-    tcg_out8(s, 0xc2);                          // mov rdx, rax
-
-    tcg_out8(s, 0x48);
-    tcg_out8(s, 0xa1);
-    tcg_out64(s, (uint64_t)&dift_code_cntr);    // mov rax, [&dift_code_cntr]
-
-    tcg_out8(s, 0x48);
-    tcg_out8(s, 0x09);
-    tcg_out8(s, 0xc2);                          // or rdx, rax
-    
-    tcg_out8(s 0xe8);
-    tcg_out32(s, (uint32_t)(rt_enqueue_one_rec - (s->code_ptr + 4)));   // call rt_enqueue_one_rec
-
-    tcg_out8(s, 0xb8); 
-    tcg_out32(s, (uint32_t)(args[0] / CONFIG_IF_CODES_PER_TB) << 8);    // mov eax, (args[0]/CONFIG_IF_CODES_PER_TB) << 8
-
-    tcg_out8(s, 0xa3);
-    tcg_out64(s, (uint64_t)&dift_code_loc)                              // mov [&dift_code_loc], eax
-    
-    tcg_out8(s, 0x31);
-    tcg_out8(s, 0xc0);                          // xor eax, eax
-    
-    tcg_out8(s, 0xa3);
-    tcg_out64(s, (uint64_t)&dift_code_cntr);    // mov [&dift_code_cntr], eax
-}
-#endif
-/***********************/
 
 static const TCGTargetOpDef x86_op_defs[] = {
     { INDEX_op_exit_tb, { } },
@@ -2329,7 +2329,7 @@ static const TCGTargetOpDef x86_op_defs[] = {
     { INDEX_op_qemu_st_i64, { "L", "L", "L", "L" } },
 #endif
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
     { INDEX_op_qemu_dift_enq_i64, {} },
     { INDEX_op_qemu_dift_enq_ra, {} },
     { INDEX_op_qemu_dift_enq_wa, {} },

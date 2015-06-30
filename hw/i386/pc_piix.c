@@ -53,6 +53,12 @@
 #  include <xen/hvm/hvm_info_table.h>
 #endif
 
+/* Modified by Glacier */
+#if defined(CONFIG_DIFT)
+#include "../../ext/dift/dift.h"
+#endif
+/***********************/
+
 #define MAX_IDE_BUS 2
 
 static const int ide_iobase[MAX_IDE_BUS] = { 0x1f0, 0x170 };
@@ -102,9 +108,6 @@ static void pc_init1(MachineState *machine,
     FWCfgState *fw_cfg = NULL;
     PcGuestInfo *guest_info;
     ram_addr_t lowmem;
-
-    // for debug DSNS
-    printf( "pc_init1: PC hardware initialisation\n" );
 
     /* Check whether RAM fits below 4G (leaving 1/2 GByte for IO memory).
      * If it doesn't, we need to split it in chunks below and above 4G.
@@ -306,6 +309,15 @@ static void pc_init1(MachineState *machine,
     if (pci_enabled) {
         pc_pci_device_init(pci_bus);
     }
+
+/* Modified by Glacier */
+#if defined(CONFIG_DIFT)
+	if( dift_start() ) {
+		fprintf( stderr, "error starting DIFT thread\n" );
+		exit( 1 );
+	}
+#endif
+/***********************/
 }
 
 static void pc_init_pci(MachineState *machine)

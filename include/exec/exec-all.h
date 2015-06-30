@@ -179,7 +179,7 @@ struct TranslationBlock {
 
 /* Modified by Glacier */
     uint64_t next_pc;
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
     int virt_safe;
     int dift_code_loc;
     int dift_code_idx;

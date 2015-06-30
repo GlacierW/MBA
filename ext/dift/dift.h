@@ -20,7 +20,6 @@
 //#define CONFIG_JIT_IFCODE_SIZE_PER_TB 300
 //#define CONFIG_TX_CHECK
 
-
 /* Constant Definition */
 #define REC_END_SYMBOL  0x9a0a0a0000000000
 #define CHUNK_AVAILABLE 0
@@ -67,6 +66,7 @@
 #define HD_L1_INDEX(addr)   (((addr) & ~HD_L1_INDEX_MASK) >> HD_L2_INDEX_BITS)
 #define HD_L2_INDEX(addr)   ((addr) & ~HD_L2_INDEX_MASK)
 #define HD_PAGE(addr)       ((hd_l1_dirty_tbl[HD_L1_INDEX(addr)]))
+
 
 struct dift_record {
 
@@ -249,6 +249,11 @@ extern uint8_t* rt_enqueue_waddr;
 extern void dift_enqueue(uint32_t);
 extern void dift_sync(void);
 
+///
+/// DIFT Logging functions
+extern FILE* dift_logfile;
+extern void  dift_log( const char*, ... );
+
 CONTAMINATION_RECORD get_valid_taint_mask(void);
 int is_valid_taint(const CONTAMINATION_RECORD* taint);
 
@@ -315,14 +320,20 @@ extern void clear_all_taint_bit7(void);
 #endif
 
 struct dift_context {
+
     uint64_t* deqptr;
     uint32_t  tail, prev_tail;
     CONTAMINATION_RECORD reg_dirty_tbl[24][8];
     CONTAMINATION_RECORD *mem_dirty_tbl;
     CONTAMINATION_RECORD **hd_l1_dirty_tbl;
 
+#if defined(CONFIG_DIFT_DEBUG)	
+	uint64_t tb_rip;
+	uint64_t tb_tc_ptr;
+#endif	
+
 #if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-    uint32_t phyeip;
+	uint64_t tb_phyeip;
     uint32_t force_mem_dirty;
 #endif
 };
@@ -332,6 +343,5 @@ typedef struct dift_record  dift_record;
 
 extern dift_context dc[];
 
-//extern struct sig_node* sig_tree_root;
 #endif
 

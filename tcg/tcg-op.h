@@ -28,6 +28,12 @@
 
 /* Basic output routines.  Not for general consumption.  */
 
+/* Modified by Glacier */
+#if defined(CONFIG_DIFT)
+void tcg_gen_op0(TCGContext *, TCGOpcode);
+#endif
+/***********************/
+
 void tcg_gen_op1(TCGContext *, TCGOpcode, TCGArg);
 void tcg_gen_op2(TCGContext *, TCGOpcode, TCGArg, TCGArg);
 void tcg_gen_op3(TCGContext *, TCGOpcode, TCGArg, TCGArg, TCGArg);

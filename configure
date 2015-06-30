@@ -339,6 +339,7 @@ numa=""
 tcmalloc="no"
 ## Modified by Glacier ##
 dift="no"
+dift_debug="no"
 #########################
 
 # parse CC options first
@@ -1144,6 +1145,8 @@ for opt do
   ;;
   ## Modified by Glacier ##
   --enable-dift) dift="yes"
+  ;;
+  --enable-debug-dift) dift_debug="yes"
   ;;
   #########################
   *)
@@ -4486,6 +4489,7 @@ echo "NUMA host support $numa"
 echo "tcmalloc support  $tcmalloc"
 ## Modified by Glacier ##
 echo "dift support      $dift"
+echo "dift debug support $dift_debug"
 #########################
 
 if test "$sdl_too_old" = "yes"; then
@@ -5362,7 +5366,11 @@ fi
 
 ## Modified by Glacier ##
 if test "$dift" = "yes"; then
-  echo "CONFIG_DIFT=yes" >> $config_target_mak
+  echo "CONFIG_DIFT=y" >> $config_target_mak
+fi
+
+if test "$dift_debug" = "yes"; then
+  echo "CONFIG_DIFT_DEBUG=y" >> $config_target_mak
 fi
 #########################
 

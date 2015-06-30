@@ -1351,6 +1351,7 @@ static int tcg_cpu_exec(CPUArchState *env)
         cpu->icount_decr.u16.low = decr;
         cpu->icount_extra = count;
     }
+
     ret = cpu_exec(env);
 #ifdef CONFIG_PROFILER
     tcg_time += profile_getclock() - ti;

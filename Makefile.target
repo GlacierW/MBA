@@ -46,13 +46,6 @@ else
 TARGET_TYPE=system
 endif
 
-
-## Modified by Glacier ##
-ifdef CONFIG_DIFT
-QEMU_CFLAGS+=-D__DIFT_ENABLED__
-endif
-#########################
-
 $(QEMU_PROG).stp-installed: $(SRC_PATH)/trace-events
 	$(call quiet-command,$(TRACETOOL) \
 		--format=stap \

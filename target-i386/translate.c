@@ -35,7 +35,7 @@
 #include "trace-tcg.h"
 
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
 #include "ext/dift/dift.h"
 #endif
 /***********************/
@@ -135,7 +135,7 @@ typedef struct DisasContext {
 
 /* Modified by Glacier */
     int is_call;
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
     uint8_t src_type, dst_type;
     uint16_t src_reg, dst_reg;
     uint8_t gen_ldst_modrm_op_type;
@@ -354,6 +354,238 @@ static inline TCGMemOp mo_b_d32(int b, TCGMemOp ot)
 {
     return b & 1 ? (ot == MO_16 ? MO_16 : MO_32) : MO_8;
 }
+
+/* Modified by Glacier */
+#if defined(CONFIG_DIFT)
+/// Herein defined the set of DIFT TCG_IR generation functions
+/// All of these functions should be named with "gen_dift" prefix
+#define WADDR 1
+#define RADDR 0
+
+static void gen_dift_sync_i64( DisasContext* s ) {
+
+    if( !label_or_helper_appeared )
+        tcg_gen_op1i( INDEX_op_qemu_dift_inc_diftcodes, s->tb->dift_code_idx );
+}
+
+static void gen_dift_enqueue_i64( DisasContext* s, uint64_t arg ) {
+
+    if( !label_or_helper_appeared ) 
+        dift_code_buffer[ s->tb->dift_code_loc + s->tb->dift_code_idx++] = arg;    
+    else 
+        tcg_gen_op1i( INDEX_op_qemu_dift_enq_i64, arg );
+}
+
+static void gen_dift_enqueue_addr( DisasContext* s, int is_wa ) {
+
+	qemu_log( "gen_dift_enqueue_addr => rw: %d\n", is_wa );
+
+    if( is_wa ) 
+        tcg_gen_op0( &tcg_ctx, INDEX_op_qemu_dift_enq_wa );
+    else
+        tcg_gen_op0( &tcg_ctx, INDEX_op_qemu_dift_enq_ra );
+}
+
+static void gen_dift_reg_reg( DisasContext* s, uint16_t dreg, uint16_t sreg, uint8_t effect, uint8_t ot, uint8_t dreg_byte, uint8_t sreg_byte ) {
+
+    dift_record rec;
+
+	qemu_log( "gen_dift_reg_reg => dreg: %d, sreg: %d, ot: %d\n", dreg, sreg, ot );
+
+    rec.case_nb = dift_rec_case_nb( OPT_REG, OPT_REG, ot & 0x03, effect );
+    if( ot == MO_8 )
+    {
+        rec.v1.r2r_byte.sreg         = sreg;
+        rec.v1.r2r_byte.dreg         = dreg;
+        rec.v1.r2r_byte.sreg_byte    = sreg_byte;
+        rec.v1.r2r_byte.dreg_byte    = dreg_byte;
+
+        // Enqueue this piece
+        gen_dift_enqueue_i64( s, *(uint64_t*)&rec );
+    }
+    else
+    {
+        rec.v1.r2r.sreg             = sreg;
+        rec.v1.r2r.dreg             = dreg;
+        gen_dift_enqueue_i64( s, *(uint64_t*)&rec );
+    }
+}
+
+static void gen_dift_reg_mem( DisasContext* s, uint16_t dst_reg_name, uint8_t effect, uint8_t ot, uint8_t hl_switch ) {
+
+    dift_record rec;
+
+	qemu_log( "gen_dift_reg_mem => dreg: %d, ot: %d\n", dst_reg_name, ot );
+
+    rec.case_nb = dift_rec_case_nb( OPT_REG, OPT_MEM, ot & 0x03, effect );
+    if( ot == MO_8 ) {
+        rec.v1.r2m_m2r_byte.hl  = hl_switch;
+        rec.v1.r2m_m2r_byte.reg = dst_reg_name;
+#if defined(CONFIG_INDIRECT_TAINT)
+        rec.v1.r2m_m2r_byte.reg_base = s->reg_base;
+        rec.v1.r2m_m2r_byte.reg_index = s->reg_index;
+#endif
+    } else {
+        rec.v1.r2m_m2r.reg = dst_reg_name;
+#if defined(CONFIG_INDIRECT_TAINT)
+        rec.v1.r2m_m2r.reg_base = s->reg_base;
+        rec.v1.r2m_m2r.reg_index = s->reg_index;
+#endif
+    }
+
+    gen_dift_enqueue_i64( s, *(uint64_t*)&rec );
+    gen_dift_enqueue_addr( s, RADDR );
+}
+
+static void gen_dift_mem_reg( DisasContext* s, uint16_t src_reg_name, uint8_t effect, uint8_t ot, uint8_t hl_switch ) {
+
+    dift_record rec;
+
+	qemu_log( "gen_dift_mem_reg => sreg: %d, ot: %d\n", src_reg_name, ot );
+
+    rec.case_nb = dift_rec_case_nb( OPT_MEM, OPT_REG, ot & 0x03, effect );
+    if( ot == MO_8 ) {
+        rec.v1.r2m_m2r_byte.hl  = hl_switch;
+        rec.v1.r2m_m2r_byte.reg = src_reg_name;
+#if defined(CONFIG_INDIRECT_TAINT)
+        rec.v1.r2m_m2r_byte.reg_base = s->reg_base;
+        rec.v1.r2m_m2r_byte.reg_index = s->reg_index;
+#endif
+    } else {
+        rec.v1.r2m_m2r.reg = src_reg_name;
+#if defined(CONFIG_INDIRECT_TAINT)
+        rec.v1.r2m_m2r.reg_base = s->reg_base;
+        rec.v1.r2m_m2r.reg_index = s->reg_index;
+#endif
+    }
+
+    gen_dift_enqueue_i64( s, *(uint64_t*)&rec );
+    gen_dift_enqueue_addr( s, WADDR );
+}
+
+static void gen_dift_mem_mem( DisasContext* s, uint8_t effect, uint8_t ot ) {
+
+    dift_record rec;
+
+	qemu_log( "gen_dift_mem_mem => ot: %d\n", ot );
+
+    rec.case_nb = dift_rec_case_nb( OPT_MEM, OPT_MEM, ot & 0x03, effect );
+    gen_dift_enqueue_i64(s, *(uint64_t*)&rec);
+    gen_dift_enqueue_addr( s, WADDR );
+    gen_dift_enqueue_addr( s, RADDR );
+}
+
+static void gen_dift_reg_im( DisasContext* s, uint16_t dst_reg_name, uint8_t ot, uint8_t hl_switch ) {
+
+    dift_record rec;
+
+	qemu_log( "gen_dift_reg_im => dreg: %d, ot: %d\n", dst_reg_name, ot );
+
+    rec.case_nb = dift_rec_case_nb( OPT_REG, OPT_IM, ot & 0x03, EFFECT_CLEAR );
+    if( ot == MO_8 ) {
+        rec.v1.r2m_m2r_byte.hl  = hl_switch;
+        rec.v1.r2m_m2r_byte.reg = dst_reg_name;
+    } else {
+        rec.v1.r2m_m2r.reg = dst_reg_name;
+    }
+    gen_dift_enqueue_i64( s, *(uint64_t*)&rec );
+}
+
+static void gen_dift_mem_im( DisasContext* s, uint8_t ot ) {
+
+    dift_record rec;
+
+	qemu_log( "gen_dift_mem_im => ot: %d\n", ot );
+
+    rec.case_nb = dift_rec_case_nb( OPT_MEM, OPT_IM, ot & 0x03, EFFECT_CLEAR );
+    gen_dift_enqueue_i64( s, *(uint64_t*)&rec );
+    gen_dift_enqueue_addr( s, WADDR );
+}
+
+static void gen_dift_op( DisasContext* s, uint8_t effect, int ot ) {
+
+    if( s->dst_type == OPT_REG ) {
+
+        if( s->src_type == OPT_REG ) {
+            if( ot == MO_8 ) {
+                gen_dift_reg_reg(
+                        s,
+                        s->dst_reg > 3 ? s->dst_reg - 4 : s->dst_reg,
+                        s->src_reg > 3 ? s->src_reg - 4 : s->src_reg,
+                        effect, ot,
+                        s->dst_reg > 3 ? 1 : 0,
+                        s->src_reg > 3 ? 1 : 0 );
+			}
+            else {
+                gen_dift_reg_reg( s, s->dst_reg, s->src_reg, effect, ot, 0, 0 );
+			}
+        }
+        else if( s->src_type == OPT_MEM ) {
+            if( ot == MO_8 ) {
+                gen_dift_reg_mem(
+						s,
+                        s->dst_reg > 3 ? s->dst_reg - 4 : s->dst_reg,
+                        effect, ot,
+                        s->dst_reg > 3 ? 1 : 0 );
+            }
+            else {
+            	gen_dift_reg_mem( s, s->dst_reg, effect, ot, 0 );
+            }
+        }
+    }
+    else if( s->dst_type == OPT_MEM ) {
+
+    	if( s->src_type == OPT_REG ) {
+        	if( ot == MO_8 ) {
+                gen_dift_mem_reg(
+						s,
+                        s->src_reg > 3 ? s->src_reg - 4 : s->src_reg,
+                        effect, ot,
+                        s->src_reg > 3 ? 1 : 0 );
+            }
+            else {
+                gen_dift_mem_reg( s, s->src_reg, effect, ot, 0 );
+            }
+		}
+        else if( s->src_type == OPT_MEM ) {
+            gen_dift_mem_mem( s, effect, ot );
+		}
+        else if( s->src_type == OPT_IM ) {
+            gen_dift_mem_im( s, ot );
+		}
+    }
+    gen_dift_sync_i64( s );
+}
+
+static void gen_dift_inside_reg( DisasContext* s, uint16_t reg, uint8_t dst_byte, uint8_t src_byte, uint8_t effect ) {
+
+    dift_record rec;
+
+	qemu_log( "gen_dift_inside_reg => reg: %d, dbyte:%d, sbyte:%d\n", reg, dst_byte, src_byte );
+
+    rec.case_nb = dift_rec_case_nb( OPT_REG, OPT_REG, MO_8, effect | EFFECT_INSIDE_REG );
+    rec.v1.inside_r.reg     = reg;
+    rec.v1.inside_r.d_byte  = dst_byte;
+    rec.v1.inside_r.s_byte  = src_byte;
+    gen_dift_enqueue_i64( s, *(uint64_t*)&rec );
+}
+
+static void gen_dift_block_begin( DisasContext* s ) {
+
+    uint64_t rec = REC_BLOCK_BEGIN;
+
+	qemu_log( "gen_dift_block_begin \n" );
+
+    tcg_gen_op1i( INDEX_op_qemu_dift_tb_begin, s->tb->dift_code_loc );
+    gen_dift_enqueue_i64( s, rec );
+#if defined(CONFIG_DIFT_DEBUG)	
+    gen_dift_enqueue_i64( s, (uint64_t)s->tb->pc );
+    gen_dift_enqueue_i64( s, (uint64_t)s->tb->tc_ptr );
+#endif
+    gen_dift_sync_i64( s );
+}
+#endif
+/***********************/
 
 static void gen_op_mov_reg_v(TCGMemOp ot, int reg, TCGv t0)
 {
@@ -729,7 +961,7 @@ static inline void gen_movs(DisasContext *s, TCGMemOp ot)
     gen_string_movl_A0_EDI(s);
     gen_op_st_v(s, ot, cpu_T[0], cpu_A0);
 /* Modified by Glacier */
-#if defined __DIFT_ENABLED__
+#if defined CONFIG_DIFT
     gen_dift_mem_mem( s, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot );
     gen_dift_sync_i64( s );
 #endif
@@ -1159,7 +1391,7 @@ static inline void gen_stos(DisasContext *s, TCGMemOp ot)
     gen_string_movl_A0_EDI(s);
     gen_op_st_v(s, ot, cpu_T[0], cpu_A0);
 /* Modified by Glacier */
-#ifdef __DIFT_ENABLED__
+#ifdef CONFIG_DIFT
     gen_dift_mem_reg( s, R_EAX, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0 );
     gen_dift_sync_i64( s );
 #endif
@@ -1174,7 +1406,7 @@ static inline void gen_lods(DisasContext *s, TCGMemOp ot)
     gen_op_ld_v(s, ot, cpu_T[0], cpu_A0);
     gen_op_mov_reg_v(ot, R_EAX, cpu_T[0]);
 /* Modified by Glacier */
-#ifdef __DIFT_ENABLED__
+#ifdef CONFIG_DIFT
     gen_dift_reg_mem( s, R_EAX, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0 );
     gen_dift_sync_i64( s );
 #endif
@@ -1354,15 +1586,15 @@ static void gen_op(DisasContext *s1, int op, TCGMemOp ot, int d)
     }
 
 /* Modified by Glacier */
-#ifdef __DIFT_ENABLED__
+#ifdef CONFIG_DIFT
     uint8_t effect = EFFECT_APPEND | EFFECT_ONE_TO_ONE;
 
     if( d != OR_TMP0 ) {
-        sl->dst_type = OPT_REG;
-        sl->dst_reg = d;
+        s1->dst_type = OPT_REG;
+        s1->dst_reg = d;
     }
     else {
-        sl->dst_type = OPT_MEM;
+        s1->dst_type = OPT_MEM;
     }
 
     if( 
@@ -1383,8 +1615,8 @@ static void gen_op(DisasContext *s1, int op, TCGMemOp ot, int d)
         tcg_gen_add_tl(cpu_T[0], cpu_T[0], cpu_tmp4);
         gen_op_st_rm_T0_A0(s1, ot, d);
 /* Modified by Glacier */
-#ifdef __DIFT_ENABLED__
-        gen_op_dift_dift( s1, effect, ot );
+#if defined(CONFIG_DIFT)
+        gen_dift_op( s1, effect, ot );
 #endif
 /***********************/
         gen_op_update3_cc(cpu_tmp4);
@@ -1396,8 +1628,8 @@ static void gen_op(DisasContext *s1, int op, TCGMemOp ot, int d)
         tcg_gen_sub_tl(cpu_T[0], cpu_T[0], cpu_tmp4);
         gen_op_st_rm_T0_A0(s1, ot, d);
 /* Modified by Glacier */
-#ifdef __DIFT_ENABLED__
-        gen_op_dift_dift( s1, effect, ot );
+#if defined(CONFIG_DIFT)
+        gen_dift_op( s1, effect, ot );
 #endif
 /***********************/
         gen_op_update3_cc(cpu_tmp4);
@@ -1407,8 +1639,8 @@ static void gen_op(DisasContext *s1, int op, TCGMemOp ot, int d)
         tcg_gen_add_tl(cpu_T[0], cpu_T[0], cpu_T[1]);
         gen_op_st_rm_T0_A0(s1, ot, d);
 /* Modified by Glacier */
-#ifdef __DIFT_ENABLED__
-        gen_op_dift_dift( s1, effect, ot );
+#if defined(CONFIG_DIFT)
+        gen_dift_op( s1, effect, ot );
 #endif
 /***********************/
 
@@ -1420,8 +1652,8 @@ static void gen_op(DisasContext *s1, int op, TCGMemOp ot, int d)
         tcg_gen_sub_tl(cpu_T[0], cpu_T[0], cpu_T[1]);
         gen_op_st_rm_T0_A0(s1, ot, d);
 /* Modified by Glacier */
-#ifdef __DIFT_ENABLED__
-        gen_op_dift_dift( s1, effect, ot );
+#if defined(CONFIG_DIFT)
+        gen_dift_op( s1, effect, ot );
 #endif
 /***********************/
         gen_op_update2_cc();
@@ -1432,8 +1664,8 @@ static void gen_op(DisasContext *s1, int op, TCGMemOp ot, int d)
         tcg_gen_and_tl(cpu_T[0], cpu_T[0], cpu_T[1]);
         gen_op_st_rm_T0_A0(s1, ot, d);
 /* Modified by Glacier */
-#ifdef __DIFT_ENABLED__
-        gen_op_dift_dift( s1, effect, ot );
+#if defined(CONFIG_DIFT)
+        gen_dift_op( s1, effect, ot );
 #endif
 /***********************/
         gen_op_update1_cc();
@@ -1443,8 +1675,8 @@ static void gen_op(DisasContext *s1, int op, TCGMemOp ot, int d)
         tcg_gen_or_tl(cpu_T[0], cpu_T[0], cpu_T[1]);
         gen_op_st_rm_T0_A0(s1, ot, d);
 /* Modified by Glacier */
-#ifdef __DIFT_ENABLED__
-        gen_op_dift_dift( s1, effect, ot );
+#if defined(CONFIG_DIFT)
+        gen_dift_op( s1, effect, ot );
 #endif
 /***********************/
         gen_op_update1_cc();
@@ -1454,8 +1686,8 @@ static void gen_op(DisasContext *s1, int op, TCGMemOp ot, int d)
         tcg_gen_xor_tl(cpu_T[0], cpu_T[0], cpu_T[1]);
         gen_op_st_rm_T0_A0(s1, ot, d);
 /* Modified by Glacier */
-#ifdef __DIFT_ENABLED__
-        gen_op_dift_dift( s1, effect, ot );
+#if defined(CONFIG_DIFT)
+        gen_dift_op( s1, effect, ot );
 #endif
 /***********************/
         gen_op_update1_cc();
@@ -1492,7 +1724,7 @@ static void gen_inc(DisasContext *s1, TCGMemOp ot, int d, int c)
 /// XXX:  I don't know why the incerement on memory operand needs to clear the taint tag
 /// TODO: confirm with Jack Wang
 /// NOTE: He saied it was a mistake XDDDDDDD
-#ifdef __DIFT_ENABLED__
+#ifdef CONFIG_DIFT
    // gen_dift_mem_im( s1, ot );
    // gen_dift_sync_i32( s1 );
 #endif
@@ -2052,7 +2284,7 @@ static void gen_lea_modrm(CPUX86State *env, DisasContext *s, int modrm)
             if (scale == 0) {
                 sum = cpu_regs[index];
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__) && defined(CONFIG_INDIRECT_TAINT)
+#if defined(CONFIG_DIFT) && defined(CONFIG_INDIRECT_TAINT)
                 s->reg_index = index;
 #endif
 /***********************/                
@@ -2069,7 +2301,7 @@ static void gen_lea_modrm(CPUX86State *env, DisasContext *s, int modrm)
             sum = cpu_regs[base];
         }
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__) && defined(CONFIG_INDIRECT_TAINT)
+#if defined(CONFIG_DIFT) && defined(CONFIG_INDIRECT_TAINT)
                 s->reg_base = base;
 #endif
 /***********************/                
@@ -2135,7 +2367,7 @@ static void gen_lea_modrm(CPUX86State *env, DisasContext *s, int modrm)
         case 0:
             tcg_gen_add_tl(cpu_A0, cpu_regs[R_EBX], cpu_regs[R_ESI]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__) && defined(CONFIG_INDIRECT_TAINT)
+#if defined(CONFIG_DIFT) && defined(CONFIG_INDIRECT_TAINT)
             s->reg_base = R_EBX;
             s->reg_index = R_ESI;
 #endif
@@ -2144,7 +2376,7 @@ static void gen_lea_modrm(CPUX86State *env, DisasContext *s, int modrm)
         case 1:
             tcg_gen_add_tl(cpu_A0, cpu_regs[R_EBX], cpu_regs[R_EDI]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__) && defined(CONFIG_INDIRECT_TAINT)
+#if defined(CONFIG_DIFT) && defined(CONFIG_INDIRECT_TAINT)
             s->reg_base = R_EBX;
             s->reg_index = R_EDI;
 #endif
@@ -2153,7 +2385,7 @@ static void gen_lea_modrm(CPUX86State *env, DisasContext *s, int modrm)
         case 2:
             tcg_gen_add_tl(cpu_A0, cpu_regs[R_EBP], cpu_regs[R_ESI]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__) && defined(CONFIG_INDIRECT_TAINT)
+#if defined(CONFIG_DIFT) && defined(CONFIG_INDIRECT_TAINT)
             s->reg_base = R_EBP;
             s->reg_index = R_ESI;
 #endif
@@ -2162,7 +2394,7 @@ static void gen_lea_modrm(CPUX86State *env, DisasContext *s, int modrm)
         case 3:
             tcg_gen_add_tl(cpu_A0, cpu_regs[R_EBP], cpu_regs[R_EDI]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__) && defined(CONFIG_INDIRECT_TAINT)
+#if defined(CONFIG_DIFT) && defined(CONFIG_INDIRECT_TAINT)
             s->reg_base = R_EBP;
             s->reg_index = R_EDI;
 #endif
@@ -2171,7 +2403,7 @@ static void gen_lea_modrm(CPUX86State *env, DisasContext *s, int modrm)
         case 4:
             sum = cpu_regs[R_ESI];
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__) && defined(CONFIG_INDIRECT_TAINT)
+#if defined(CONFIG_DIFT) && defined(CONFIG_INDIRECT_TAINT)
             s->reg_base = R_ESI;
 #endif
 /***********************/            
@@ -2179,7 +2411,7 @@ static void gen_lea_modrm(CPUX86State *env, DisasContext *s, int modrm)
         case 5:
             sum = cpu_regs[R_EDI];
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__) && defined(CONFIG_INDIRECT_TAINT)
+#if defined(CONFIG_DIFT) && defined(CONFIG_INDIRECT_TAINT)
             s->reg_base = R_EDI;
 #endif
 /***********************/            
@@ -2187,7 +2419,7 @@ static void gen_lea_modrm(CPUX86State *env, DisasContext *s, int modrm)
         case 6:
             sum = cpu_regs[R_EBP];
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__) && defined(CONFIG_INDIRECT_TAINT)
+#if defined(CONFIG_DIFT) && defined(CONFIG_INDIRECT_TAINT)
             s->reg_base = R_EBP;
 #endif
 /***********************/            
@@ -2196,7 +2428,7 @@ static void gen_lea_modrm(CPUX86State *env, DisasContext *s, int modrm)
         case 7:
             sum = cpu_regs[R_EBX];
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__) && defined(CONFIG_INDIRECT_TAINT)
+#if defined(CONFIG_DIFT) && defined(CONFIG_INDIRECT_TAINT)
             s->reg_base = R_EBX;
 #endif
 /***********************/            
@@ -2312,7 +2544,7 @@ static void gen_ldst_modrm(CPUX86State *env, DisasContext *s, int modrm,
     rm = (modrm & 7) | REX_B(s);
     if (mod == 3) {
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         s->gen_ldst_modrm_op_type = OPT_REG;
         s->gen_ldst_modrm_op_reg = rm;
 #endif
@@ -2329,7 +2561,7 @@ static void gen_ldst_modrm(CPUX86State *env, DisasContext *s, int modrm,
     } else {
         gen_lea_modrm(env, s, modrm);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         s->gen_ldst_modrm_op_type = OPT_MEM;
 #endif
 /***********************/
@@ -2620,7 +2852,7 @@ static void gen_pusha(DisasContext *s)
         gen_op_mov_v_reg(MO_32, cpu_T[0], 7 - i);
         gen_op_st_v(s, s->dflag, cpu_T[0], cpu_A0);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         gen_dift_mem_reg(s, 7 - i, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, MO_16 + s->dflag, 0);
         gen_dift_sync_i64(s);
 #endif
@@ -2647,7 +2879,7 @@ static void gen_popa(DisasContext *s)
             gen_op_ld_v(s, s->dflag, cpu_T[0], cpu_A0);
             gen_op_mov_reg_v(s->dflag, 7 - i, cpu_T[0]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
             gen_dift_reg_mem( s, 7 - i, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, MO_16 + s->dflag, 0 );
             gen_dift_sync_i64( s );
 #endif
@@ -2674,7 +2906,7 @@ static void gen_enter(DisasContext *s, int esp_addend, int level)
         gen_op_mov_v_reg(MO_32, cpu_T[0], R_EBP);
         gen_op_st_v(s, ot, cpu_T[0], cpu_A0);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         gen_dift_mem_reg( s, R_EBP, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0 );
         gen_dift_sync_i64( s );
 #endif
@@ -2688,7 +2920,7 @@ static void gen_enter(DisasContext *s, int esp_addend, int level)
         tcg_gen_addi_tl(cpu_T[1], cpu_T[1], -esp_addend + (-opsize * level));
         gen_op_mov_reg_v(MO_64, R_ESP, cpu_T[1]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         gen_dift_reg_reg( s, R_EBP, R_ESP, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, MO_64, 0, 0 );
         gen_dift_sync_i64( s );
 #endif
@@ -2707,7 +2939,7 @@ static void gen_enter(DisasContext *s, int esp_addend, int level)
         gen_op_mov_v_reg(MO_32, cpu_T[0], R_EBP);
         gen_op_st_v(s, ot, cpu_T[0], cpu_A0);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         gen_dift_mem_reg( s, R_EBP, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0 );
         gen_dift_sync_i64( s );
 #endif
@@ -2722,7 +2954,7 @@ static void gen_enter(DisasContext *s, int esp_addend, int level)
         tcg_gen_addi_tl(cpu_T[1], cpu_T[1], -esp_addend + (-opsize * level));
         gen_op_mov_reg_v(MO_16 + s->ss32, R_ESP, cpu_T[1]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         gen_dift_reg_reg(s, R_EBP, R_ESP, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, MO_16 + s->ss32, 0, 0);
         gen_dift_sync_i64(s);
 #endif
@@ -4614,162 +4846,6 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
     }
 }
 
-
-/* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
-/// Herein defined the set of DIFT TCG_IR generation functions
-/// All of these functions should be named with "gen_dift" prefix
-#define WADDR 1
-#define RADDR 0
-
-static void gen_dift_sync_i64( DisasContext* s ) {
-    if( !label_or_helper_appeared )
-        tcg_gen_op1_i64( INDEX_op_qemu_dift_inc_diftcodes, s->tb->dift_code_index );
-}
-
-static void gen_enqueue_i64( DisasContext* s, uint64_t arg ) {
-    if( !label_or_helper_appeared ) 
-        dift_code_buffer[ s->tb->dift_code_loc + s->tb->dift_code_index++] = arg;    
-    else 
-        tcg_gen_op1_i64( INDEX_op_qemu_dift_enq_i64, arg );
-}
-
-static void gen_dift_enqueue_addr( DisasContext* s, int is_wa ) {
-    if( is_wa ) 
-        tcg_gen_op0( INDEX_op_qemu_dift_enq_wa );
-    else
-        tcg_gen_op0( INDEX_op_qemu_dift_enq_ra );
-}
-
-static void gen_dift_reg_reg( DisasContext* s, uint16_t dreg, uint16_t sreg, uint8_t effect, uint8_t ot, uint8_t dreg_byte, uint8_t sreg_byte ) {
-
-    dift_record rec;
-
-    rec.case_nb = get_case_nb( OPT_REG, OPT_REG, ot & 0x03, effect );
-    if( ot == MO_8 )
-    {
-        rec.v1.r2r_byte.sreg         = sreg;
-        rec.v1.r2r_byte.dreg         = dreg;
-        rec.v1.r2r_byte.sreg_byte    = sreg_byte;
-        rec.v1.r2r_byte.dreg_byte    = dreg_byte;
-
-        // Enqueue this piece
-        gen_enqueue_i64( s, *(uint64_t*)&rec );
-    }
-    else
-    {
-        rec.v1.r2r.sreg             = sreg;
-        rec.v1.r2r.dreg             = dreg;
-        gen_enqueue_i64( s, *(uint64_t*)&rec );
-    }
-}
-
-static void gen_dift_reg_mem( DisasContext* s, uint16_t dst_reg_name, uint8_t effect, uint8_t ot, uint8_t hl_switch ) {
-
-    dift_record rec;
-
-    rec.case_nb = get_case_nb( OPT_REG, OPT_MEM, ot & 0x03, effect );
-    if( ot == MO_8 ) {
-        rec.v1.r2m_m2r_byte.hl  = hl_switch;
-        rec.v1.r2m_m2r_byte.reg = dst_reg_name;
-#if defined(CONFIG_INDIRECT_TAINT)
-        rec.v1.r2m_m2r_byte.reg_base = s->reg_base;
-        rec.v1.r2m_m2r_byte.reg_index = s->reg_index;
-#endif
-    } else {
-        rec.v1.r2m_m2r.reg = dst_reg_name;
-#if defined(CONFIG_INDIRECT_TAINT)
-        rec.v1.r2m_m2r.reg_base = s->reg_base;
-        rec.v1.r2m_m2r.reg_index = s->reg_index;
-#endif
-    }
-
-    gen_enqueue_i64( s, *(uint64_t*)&rec );
-    gen_enqueue_addr( s, RADDR );
-}
-
-static void gen_dift_mem_reg( DisasContext* s, uint16_t src_reg_name, uint8_t effect, uint8_t ot, uint8_t hl_switch ) {
-
-    dift_record rec;
-
-    rec.case_nb = get_case_nb( OPT_MEM, OPT_REG, ot & 0x03, effect );
-    if( ot == MO_8 ) {
-        rec.v1.r2m_m2r_byte.hl  = hl_switch;
-        rec.v1.r2m_m2r_byte.reg = src_reg_name;
-#if defined(CONFIG_INDIRECT_TAINT)
-        rec.v1.r2m_m2r_byte.reg_base = s->reg_base;
-        rec.v1.r2m_m2r_byte.reg_index = s->reg_index;
-#endif
-    } else {
-        rec.v1.r2m_m2r.reg = src_reg_name;
-#if defined(CONFIG_INDIRECT_TAINT)
-        rec.v1.r2m_m2r.reg_base = s->reg_base;
-        rec.v1.r2m_m2r.reg_index = s->reg_index;
-#endif
-    }
-
-    gen_enqueue_i64( s, *(uint64_t*)&rec );
-    gen_enqueue_addr( s, WADDR );
-}
-
-static void gen_dift_mem_mem( DisasContext* s, uint8_t effect, uint8_t ot ) {
-
-    dift_record rec;
-
-    rec.case_nb         = get_case_nb( OPT_MEM, OPT_MEM, ot & 0x03, effect );
-    gen_enqueue_i64(s, *(uint64_t*)&rec);
-    gen_enqueue_addr( s, WADDR );
-    gen_enqueue_addr( s, RADDR );
-}
-
-static void gen_dift_reg_im( DisasContext* s, uint16_t dst_reg_name, uint8_t ot, uint8_t hl_switch ) {
-
-    dift_record rec;
-
-    rec.case_nb = get_case_nb( OPT_REG, OPT_IM, ot & 0x03, EFFECT_CLEAR );
-    if( ot == MO_8 ) {
-        rec.v1.r2m_m2r_byte.hl  = hl_switch;
-        rec.v1.r2m_m2r_byte.reg = dst_reg_name;
-    } else {
-        rec.v1.r2m_m2r.reg = dst_reg_name;
-    }
-    gen_enqueue_i64( s, *(uint64_t*)&rec );
-}
-
-static void gen_dift_mem_im( DisasContext* s, uint8_t ot ) {
-
-    dift_record rec;
-
-    rec.case_nb         = get_case_nb( OPT_MEM, OPT_IM, ot & 0x03, EFFECT_CLEAR );
-    gen_enqueue_i64( s, *(uint64_t*)&rec );
-    gen_enqueue_addr( s, WADDR );
-}
-
-static void gen_dift_inside_reg( DisasContext* s, uint16_t reg, uint8_t dst_byte, uint8_t src_byte, uint8_t effect ) {
-
-    dift_record rec;
-
-    rec.case_nb             = get_case_nb( OPT_REG, OPT_REG, OT_BYTE, effect | EFFECT_INSIDE_REG );
-    rec.v1.inside_r.reg     = reg;
-    rec.v1.inside_r.d_byte  = dst_byte;
-    rec.v1.inside_r.s_byte  = src_byte;
-    gen_enqueue_i64( s, *(uint64_t*)&rec );
-}
-
-static void gen_dift_block_begin( DisasContext* s ) {
-
-    uint64_t rec = REC_BLOCK_BEGIN;
-
-    tcg_gen_op1_i64(INDEX_op_qemu_dift_tb_begin, s->tb->dift_code_loc);
-    gea_dift_enqueue_i64( s, rec );
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-    gen_dift_enqueue_i64( s, phyeip );
-#endif
-    gen_dift_sync_i64( s );
-}
-#endif
-/***********************/
-
 /* convert one instruction. s->is_jmp is set if the translation must
    be stopped. Return the next pc value */
 static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
@@ -4801,14 +4877,14 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
  next_byte:
     b = cpu_ldub_code(env, s->pc);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
 #if defined(CONFIG_INDIRECT_TAINT)
     s->reg_base = R_NONE;
     s->reg_index = R_NONE;
 #endif
     if( s->tb_begin ) {
         s->tb_begin = 0;
-        gen_dift_block_begin( s 
+        gen_dift_block_begin( s
 #if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
             , last_mem_read_addr - phys_ram_base
             , cpu_single_env->cr[3]
@@ -4957,7 +5033,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
     if (prefixes & PREFIX_LOCK)
         gen_helper_lock();
 
-    /* now check op code */
+    /* now check op code, insn. comment in Intel syntax */
  reswitch:
     switch(b) {
     case 0x0f:
@@ -4999,7 +5075,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                     tcg_gen_movi_tl(cpu_T[0], 0);
                     gen_op_mov_reg_v(ot, reg, cpu_T[0]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                     if( ot == MO_8 )   
                         gen_dift_reg_im( s, reg > 3 ? reg - 4 : reg, MO_8, reg > 3 ? 1: 0 );
                     else
@@ -5013,7 +5089,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 }
                 gen_op_mov_v_reg(ot, cpu_T[1], reg);
 /* Modifed by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 s->src_type = OPT_REG;
                 s->src_reg = reg;
 #endif
@@ -5029,7 +5105,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                     gen_lea_modrm(env, s, modrm);
                     gen_op_ld_v(s, ot, cpu_T[1], cpu_A0);
 /* Modifed by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                     s->src_type = OPT_MEM;
 #endif
 /**********************/
@@ -5038,7 +5114,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 } else {
                     gen_op_mov_v_reg(ot, cpu_T[1], rm);
 /* Modifed by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                     s->src_type = OPT_REG;
                     s->src_reg = rm;
 #endif
@@ -5050,7 +5126,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 val = insn_get(env, s, ot);
                 tcg_gen_movi_tl(cpu_T[1], val);
 /* Modifed by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                    s->src_type = OPT_IM;
 #endif
 /**********************/
@@ -5100,7 +5176,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             }
             tcg_gen_movi_tl(cpu_T[1], val);
 /* Modifed by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
             s->src_type = OPT_IM;
 #endif
 /**********************/
@@ -5132,14 +5208,14 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             gen_lea_modrm(env, s, modrm);
             gen_op_ld_v(s, ot, cpu_T[0], cpu_A0);
 /* Modifed by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
             s->src_type = OPT_MEM;
 #endif
 /**********************/
         } else {
             gen_op_mov_v_reg(ot, cpu_T[0], rm);
 /* Modifed by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
             s->src_type = OPT_REG;
             s->src_reg = rm;
 #endif
@@ -5158,7 +5234,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             if (mod != 3) {
                 gen_op_st_v(s, ot, cpu_T[0], cpu_A0);
 /* Modifed by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 gen_dift_mem_im( s, ot );
                 gen_dift_sync_i64( s );
 #endif
@@ -5172,7 +5248,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             if (mod != 3) {
                 gen_op_st_v(s, ot, cpu_T[0], cpu_A0);
 /* Modifed by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 gen_dift_mem_im( s, ot );
                 gen_dift_sync_i64( s );
 #endif
@@ -5196,7 +5272,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 tcg_gen_andi_tl(cpu_cc_src, cpu_T[0], 0xff00);
                 set_cc_op(s, CC_OP_MULB);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 if( s->src_type == OPT_REG )
                     gen_dift_reg_reg(s, R_EAX, s->src_reg, EFFECT_ONE_TO_ONE | EFFECT_APPEND, MO_8, 0, 0);
                 else if( s->src_type == OPT_MEM )
@@ -5219,7 +5295,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 tcg_gen_mov_tl(cpu_cc_src, cpu_T[0]);
                 set_cc_op(s, CC_OP_MULW);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 if( s->src_type == OPT_REG )
                     gen_dift_reg_reg(s, R_EAX, s->src_reg, EFFECT_APPEND | EFFECT_MIX, MO_16, 0, 0);
                 else if( s->src_type == OPT_MEM )
@@ -5241,7 +5317,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 tcg_gen_mov_tl(cpu_cc_src, cpu_regs[R_EDX]);
                 set_cc_op(s, CC_OP_MULL);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 if( s->src_type == OPT_REG )
                     gen_dift_reg_reg( s, R_EAX, s->src_reg, EFFECT_APPEND | EFFECT_MIX, MO_32, 0, 0 );
                 else if( s->src_type == OPT_MEM )
@@ -5259,7 +5335,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 tcg_gen_mov_tl(cpu_cc_src, cpu_regs[R_EDX]);
                 set_cc_op(s, CC_OP_MULQ);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 if( s->src_type == OPT_REG )
                     gen_dift_reg_reg( s, R_EAX, s->src_reg, EFFECT_APPEND | EFFECT_MIX, MO_64, 0, 0 );
                 else if( s->src_type == OPT_MEM )
@@ -5286,7 +5362,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 tcg_gen_sub_tl(cpu_cc_src, cpu_T[0], cpu_tmp0);
                 set_cc_op(s, CC_OP_MULB);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 if( s->src_type == OPT_REG )
                     gen_dift_reg_reg( s, R_EAX, s->src_reg, EFFECT_ONE_TO_ONE | EFFECT_APPEND, MO_8, 0, 0 );
                 else if( s->src_type == OPT_MEM )
@@ -5310,7 +5386,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 gen_op_mov_reg_v(MO_16, R_EDX, cpu_T[0]);
                 set_cc_op(s, CC_OP_MULW);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 if( s->src_type == OPT_REG )
                     gen_dift_reg_reg( s, R_EAX, s->src_reg, EFFECT_APPEND | EFFECT_MIX, MO_16, 0, 0 );
                 else if( s->src_type == OPT_MEM )
@@ -5334,7 +5410,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 tcg_gen_extu_i32_tl(cpu_cc_src, cpu_tmp2_i32);
                 set_cc_op(s, CC_OP_MULL);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 if( s->src_type == OPT_REG )
                     gen_dift_reg_reg( s, R_EAX, s->src_reg, EFFECT_APPEND | EFFECT_MIX, MO_32, 0, 0 );
                 else if( s->src_type == OPT_MEM )
@@ -5353,7 +5429,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 tcg_gen_sub_tl(cpu_cc_src, cpu_cc_src, cpu_regs[R_EDX]);
                 set_cc_op(s, CC_OP_MULQ); 
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 if( s->src_type == OPT_REG )
                     gen_dift_reg_reg( s, R_EAX, s->src_reg, EFFECT_APPEND | EFFECT_MIX, MO_64, 0, 0 );
                 else if( s->src_type == OPT_MEM )
@@ -5372,7 +5448,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 gen_jmp_im(pc_start - s->cs_base);
                 gen_helper_divb_AL(cpu_env, cpu_T[0]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 if( s->src_type == OPT_REG )
                     gen_dift_reg_reg( s, R_EAX, s->src_reg, EFFECT_ONE_TO_ONE | EFFECT_APPEND, MO_8, 0, 0);
                 else if( s->src_type == OPT_MEM )
@@ -5387,7 +5463,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 gen_jmp_im(pc_start - s->cs_base);
                 gen_helper_divw_AX(cpu_env, cpu_T[0]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 if( s->src_type == OPT_REG )
                     gen_dift_reg_reg( s, R_EAX, s->src_reg, EFFECT_APPEND | EFFECT_MIX, MO_16, 0, 0 );
                 else if( s->src_type == OPT_MEM )
@@ -5403,7 +5479,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 gen_jmp_im(pc_start - s->cs_base);
                 gen_helper_divl_EAX(cpu_env, cpu_T[0]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 if( s->src_type == OPT_REG )
                     gen_dift_reg_reg( s, R_EAX, s->src_reg, EFFECT_APPEND | EFFECT_MIX, MO_32, 0, 0 );
                 else if( s->src_type == OPT_MEM )
@@ -5419,7 +5495,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 gen_jmp_im(pc_start - s->cs_base);
                 gen_helper_divq_EAX(cpu_env, cpu_T[0]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 if( s->src_type == OPT_REG )
                     gen_dift_reg_reg( s, R_EAX, s->src_reg, EFFECT_APPEND | EFFECT_MIX, MO_32, 0, 0 );
                 else if( s->src_type == OPT_MEM )
@@ -5439,7 +5515,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 gen_jmp_im(pc_start - s->cs_base);
                 gen_helper_idivb_AL(cpu_env, cpu_T[0]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 if( s->src_type == OPT_REG )
                     gen_dift_reg_reg(s, R_EAX, s->src_reg, EFFECT_ONE_TO_ONE | EFFECT_APPEND, MO_8, 0, 0);
                 else if( s->src_type == OPT_MEM )
@@ -5454,7 +5530,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 gen_jmp_im(pc_start - s->cs_base);
                 gen_helper_idivw_AX(cpu_env, cpu_T[0]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 if( s->src_type == OPT_REG )
                     gen_dift_reg_reg( s, R_EAX, s->src_reg, EFFECT_APPEND | EFFECT_MIX, MO_16, 0, 0 );
                 else if( s->src_type == OPT_MEM )
@@ -5470,7 +5546,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 gen_jmp_im(pc_start - s->cs_base);
                 gen_helper_idivl_EAX(cpu_env, cpu_T[0]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 if( s->src_type == OPT_REG )
                     gen_dift_reg_reg( s, R_EAX, s->src_reg, EFFECT_APPEND | EFFECT_MIX, MO_32, 0, 0 );
                 else if( s->src_type == OPT_MEM )
@@ -5486,7 +5562,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 gen_jmp_im(pc_start - s->cs_base);
                 gen_helper_idivq_EAX(cpu_env, cpu_T[0]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 if( s->src_type == OPT_REG )
                     gen_dift_reg_reg( s, R_EAX, s->src_reg, EFFECT_APPEND | EFFECT_MIX, MO_64, 0, 0 );
                 else if( s->src_type == OPT_MEM )
@@ -5532,7 +5608,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             if (op >= 2 && op != 3 && op != 5) {
                 gen_op_ld_v(s, ot, cpu_T[0], cpu_A0);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 s->src_type = OPT_MEM;
 #endif
 /***********************/
@@ -5540,7 +5616,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         } else {
             gen_op_mov_v_reg(ot, cpu_T[0], rm);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
             s->src_type = OPT_REG;
             s->src_reg = rm;
 #endif
@@ -5571,13 +5647,13 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             tcg_gen_movi_tl(cpu_T[1], next_eip);
             gen_push_v(s, cpu_T[1]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
             // EIP -> [ESP]
-            gen_dift_mem_reg( s, R_EIP, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0 );
+            gen_dift_mem_reg( s, R_RIP, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0 );
             // TMP -> EIP
-            gen_dift_reg_reg( s, R_EIP, R_DIFT_TMP, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0, 0 );
+            gen_dift_reg_reg( s, R_RIP, R_DIFT_TMP, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0, 0 );
             // Clear TMP
-            gen_dift_reg_im( s, R_DIFT_TMP, OT_LONG, 0 );
+            gen_dift_reg_im( s, R_DIFT_TMP, MO_64, 0 );
             gen_dift_sync_i64( s );
 #endif
             s->is_call = 1;
@@ -5588,7 +5664,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         case 3: /* lcall Ev */
             gen_op_ld_v(s, ot, cpu_T[1], cpu_A0);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
             gen_dift_reg_mem( s, R_DIFT_TMP, EFFECT_ONE_TO_ONE | EFFECT_ASSIGN, MO_32, 0 );
             gen_dift_reg_reg( s, R_DIFT_TMP, R_DIFT_TMP, EFFECT_MIX | EFFECT_APPEND, MO_32, 0, 0 );
             gen_dift_sync_i64( s );
@@ -5605,7 +5681,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                                            tcg_const_i32(dflag - 1),
                                            tcg_const_i32(s->pc - pc_start));
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 label_or_helper_appeared = 1;
 #endif
 /***********************/            
@@ -5615,13 +5691,13 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                                       tcg_const_i32(dflag - 1),
                                       tcg_const_i32(s->pc - s->cs_base));
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 label_or_helper_appeared = 1;
 #endif
 /***********************/            
             }
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
             gen_dift_reg_im( s, R_DIFT_TMP, MO_32, 0 );
             gen_dift_sync_i64( s );
 #endif
@@ -5634,12 +5710,12 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 tcg_gen_ext16u_tl(cpu_T[0], cpu_T[0]);
             }
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
             // OP -> EIP 
             if( s->src_type == OPT_REG )
-                gen_dift_reg_reg( s, R_EIP, s->src_reg, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0, 0 );
+                gen_dift_reg_reg( s, R_RIP, s->src_reg, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0, 0 );
             else
-                gen_dift_reg_mem( s, R_EIP, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0 );
+                gen_dift_reg_mem( s, R_RIP, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0 );
             gen_dift_sync_i64( s );
 #endif
 /***********************/
@@ -5658,7 +5734,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 gen_helper_ljmp_protected(cpu_env, cpu_tmp2_i32, cpu_T[1],
                                           tcg_const_i32(s->pc - pc_start));
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 label_or_helper_appeared = 1;
 #endif
 /***********************/            
@@ -5671,7 +5747,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         case 6: /* push Ev */
             gen_push_v(s, cpu_T[0]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
             // OP -> [ESP] 
             if( s->src_type == OPT_REG )
                 gen_dift_mem_reg( s, s->src_reg, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0 );
@@ -5741,7 +5817,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             tcg_gen_sari_tl(cpu_T[0], cpu_T[0], 63);
             gen_op_mov_reg_v(MO_64, R_EDX, cpu_T[0]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
             gen_dift_reg_reg( s, R_EDX, R_EAX, EFFECT_ONE_TO_ONE | EFFECT_ASSIGN, MO_64, 0, 0 );
             gen_dift_inside_reg( s, R_EDX, 0, 7, EFFECT_ASSIGN );
             gen_dift_inside_reg( s, R_EDX, 1, 7, EFFECT_ASSIGN );
@@ -5761,7 +5837,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             tcg_gen_sari_tl(cpu_T[0], cpu_T[0], 31);
             gen_op_mov_reg_v(MO_32, R_EDX, cpu_T[0]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
             gen_dift_reg_reg( s, R_EDX, R_EAX, EFFECT_ONE_TO_ONE | EFFECT_ASSIGN, MO_32, 0, 0 );
             gen_dift_inside_reg( s, R_EDX, 0, 3, EFFECT_ASSIGN );
             gen_dift_inside_reg( s, R_EDX, 1, 3, EFFECT_ASSIGN );
@@ -5776,7 +5852,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             tcg_gen_sari_tl(cpu_T[0], cpu_T[0], 15);
             gen_op_mov_reg_v(MO_16, R_EDX, cpu_T[0]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
             gen_dift_reg_reg( s, R_EDX, R_EAX, EFFECT_ONE_TO_ONE | EFFECT_ASSIGN, MO_16, 0, 0 );
             gen_dift_inside_reg( s, R_EDX, 0, 1, EFFECT_ASSIGN );
             gen_dift_sync_i64( s );
@@ -5815,7 +5891,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             tcg_gen_sari_tl(cpu_cc_src, cpu_cc_dst, 63);
             tcg_gen_sub_tl(cpu_cc_src, cpu_cc_src, cpu_T[1]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         /* Ev -> Gv */
         if( s->gen_ldst_modrm_op_type == OPT_REG )
             gen_dift_reg_reg( s, reg, s->gen_ldst_modrm_op_reg, EFFECT_APPEND | EFFECT_MIX, MO_64, 0, 0 );
@@ -5836,7 +5912,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             tcg_gen_mov_tl(cpu_cc_dst, cpu_regs[reg]);
             tcg_gen_sub_i32(cpu_tmp2_i32, cpu_tmp2_i32, cpu_tmp3_i32);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         /* Ev -> Gv */
         if( s->gen_ldst_modrm_op_type == OPT_REG )
             gen_dift_reg_reg( s, reg, s->gen_ldst_modrm_op_reg, EFFECT_APPEND | EFFECT_MIX, MO_32, 0, 0 );
@@ -5856,7 +5932,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             tcg_gen_ext16s_tl(cpu_tmp0, cpu_T[0]);
             tcg_gen_sub_tl(cpu_cc_src, cpu_T[0], cpu_tmp0);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         /* Ev -> Gv */
         if( s->gen_ldst_modrm_op_type == OPT_REG )
             gen_dift_reg_reg( s, reg, s->gen_ldst_modrm_op_reg, EFFECT_APPEND | EFFECT_MIX, ot, 0, 0 );
@@ -5877,8 +5953,9 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         reg = ((modrm >> 3) & 7) | rex_r;
         mod = (modrm >> 6) & 3;
         if (mod == 3) {
+            rm = (modrm & 7) | REX_B(s);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
             if( ot == MO_8 ) {
                 // Ev -> DIFT_TMP 
                 gen_dift_reg_reg( s, R_DIFT_TMP,
@@ -5916,7 +5993,6 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             gen_dift_sync_i64( s );
 #endif
 /*************************/
-            rm = (modrm & 7) | REX_B(s);
             gen_op_mov_v_reg(ot, cpu_T[0], reg);
             gen_op_mov_v_reg(ot, cpu_T[1], rm);
             tcg_gen_add_tl(cpu_T[0], cpu_T[0], cpu_T[1]);
@@ -5927,7 +6003,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             gen_op_mov_v_reg(ot, cpu_T[0], reg);
             gen_op_ld_v(s, ot, cpu_T[1], cpu_A0);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
             /* Ev -> DIFT_TMP */
             gen_dift_reg_mem( s, R_DIFT_TMP, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0 );
             gen_dift_sync_i64( s );
@@ -6028,7 +6104,8 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         gen_op_mov_v_reg(MO_32, cpu_T[0], (b & 7) | REX_B(s));
         gen_push_v(s, cpu_T[0]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
+		qemu_log( "Fuuuuuuuuu\n" );
         gen_dift_mem_reg( s, b & 7, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, dflag + MO_16, 0 );
         gen_dift_sync_i64( s );
 #endif
@@ -6037,7 +6114,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
     case 0x58 ... 0x5f: /* pop */
         ot = gen_pop_T0(s);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         gen_dift_reg_mem( s, b & 7, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0 );
         gen_dift_sync_i64( s );
 #endif
@@ -6066,7 +6143,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         tcg_gen_movi_tl(cpu_T[0], val);
         gen_push_v(s, cpu_T[0]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         gen_dift_mem_im( s, ot );
         gen_dift_sync_i64( s );
 #endif
@@ -6082,7 +6159,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             rm = (modrm & 7) | REX_B(s);
             gen_op_mov_reg_v(ot, rm, cpu_T[0]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
             gen_dift_reg_mem( s, rm, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0 );
             gen_dift_sync_i64( s );
 #endif
@@ -6093,7 +6170,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             s->popl_esp_hack = 1 << ot;
             gen_ldst_modrm(env, s, modrm, ot, OR_TMP0, 1);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
             gen_dift_mem_mem( s, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot );
             gen_dift_sync_i64( s );
 #endif
@@ -6125,7 +6202,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         }
         ot = gen_pop_T0(s);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         gen_dift_reg_mem( s, R_EBP, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, dflag + MO_16, 0 );
         gen_dift_sync_i64( s );
 #endif
@@ -6142,7 +6219,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         gen_op_movl_T0_seg(b >> 3);
         gen_push_v(s, cpu_T[0]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         gen_dift_mem_reg( s, (b >> 3) + R_SEG_REG_BASE, EFFECT_ASSIGN | EFFECT_MIX, s->dflag + MO_16, 0 );
         gen_dift_sync_i64( s );
 #endif
@@ -6153,7 +6230,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         gen_op_movl_T0_seg((b >> 3) & 7);
         gen_push_v(s, cpu_T[0]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         gen_dift_mem_reg( s, ((b >> 3) & 7) + R_SEG_REG_BASE, EFFECT_ASSIGN | EFFECT_MIX, s->dflag + MO_16, 0 );
         gen_dift_sync_i64( s );
 #endif
@@ -6167,7 +6244,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         reg = b >> 3;
         ot = gen_pop_T0(s);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         gen_dift_reg_mem( s, (b >> 3) + R_SEG_REG_BASE, EFFECT_ASSIGN | EFFECT_MIX, s->dflag + MO_16, 0 );
         gen_dift_sync_i64( s );
 #endif
@@ -6191,7 +6268,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
     case 0x1a9: /* pop gs */
         ot = gen_pop_T0(s);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         gen_dift_reg_mem( s, ((b >> 3) & 7) + R_SEG_REG_BASE, EFFECT_ASSIGN | EFFECT_MIX, s->dflag + MO_16, 0 );
         gen_dift_sync_i64( s );
 #endif
@@ -6207,13 +6284,38 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         /**************************/
         /* mov */
     case 0x88:
-    case 0x89: /* mov Gv, Ev */
+    case 0x89: /* mov Ev, Gv */
         ot = mo_b_d(b, dflag);
         modrm = cpu_ldub_code(env, s->pc++);
         reg = ((modrm >> 3) & 7) | rex_r;
 
         /* generate a generic store */
         gen_ldst_modrm(env, s, modrm, ot, reg, 1);
+/* Modified by Glacier */
+#if defined(CONFIG_DIFT)
+        if( ot == MO_8 ) {
+            if( s->gen_ldst_modrm_op_type == OPT_REG )
+                gen_dift_reg_reg( s,
+                        s->gen_ldst_modrm_op_reg > 3 ? s->gen_ldst_modrm_op_reg - 4 : s->gen_ldst_modrm_op_reg,
+                        reg > 3 ? reg - 4 : reg,
+                        EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot,
+                        s->gen_ldst_modrm_op_reg > 3 ? 1 : 0,
+                        reg > 3 ? 1 : 0 );
+            else
+                gen_dift_mem_reg( s,
+                        reg > 3 ? reg - 4 : reg,
+                        EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot,
+                        reg > 3 ? 1 : 0 );
+        }
+        else {
+            if( s->gen_ldst_modrm_op_type == OPT_REG )
+                gen_dift_reg_reg( s, s->gen_ldst_modrm_op_reg, reg, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0, 0 );
+            else
+                gen_dift_mem_reg( s, reg, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0 );
+        }
+        gen_dift_sync_i64( s );
+#endif
+/***********************/
         break;
     case 0xc6:
     case 0xc7: /* mov Ev, Iv */
@@ -6229,7 +6331,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         if (mod != 3) {
             gen_op_st_v(s, ot, cpu_T[0], cpu_A0);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
             gen_dift_mem_im( s, ot );
             gen_dift_sync_i64( s );
 #endif
@@ -6239,14 +6341,14 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         }
         break;
     case 0x8a:
-    case 0x8b: /* mov Ev, Gv */
+    case 0x8b: /* mov Gv, Ev */
         ot = mo_b_d(b, dflag);
         modrm = cpu_ldub_code(env, s->pc++);
         reg = ((modrm >> 3) & 7) | rex_r;
 
         gen_ldst_modrm(env, s, modrm, ot, OR_TMP0, 0);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         if( ot == MO_8 )
         {
             if( s->gen_ldst_modrm_op_type == OPT_REG )
@@ -6257,7 +6359,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                         s->gen_ldst_modrm_op_reg > 3 ? 1 : 0,
                         reg > 3 ? 1 : 0 );
             else
-                gen_dift_mem_reg( s,
+                gen_dift_reg_mem( s,
                         reg > 3 ? reg - 4 : reg,
                         EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot,
                         reg > 3 ? 1 : 0 );
@@ -6267,7 +6369,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             if( s->gen_ldst_modrm_op_type == OPT_REG )
                 gen_dift_reg_reg( s, s->gen_ldst_modrm_op_reg, reg, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0, 0 );
             else
-                gen_dift_mem_reg( s, reg, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0 );
+                gen_dift_reg_mem( s, reg, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0 );
         }
         gen_dift_sync_i64( s );
 #endif
@@ -6281,7 +6383,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             goto illegal_op;
         gen_ldst_modrm(env, s, modrm, MO_16, OR_TMP0, 0);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         if( s->gen_ldst_modrm_op_type == OPT_REG )
             gen_dift_reg_reg( s, reg + R_SEG_REG_BASE, s->gen_ldst_modrm_op_reg, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, MO_16, 0, 0 );
         else
@@ -6313,7 +6415,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         ot = mod == 3 ? dflag : MO_16;
         gen_ldst_modrm(env, s, modrm, ot, OR_TMP0, 1);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         if( s->gen_ldst_modrm_op_type == OPT_REG )
             gen_dift_reg_reg( s, s->gen_ldst_modrm_op_reg, reg + R_SEG_REG_BASE, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, MO_16, 0, 0 );
         else
@@ -6362,7 +6464,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 }
                 gen_op_mov_reg_v(d_ot, reg, cpu_T[0]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 if( ot == MO_8 )
                     gen_dift_reg_reg( s,
                             R_DIFT_TMP,
@@ -6402,7 +6504,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 gen_lea_modrm(env, s, modrm);
                 gen_op_ld_v(s, s_ot, cpu_T[0], cpu_A0);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 {
                     gen_dift_reg_mem( s, R_DIFT_TMP, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0 );
                 }
@@ -6415,7 +6517,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                     gen_dift_inside_reg( s, R_DIFT_TMP, 2, ot, EFFECT_ASSIGN );
                     gen_dift_inside_reg( s, R_DIFT_TMP, 1, ot, EFFECT_ASSIGN );
                 }
-                else if( d_ot == OT_LONG ) {
+                else if( d_ot == MO_32 ) {
                     gen_dift_inside_reg( s, R_DIFT_TMP, 3, ot, EFFECT_ASSIGN );
                     gen_dift_inside_reg( s, R_DIFT_TMP, 2, ot, EFFECT_ASSIGN );
                     gen_dift_inside_reg( s, R_DIFT_TMP, 1, ot, EFFECT_ASSIGN );
@@ -6450,7 +6552,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         s->addseg = val;
         gen_op_mov_reg_v(ot, reg, cpu_A0);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__) && defined(CONFIG_INDIRECT_TAINT)
+#if defined(CONFIG_DIFT) && defined(CONFIG_INDIRECT_TAINT)
         if( reg != s->reg_base && reg != s->reg_index ) {
             gen_dift_reg_reg( s, reg, s->reg_base, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0, 0 );
             gen_dift_reg_reg( s, reg, s->reg_index, EFFECT_APPEND | EFFECT_ONE_TO_ONE, ot, 0, 0 );
@@ -6489,7 +6591,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 gen_op_ld_v(s, ot, cpu_T[0], cpu_A0);
                 gen_op_mov_reg_v(ot, R_EAX, cpu_T[0]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 gen_dift_reg_mem( s, R_EAX, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0 );
                 gen_dift_sync_i64( s );
 #endif
@@ -6498,7 +6600,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 gen_op_mov_v_reg(ot, cpu_T[0], R_EAX);
                 gen_op_st_v(s, ot, cpu_T[0], cpu_A0);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                 gen_dift_mem_reg( s, R_EAX, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0 );
                 gen_dift_sync_i64( s );
 #endif
@@ -6520,7 +6622,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         tcg_gen_movi_tl(cpu_T[0], val);
         gen_op_mov_reg_v(MO_8, (b & 7) | REX_B(s), cpu_T[0]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         reg = b & 7;
         gen_dift_reg_im( s, reg > 3 ? reg - 4 : reg, MO_8, reg > 3 ? 1 : 0) ;
         gen_dift_sync_i64( s );
@@ -6538,7 +6640,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             tcg_gen_movi_tl(cpu_T[0], tmp);
             gen_op_mov_reg_v(MO_64, reg, cpu_T[0]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
             gen_dift_reg_im( s, reg, MO_64, 0 );
             gen_dift_sync_i64( s );
 #endif
@@ -6552,7 +6654,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             tcg_gen_movi_tl(cpu_T[0], val);
             gen_op_mov_reg_v(ot, reg, cpu_T[0]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
             gen_dift_reg_im( s, reg, ot, 0 );
             gen_dift_sync_i64( s );
 #endif
@@ -6580,7 +6682,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             gen_op_mov_reg_v(ot, rm, cpu_T[0]);
             gen_op_mov_reg_v(ot, reg, cpu_T[1]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
             if( ot == MO_8 )
             {
                 gen_dift_reg_reg( s, R_DIFT_TMP,
@@ -6609,7 +6711,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 gen_dift_reg_reg( s, reg, rm, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0, 0);
                 gen_dift_reg_reg( s, rm, R_DIFT_TMP, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0, 0 );
                 // Clear R_DIFT_TMP
-                gen_dift_reg_im( s, R_DIFT_TMP, OT_LONG, 0 ); 
+                gen_dift_reg_im( s, R_DIFT_TMP, MO_64, 0 ); 
             }
             gen_dift_sync_i64( s );
 #endif
@@ -6626,7 +6728,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 gen_helper_unlock();
             gen_op_mov_reg_v(ot, reg, cpu_T[1]);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
             if( ot == MO_8 )
             {
                 gen_dift_reg_reg( s,
@@ -6641,7 +6743,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                         reg > 3 ? 1 : 0 );
                 gen_dift_mem_reg( s, R_DIFT_TMP, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0 );
                 // Clear R_DIFT_TMP
-                gen_dift_reg_im( s, R_DIFT_TMP, OT_LONG, 0 );  
+                gen_dift_reg_im( s, R_DIFT_TMP, MO_64, 0 );  
             }
             else
             {
@@ -6649,7 +6751,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                 gen_dift_reg_mem( s, reg, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0 );
                 gen_dift_mem_reg( s, R_DIFT_TMP, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0 );
                 // Clear R_DIFT_TMP
-                gen_dift_reg_im( s, R_DIFT_TMP, OT_LONG, 0 );
+                gen_dift_reg_im( s, R_DIFT_TMP, MO_64, 0 );
             }
             gen_dift_sync_i64( s );
 #endif
@@ -6682,7 +6784,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         gen_lea_modrm(env, s, modrm);
         gen_op_ld_v(s, ot, cpu_T[1], cpu_A0);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         gen_dift_reg_mem( s, reg, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0 );
         gen_dift_sync_i64( s );
 #endif
@@ -6692,7 +6794,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         gen_op_ld_v(s, MO_16, cpu_T[0], cpu_A0);
         gen_movl_seg_T0(s, op, pc_start - s->cs_base);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         gen_dift_reg_mem( s, op + R_SEG_REG_BASE, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, MO_16, 0 );
         gen_dift_sync_i64( s );
 #endif
@@ -7479,8 +7581,8 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         s->pc += 2;
         ot = gen_pop_T0(s);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
-        gen_dift_reg_mem( s, R_EIP, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, s->dflag + MO_16, 0 );
+#if defined(CONFIG_DIFT)
+        gen_dift_reg_mem( s, R_RIP, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, s->dflag + MO_16, 0 );
         gen_dift_sync_i64( s );
 #endif
 /***********************/
@@ -7492,8 +7594,8 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
     case 0xc3: /* ret */
         ot = gen_pop_T0(s);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
-        gen_dift_reg_mem( s, R_EIP, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, s->dflag + MO_16, 0 );
+#if defined(CONFIG_DIFT)
+        gen_dift_reg_mem( s, R_RIP, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, s->dflag + MO_16, 0 );
         gen_dift_sync_i64( s );
 #endif
 /***********************/
@@ -7549,7 +7651,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             gen_helper_iret_protected(cpu_env, tcg_const_i32(dflag - 1),
                                       tcg_const_i32(s->pc - s->cs_base));
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
             label_or_helper_appeared = 1;
 #endif
 /***********************/
@@ -7574,8 +7676,8 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             tcg_gen_movi_tl(cpu_T[0], next_eip);
             gen_push_v(s, cpu_T[0]);
 /* Modified by Jack Wang */
-#if defined(__DIFT_ENABLED__)
-            gen_dift_mem_reg( s, R_EIP, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, s->dflag + MO_16, 0 );
+#if defined(CONFIG_DIFT)
+            gen_dift_mem_reg( s, R_RIP, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, s->dflag + MO_16, 0 );
             gen_dift_sync_i64( s );
 #endif
             s->is_call = 1;
@@ -7604,8 +7706,8 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             tval = (int16_t)insn_get(env, s, MO_16);
         }
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
-        gen_dift_reg_im( s, R_EIP, dflag + MO_16, 0 );
+#if defined(CONFIG_DIFT)
+        gen_dift_reg_im( s, R_RIP, dflag + MO_16, 0 );
         gen_dift_sync_i64( s );
 #endif
 /***********************/
@@ -8435,7 +8537,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                         gen_helper_vmrun(cpu_env, tcg_const_i32(s->aflag - 1),
                                          tcg_const_i32(s->pc - pc_start));
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
                         label_or_helper_appeared = 1;
 #endif
 /***********************/                        
@@ -8844,10 +8946,9 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         /* generate a generic store */
         gen_ldst_modrm(env, s, modrm, ot, reg, 1);
  /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
-        gen_dift_mem_reg( s, reg, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, MO_32, 0 );
+#if defined(CONFIG_DIFT)
+        gen_dift_mem_reg( s, reg, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0 );
         gen_dift_sync_i64( s );
-        exit( 1 );
 #endif
 /***********************/       
         break;
@@ -8939,7 +9040,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         gen_jmp_im(s->pc - s->cs_base);
         gen_helper_rsm(cpu_env);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         label_or_helper_appeared = 1;
 #endif
 /***********************/
@@ -9147,13 +9248,13 @@ static inline void gen_intermediate_code_internal(X86CPU *cpu,
     gen_tb_start(tb);
 /* Modified by Glacier */
     dc->is_call = 0;
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
     dc->tb_begin = 1;
-    if( dc->tb->dift_code_index ) {
+    if( dc->tb->dift_code_idx ) {
         dift_sync();
-        dc->tb->dift_code_index = 0;
+        dc->tb->dift_code_idx = 0;
     }
-    label_or_helper_appeared = 0;
+    label_or_helper_appeared = 1;
 #endif
 /***********************/
     for(;;) {
@@ -9242,6 +9343,11 @@ done_generating:
     if (qemu_loglevel_mask(CPU_LOG_TB_IN_ASM)) {
         int disas_flags;
         qemu_log("----------------\n");
+/* Modified by Glacier */
+        qemu_log("CPU: \n");
+		cpu_dump_state((CPUState*)x86_env_get_cpu(env), qemu_logfile, fprintf, 0);		
+		qemu_log("\n");
+/***********************/
         qemu_log("IN: %s\n", lookup_symbol(pc_start));
 #ifdef TARGET_X86_64
         if (dc->code64)

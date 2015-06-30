@@ -17,6 +17,7 @@
 #include <sys/mman.h>
 #include <assert.h>
 #include <stdint.h>
+#include <config.h>
 
 /// we try to make DIFT as standalone as possible
 //#include "../../target-i386/cpu.h"
@@ -53,8 +54,11 @@ enum {
 #define out64(p, x) *(uint64_t*)p = ((uint64_t)(x)); p += sizeof(uint64_t);
 
 /* Global Variables */
-uint64_t phys_ram_base;
-uint64_t phys_ram_size;
+uint64_t phys_ram_base = 0;
+uint64_t phys_ram_size = 0;
+
+#define DIFT_LOG "dift.log"
+FILE* dift_logfile = NULL;
 
 /* Emulator part */
 uint8_t pre_generated_routine[4096] __attribute__((aligned(4096)));
@@ -213,12 +217,12 @@ uint16_t case_list[] ={
                         EFFECT_CLEAR,                       // 55
 };
 
-int dift_code_top  = 1;  // Loc 0 is reserved for the workaround in add_file_taint
+int dift_code_top = 1;  // Loc 0 is reserved for the workaround in add_file_taint
 int dift_code_cntr = 0;
 int dift_code_loc;
 uint64_t dift_code_buffer[CONFIG_MAX_TB_ESTI * CONFIG_IF_CODES_PER_TB] __attribute__((aligned(4096)));    // The size of the allocation should be fixed
 
-int label_or_helper_appeared;
+int label_or_helper_appeared = 1;
 
 /// DIFT Communication
 uint64_t          q_records[CONFIG_SIZE_OF_QUEUE / sizeof(uint64_t)] __attribute__((aligned(4096)));
@@ -231,9 +235,6 @@ int sleepness = 0;
 /// DIFT Context
 dift_context dc[1] __attribute__((aligned(4096)));
 static pthread_t dift_thread;
-
-/// DIFT Logging
-FILE* fp_dift_log;
 
 const char* REG_NAME[] = {
     "RAX", "RCX", "RDX", "RBX", "RSP", "RBP", "RSI", "RDI",
@@ -248,7 +249,7 @@ static void gen_rt_finish_curr_block( void ) {
     uint8_t* s;
 
     s = rt_finish_curr_block;
-
+	
     out8(s, 0x0f);
     out8(s, 0xae);
     out8(s, 0xf0);      // mfence
@@ -433,9 +434,9 @@ static void gen_rt_enqueue_raddr( void ) {
     out8(s, 0x8b);
     out8(s, 0x12);      // mov rdx, [rdx]
 
-    out8(s, 0x48);
-    out8(s, 0xb8);
-    out64(s, phys_ram_base);    // mov rax, phys_ram_base
+	out8(s, 0x48);
+    out8(s, 0xa1);
+    out64(s, &phys_ram_base);    // mov rax, [&phys_ram_base]
 
     out8(s, 0x48);
     out8(s, 0x29);
@@ -494,9 +495,9 @@ static void gen_rt_enqueue_waddr( void ) {
     out8(s, 0x8b);
     out8(s, 0x12);      // mov rdx, [rdx]
 
-    out8(s, 0x48);
-    out8(s, 0xb8);
-    out64(s, phys_ram_base);    // mov rax, phys_ram_base
+	out8(s, 0x48);
+    out8(s, 0xa1);
+    out64(s, &phys_ram_base);    // mov rax, [&phys_ram_base]
 
     out8(s, 0x48);
     out8(s, 0x29);
@@ -551,6 +552,14 @@ static void pre_generate_routine( void ) {
     gen_rt_enqueue_raddr();
     gen_rt_enqueue_waddr();
 
+	/*
+	qemu_log( "rt_finish_curr_block @ %16p\n", rt_finish_curr_block );
+	qemu_log( "rt_get_next_enqptr   @ %16p\n", rt_get_next_enqptr );
+	qemu_log( "rt_enqueue_one_rec   @ %16p\n", rt_enqueue_one_rec );
+	qemu_log( "rt_enqueue_raddr     @ %16p\n", rt_enqueue_raddr );
+	qemu_log( "rt_enqueue_waddr     @ %16p\n", rt_enqueue_waddr );
+	*/
+
     /* map */
     page_size = getpagesize();
     start = (uintptr_t)pre_generated_routine;
@@ -578,6 +587,32 @@ static void init_queue( void ) {
     enqptr = (uint64_t*)q_chunks_ptr[0];
     head = 1;
     prev_head = 0;
+/*
+#if defined(CONFIG_DIFT_DEBUG)
+	dift_log( "DIFT queue initial state: \n" );
+	for( i = 0; i < Q_CHUNKS_SIZE; ++i ) {
+		dift_log( "CHUNK[%d] = ", i );
+		switch( q_chunks_flag[i] ) {
+			case CHUNK_AVAILABLE:
+				dift_log( "\tAVAILABLE,\t %016x\n", q_chunks_ptr[i] );
+				break;
+			case CHUNK_FILLING:
+				dift_log( "\tFILLING,\t %016x\n", q_chunks_ptr[i] );
+				break;
+			case CHUNK_FILLED:
+				dift_log( "\tFILLED,\t %016x\n", q_chunks_ptr[i] );
+				break;
+			case CHUNK_CONSUMING:
+				dift_log( "\tCONSUMING,\t %016x\n", q_chunks_ptr[i] );
+				break;
+			default:
+				fprintf( stderr, "Should never be happened\n" );
+				exit( 1 );
+		}
+	}
+	dift_log( "prev_head = %d, head = %d\n", prev_head, head );
+#endif
+*/
 }
 
 static void init_case_mapping( void ) {
@@ -598,15 +633,19 @@ static void init_dift_context( dift_context *dc ) {
 
     dc->deqptr = NULL;
 
+#if defined(CONFIG_DIFT_DEBUG)
+	dift_log( "Physical RAM size: 0x%016lx\n", phys_ram_size );
+#endif
+
     // allocation for memory taint
-    dc->mem_dirty_tbl = (CONTAMINATION_RECORD*)calloc( phys_ram_size /*+ ((uint64_t)1 << PAGENO_BITS)*/, sizeof(CONTAMINATION_RECORD) );
+    dc->mem_dirty_tbl = (CONTAMINATION_RECORD*)calloc( phys_ram_size + getpagesize(), sizeof(CONTAMINATION_RECORD) );
     if( dc->mem_dirty_tbl == NULL ) {
         fprintf( stderr, "Not enough memory for mem_dirty_tbl, need %016lx bytes\n", phys_ram_size * sizeof(CONTAMINATION_RECORD) + ((uint64_t)1 << PAGENO_BITS) );
         exit( 1 );
     }
 
-    clean_source = 0xFFFF000000000000;
-    null_sink    = 0x0000FFFFFFFFFFFF;
+    clean_source = phys_ram_base + phys_ram_size + 0;
+    null_sink    = phys_ram_base + phys_ram_size + 1;
 
     // allocation for harddisk taint
     dc->hd_l1_dirty_tbl = (CONTAMINATION_RECORD**)calloc( 1 << HD_L1_INDEX_BITS, sizeof(CONTAMINATION_RECORD*) );
@@ -614,7 +653,6 @@ static void init_dift_context( dift_context *dc ) {
         fprintf( stderr, "Not enough memory for hd_l1_dirty_tbl\n" );
         exit( 1 );
     }
-
 #if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
     dc->force_mem_dirty = 0;
 #endif
@@ -687,7 +725,7 @@ static inline void and_mem_dirty( dift_context* dc, uint64_t addr, CONTAMINATION
     dc->mem_dirty_tbl[addr] &= contamination;
 }
 
-static inline CONTAMINATION_RECORD get_mem_dirty( dift_context* dc, uint64_t addr ) {   
+static inline CONTAMINATION_RECORD get_mem_dirty( dift_context* dc, uint64_t addr ) { 
     return dc->mem_dirty_tbl[addr];
 }
 
@@ -723,14 +761,14 @@ static void set_hd_dirty_and( dift_context* dc, uint64_t hdaddr, CONTAMINATION_R
     dc->hd_l1_dirty_tbl[HD_L1_INDEX(hdaddr)][HD_L2_INDEX(hdaddr)] &= contamination;
 }
 
-/*static CONTAMINATION_RECORD get_hd_dirty( dift_context* dc, uint64_t hdaddr ) {
+static CONTAMINATION_RECORD get_hd_dirty( dift_context* dc, uint64_t hdaddr ) {
     
     CONTAMINATION_RECORD* hd_l2_dirty_tbl = NULL;
 
     if( (hd_l2_dirty_tbl = dc->hd_l1_dirty_tbl[HD_L1_INDEX(hdaddr)]) == NULL )
         return 0;
     return hd_l2_dirty_tbl[HD_L2_INDEX(hdaddr)];
-}*/
+}
 
 /// DIFT Private API - MEM <--> HD taint propogation (copy_contamination_DST_SRC)
 static void copy_contamination_hd_mem( dift_context* dc, uint64_t ra, uint64_t hdaddr, uint64_t len ) {
@@ -853,7 +891,6 @@ static void* analysis_mainloop( void* arg ) {
     int cntr = 0;
     int dist;
     int idleness = 0;
-
     while(1) {
         if( (cntr++ & 0xfffff) == 0 ) {
             dist = head - dc->tail;
@@ -892,6 +929,20 @@ static void* analysis_mainloop( void* arg ) {
 }
 
 /// DIFT Public API - All of the public APIs are named with the prefix "dift_"
+void dift_log( const char* fmt, ... ) {
+	
+	va_list ap;
+	
+	va_start( ap, fmt );
+	if( dift_logfile ) {
+		vfprintf( dift_logfile, fmt, ap );
+
+		// XXX: causing overhead in early stage debugging
+		fflush( dift_logfile );
+	}
+	va_end( ap );
+}
+
 void dift_rec_enqueue( uint64_t data_in ) {
 
     *(enqptr++) = data_in;
@@ -926,6 +977,7 @@ uint8_t dift_rec_case_nb( uint8_t dst_type, uint8_t src_type, uint8_t ot, uint8_
 }
 
 void dift_sync( void ) {
+	
     if( dift_code_loc != 0 ) {
         dift_rec_enqueue( REC_END_SYMBOL | REC_BEFORE_BLOCK_BEGIN );
         dift_rec_enqueue( dift_code_loc | dift_code_cntr );
@@ -945,13 +997,23 @@ int dift_start( void ) {
     
     int err;
 
+#if defined(CONFIG_DIFT_DEBUG)
+	dift_logfile = fopen( DIFT_LOG, "w+" );
+	if( dift_logfile == NULL ) {
+		fprintf( stderr, "Fail to create DIFT log file\n" );
+		return -1;
+	}
+#endif
+
     pre_generate_routine();
 
     init_queue();
     init_case_mapping();
     init_dift_context(dc);
 
-    if( (err = pthread_create(&dift_thread, NULL, analysis_mainloop, NULL)) )
+    if( (err = pthread_create(&dift_thread, NULL, analysis_mainloop, NULL)) ) {
+		fprintf( stderr, "Fail to startup DIFT analysis thread\n" );
         return -1;
+	}
     return 0;
 }

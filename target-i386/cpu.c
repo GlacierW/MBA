@@ -2152,7 +2152,7 @@ out:
         }
     }
     g_strfreev(model_pieces);
-    return cpu;
+	return cpu;
 }
 
 X86CPU *cpu_x86_init(const char *cpu_model)
@@ -2175,6 +2175,7 @@ out:
             cpu = NULL;
         }
     }
+
     return cpu;
 }
 

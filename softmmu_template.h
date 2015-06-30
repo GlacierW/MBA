@@ -25,6 +25,12 @@
 #include "exec/address-spaces.h"
 #include "exec/memory.h"
 
+/* Modified by Glacier */
+#if defined(CONFIG_DIFT)
+#include "ext/dift/dift.h"
+#endif
+/***********************/
+
 #define DATA_SIZE (1 << SHIFT)
 
 #if DATA_SIZE == 8
@@ -177,11 +183,6 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
     uintptr_t haddr;
     DATA_TYPE res;
 
-/* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
-    uint64_t addr3;
-#endif
-/***********************/
 
     /* Adjust the given return address.  */
     retaddr -= GETPC_ADJ;
@@ -210,7 +211,7 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
         iotlbentry = &env->iotlb[mmu_idx][index];
 
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         last_mem_read_addr = clean_source;
 #endif
 /***********************/
@@ -227,6 +228,12 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
         && unlikely((addr & ~TARGET_PAGE_MASK) + DATA_SIZE - 1
                     >= TARGET_PAGE_SIZE)) {
         target_ulong addr1, addr2;
+/* Modified by Glacier */
+#if defined(CONFIG_DIFT)
+    	target_ulong addr3;
+#endif
+/***********************/
+
         DATA_TYPE res1, res2;
         unsigned shift;
     do_unaligned_access:
@@ -241,16 +248,18 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
 
         res1 = helper_le_ld_name(env, addr1, oi, retaddr + GETPC_ADJ);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         /// To remember addr1, which is the real access address, from recursion
         addr3 = last_mem_read_addr;
+	qemu_log( "1 phys_ram_base: %p, last_mem_read_addr: %p\n", phys_ram_base, last_mem_read_addr );
 #endif
 /***********************/
 
         res2 = helper_le_ld_name(env, addr2, oi, retaddr + GETPC_ADJ);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         last_mem_read_addr = addr3;
+	qemu_log( "2 phys_ram_base: %p, last_mem_read_addr: %p\n", phys_ram_base, last_mem_read_addr );
 #endif
 /***********************/
         shift = (addr & (DATA_SIZE - 1)) * 8;
@@ -268,16 +277,20 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
     }
 
     haddr = addr + env->tlb_table[mmu_idx][index].addend;
+
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
     last_mem_read_addr = haddr;
+	qemu_log( "3 phys_ram_base: %p, last_mem_read_addr: %p\n", phys_ram_base, last_mem_read_addr );
 #endif
 /***********************/    
+
 #if DATA_SIZE == 1
     res = glue(glue(ld, LSUFFIX), _p)((uint8_t *)haddr);
 #else
     res = glue(glue(ld, LSUFFIX), _le_p)((uint8_t *)haddr);
 #endif
+	qemu_log( "res: %016llx", (uint64_t)res );
     return res;
 }
 
@@ -423,7 +436,7 @@ void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
     uintptr_t haddr;
 
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
     uint64_t haddr_begin = 0;
 #endif
 /***********************/
@@ -454,7 +467,7 @@ void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
         iotlbentry = &env->iotlb[mmu_idx][index];
 
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
+#if defined(CONFIG_DIFT)
         last_mem_write_addr = null_sink;
 #endif
 /***********************/
@@ -491,11 +504,13 @@ void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
             glue(helper_ret_stb, MMUSUFFIX)(env, addr + i, val8,
                                             oi, retaddr + GETPC_ADJ);
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED)
-            if( i == 0 )
+#if defined(CONFIG_DIFT)
+            if( i == 0 ) 
                 haddr_begin = last_mem_write_addr;
             else
                 last_mem_write_addr = haddr_begin;
+				
+			qemu_log( "1 phys_ram_base: %p, last_mem_write_addr: %p\n", phys_ram_base, last_mem_write_addr );
 #endif
 /***********************/            
         }
@@ -513,8 +528,9 @@ void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
     haddr = addr + env->tlb_table[mmu_idx][index].addend;
 
 /* Modified by Glacier */
-#if defined(__DIFT_ENABLED__)
-        last_mem_write_addr = haddr;
+#if defined(CONFIG_DIFT)
+    last_mem_write_addr = haddr;
+	qemu_log( "2 phys_ram_base: %p, last_mem_write_addr: %p\n", phys_ram_base, last_mem_write_addr );
 #endif
 /***********************/
 
