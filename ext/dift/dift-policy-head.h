@@ -24,6 +24,7 @@
         dispatch[REG_REG_OO_APPEND_MO32] = &&rt_reg_reg_oo_append_mo32;
         dispatch[REG_REG_OO_APPEND_MO64] = &&rt_reg_reg_oo_append_mo64;
 
+        dispatch[REG_REG_MIX_APPEND_MO8] =  &&rt_reg_reg_oo_append_mo8;
         dispatch[REG_REG_MIX_APPEND_MO16] = &&rt_reg_reg_mix_append_mo16;
         dispatch[REG_REG_MIX_APPEND_MO32] = &&rt_reg_reg_mix_append_mo32;
         dispatch[REG_REG_MIX_APPEND_MO64] = &&rt_reg_reg_mix_append_mo64;
@@ -42,6 +43,7 @@
         dispatch[REG_MEM_MIX_ASSIGN_MO32] = &&rt_reg_mem_mix_assign_mo32;
         dispatch[REG_MEM_MIX_ASSIGN_MO64] = &&rt_reg_mem_mix_assign_mo64;
 
+        dispatch[REG_MEM_MIX_APPEND_MO8] =  &&rt_reg_mem_oo_append_mo8;
         dispatch[REG_MEM_MIX_APPEND_MO16] = &&rt_reg_mem_mix_append_mo16;
         dispatch[REG_MEM_MIX_APPEND_MO32] = &&rt_reg_mem_mix_append_mo32;
         dispatch[REG_MEM_MIX_APPEND_MO64] = &&rt_reg_mem_mix_append_mo64;
@@ -60,6 +62,7 @@
         dispatch[MEM_REG_MIX_ASSIGN_MO32] = &&rt_mem_reg_mix_assign_mo32;
         dispatch[MEM_REG_MIX_ASSIGN_MO64] = &&rt_mem_reg_mix_assign_mo64;
 
+        dispatch[MEM_REG_MIX_APPEND_MO8] = &&rt_mem_reg_oo_append_mo8;
         dispatch[MEM_REG_MIX_APPEND_MO16] = &&rt_mem_reg_mix_append_mo16;
         dispatch[MEM_REG_MIX_APPEND_MO32] = &&rt_mem_reg_mix_append_mo32;
         dispatch[MEM_REG_MIX_APPEND_MO64] = &&rt_mem_reg_mix_append_mo64;
@@ -126,6 +129,7 @@
         [REG_MEM_MIX_ASSIGN_MO16] = &&rt_reg_mem_mix_assign_mo16,
         [REG_MEM_MIX_ASSIGN_MO32] = &&rt_reg_mem_mix_assign_mo32,
         [REG_MEM_MIX_ASSIGN_MO64] = &&rt_reg_mem_mix_assign_mo64,
+        [REG_MEM_MIX_APPEND_MO8] =  &&rt_reg_mem_oo_append_mo8,
         [REG_MEM_MIX_APPEND_MO16] = &&rt_reg_mem_mix_append_mo16,
         [REG_MEM_MIX_APPEND_MO32] = &&rt_reg_mem_mix_append_mo32,
         [REG_MEM_MIX_APPEND_MO64] = &&rt_reg_mem_mix_append_mo64,
@@ -141,6 +145,7 @@
         [MEM_REG_MIX_ASSIGN_MO16] = &&rt_mem_reg_mix_assign_mo16,
         [MEM_REG_MIX_ASSIGN_MO32] = &&rt_mem_reg_mix_assign_mo32,
         [MEM_REG_MIX_ASSIGN_MO64] = &&rt_mem_reg_mix_assign_mo64,
+        [MEM_REG_MIX_APPEND_MO8] =  &&rt_mem_reg_oo_append_mo8,
         [MEM_REG_MIX_APPEND_MO16] = &&rt_mem_reg_mix_append_mo16,
         [MEM_REG_MIX_APPEND_MO32] = &&rt_mem_reg_mix_append_mo32,
         [MEM_REG_MIX_APPEND_MO64] = &&rt_mem_reg_mix_append_mo64,

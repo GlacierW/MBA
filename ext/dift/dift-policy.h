@@ -1319,5 +1319,6 @@ rt_rec_block_begin:
 	dift_log( "-------------------------------------------\n" );
 	dift_log( "TB: %p [%016lx]\n", dc->tb_tc_ptr, dc->tb_rip );
 #endif
+
     THREADED_DISPATCH();
 

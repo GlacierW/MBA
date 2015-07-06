@@ -31,7 +31,6 @@
 #define CHUNK_BITSIZEMASK	~(SIZE_OF_CHUNK - 1)
 #define Q_CHUNKS_SIZE		(CONFIG_SIZE_OF_QUEUE / SIZE_OF_CHUNK)
 
-
 #define EFFECT_CLEAR        (1 << 0)
 #define EFFECT_ASSIGN       (1 << 1)
 #define EFFECT_APPEND       (1 << 2)
@@ -291,9 +290,10 @@ extern int collect_taint(uint64_t start, uint64_t end, CONTAMINATION_RECORD tain
 
 extern CONTAMINATION_RECORD hd_dirty_tbl[];
 extern uint64_t dift_code_buffer[];
-extern int dift_code_top;
-extern int dift_code_cntr;
-extern int dift_code_loc;
+extern uint32_t dift_code_top;
+extern uint32_t dift_code_cntr;
+extern uint32_t dift_code_loc;
+extern uint32_t dift_code_off;
 extern int label_or_helper_appeared;
 
 extern int dift_start(void);
@@ -327,10 +327,10 @@ struct dift_context {
     CONTAMINATION_RECORD *mem_dirty_tbl;
     CONTAMINATION_RECORD **hd_l1_dirty_tbl;
 
-#if defined(CONFIG_DIFT_DEBUG)	
+//#if defined(CONFIG_DIFT_DEBUG)	
 	uint64_t tb_rip;
 	uint64_t tb_tc_ptr;
-#endif	
+//#endif	
 
 #if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
 	uint64_t tb_phyeip;

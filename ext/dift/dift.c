@@ -88,7 +88,7 @@ uint16_t case_list[] ={
 
     // encoding:
     // ((0xc0 | SRC_TYPE | DST_TYPE | OP_SIZE) << 8) | EFFECT)
-    // The sequence shoud match the ENUM in dift.h
+    // The sequence should match the ENUM in dift.h
     ((0xc0 | OPT_REG << 4 | OPT_REG << 2 | MO_8) << 8) |
                         EFFECT_INSIDE_REG | EFFECT_ASSIGN,  // 0
     ((0xc0 | OPT_REG << 4 | OPT_REG << 2 | MO_8) << 8) |
@@ -166,7 +166,6 @@ uint16_t case_list[] ={
     ((0xc0 | OPT_REG << 4 | OPT_MEM << 2 | MO_16) << 8) |
                         EFFECT_ONE_TO_ONE | EFFECT_APPEND,  // 34
 
-
     ((0xc0 | OPT_REG << 4 | OPT_MEM << 2 | MO_32) << 8) |
                         EFFECT_ONE_TO_ONE | EFFECT_APPEND,  // 35
     ((0xc0 | OPT_REG << 4 | OPT_MEM << 2 | MO_64) << 8) |
@@ -177,7 +176,6 @@ uint16_t case_list[] ={
                         EFFECT_MIX | EFFECT_ASSIGN,         // 38
     ((0xc0 | OPT_REG << 4 | OPT_MEM << 2 | MO_64) << 8) |
                         EFFECT_MIX | EFFECT_ASSIGN,         // 39
-
 
     ((0xc0 | OPT_REG << 4 | OPT_MEM << 2 | MO_8) << 8) |
                         EFFECT_MIX | EFFECT_APPEND,         // 40
@@ -201,7 +199,6 @@ uint16_t case_list[] ={
     ((0xc0 | OPT_IM << 4 | OPT_REG << 2 | MO_16) << 8) |
                         EFFECT_CLEAR,                       // 49
 
-
     ((0xc0 | OPT_IM << 4 | OPT_REG << 2 | MO_32) << 8) |
                         EFFECT_CLEAR,                       // 50
     ((0xc0 | OPT_IM << 4 | OPT_REG << 2 | MO_64) << 8) |
@@ -217,12 +214,15 @@ uint16_t case_list[] ={
                         EFFECT_CLEAR,                       // 55
 };
 
-int dift_code_top = 1;  // Loc 0 is reserved for the workaround in add_file_taint
-int dift_code_cntr = 0;
-int dift_code_loc;
-uint64_t dift_code_buffer[CONFIG_MAX_TB_ESTI * CONFIG_IF_CODES_PER_TB] __attribute__((aligned(4096)));    // The size of the allocation should be fixed
+uint32_t dift_code_top =  1;  // Loc 0 is reserved for the workaround in add_file_taint
+uint32_t dift_code_cntr = 0;
+uint32_t dift_code_loc;
+uint32_t dift_code_off;
 
-int label_or_helper_appeared = 1;
+// The size of the allocation should be fixed
+uint64_t dift_code_buffer[CONFIG_MAX_TB_ESTI * CONFIG_IF_CODES_PER_TB] __attribute__((aligned(4096)));    
+
+int label_or_helper_appeared = 0;
 
 /// DIFT Communication
 uint64_t          q_records[CONFIG_SIZE_OF_QUEUE / sizeof(uint64_t)] __attribute__((aligned(4096)));
@@ -552,13 +552,14 @@ static void pre_generate_routine( void ) {
     gen_rt_enqueue_raddr();
     gen_rt_enqueue_waddr();
 
-	/*
-	qemu_log( "rt_finish_curr_block @ %16p\n", rt_finish_curr_block );
-	qemu_log( "rt_get_next_enqptr   @ %16p\n", rt_get_next_enqptr );
-	qemu_log( "rt_enqueue_one_rec   @ %16p\n", rt_enqueue_one_rec );
-	qemu_log( "rt_enqueue_raddr     @ %16p\n", rt_enqueue_raddr );
-	qemu_log( "rt_enqueue_waddr     @ %16p\n", rt_enqueue_waddr );
-	*/
+#if defined(CONFIG_DIFT_DEBUG)
+	dift_log( "rt_finish_curr_block @ %16p\n", rt_finish_curr_block );
+	dift_log( "rt_get_next_enqptr   @ %16p\n", rt_get_next_enqptr );
+	dift_log( "rt_enqueue_one_rec   @ %16p\n", rt_enqueue_one_rec );
+	dift_log( "rt_enqueue_raddr     @ %16p\n", rt_enqueue_raddr );
+	dift_log( "rt_enqueue_waddr     @ %16p\n", rt_enqueue_waddr );
+	dift_log( "-------------------------------------------------\n" );
+#endif	
 
     /* map */
     page_size = getpagesize();
@@ -587,32 +588,6 @@ static void init_queue( void ) {
     enqptr = (uint64_t*)q_chunks_ptr[0];
     head = 1;
     prev_head = 0;
-/*
-#if defined(CONFIG_DIFT_DEBUG)
-	dift_log( "DIFT queue initial state: \n" );
-	for( i = 0; i < Q_CHUNKS_SIZE; ++i ) {
-		dift_log( "CHUNK[%d] = ", i );
-		switch( q_chunks_flag[i] ) {
-			case CHUNK_AVAILABLE:
-				dift_log( "\tAVAILABLE,\t %016x\n", q_chunks_ptr[i] );
-				break;
-			case CHUNK_FILLING:
-				dift_log( "\tFILLING,\t %016x\n", q_chunks_ptr[i] );
-				break;
-			case CHUNK_FILLED:
-				dift_log( "\tFILLED,\t %016x\n", q_chunks_ptr[i] );
-				break;
-			case CHUNK_CONSUMING:
-				dift_log( "\tCONSUMING,\t %016x\n", q_chunks_ptr[i] );
-				break;
-			default:
-				fprintf( stderr, "Should never be happened\n" );
-				exit( 1 );
-		}
-	}
-	dift_log( "prev_head = %d, head = %d\n", prev_head, head );
-#endif
-*/
 }
 
 static void init_case_mapping( void ) {
@@ -819,7 +794,7 @@ static void copy_contamination_mem_hd( dift_context* dc, uint64_t hdaddr, uint64
     }
 }
 
-/// DIFT Private API - Taint information interpretation
+/// DIFT Private API - Taint code interpretation
 #define DEQ_FROM_CODE() (*(ptr_code++))
 #define DEQ_FROM_ADDR() (*(ptr_code++))
 
@@ -856,26 +831,29 @@ static void interpret_dift_codes( dift_context* dc, uint64_t* ptr_addr ) {
     uint64_t* ptr_code;
     uint64_t* ptr_code_end;
 
-    uint64_t end_bakup;
-    uint64_t loc_cntr;
+    uint64_t end_backup;
+    uint64_t loc_cntr_off;
+    uint64_t loc, cntr, off;
+	
+    loc_cntr_off = rec_dequeue( dc );
 
-    uint64_t loc, cntr;
+    loc  = (loc_cntr_off & 0xffffffff00000000) >> 32;
+    cntr = (loc_cntr_off & 0x00000000ffff0000) >> 16;
+	off  =  loc_cntr_off & 0x000000000000ffff;
 
-    loc_cntr = rec_dequeue( dc );
-    loc      = ((loc_cntr & 0xffffffffffffff00) >> 8);
-    cntr     = loc_cntr & 0xff;
-
-    ptr_code = dift_code_buffer + (loc * CONFIG_IF_CODES_PER_TB);
-    ptr_code_end = ptr_code + cntr;
-    end_bakup = *ptr_code_end;
+	if( cntr < off )
+		off = 0;
+		
+    ptr_code = dift_code_buffer + ((loc * CONFIG_IF_CODES_PER_TB) + off);
+    ptr_code_end = ptr_code + (cntr - off);
+    end_backup = *ptr_code_end;
     *ptr_code_end = REC_END;
-
     THREADED_DISPATCH();
 #include "dift-policy.h"
 
 rt_rec_end:
-        *ptr_code_end = end_bakup;
-        interpret_dift_codes_rest( dc, ptr_addr );
+    *ptr_code_end = end_backup;
+    interpret_dift_codes_rest( dc, ptr_addr );
 }
 
 static void* analysis_mainloop( void* arg ) {
@@ -977,10 +955,19 @@ uint8_t dift_rec_case_nb( uint8_t dst_type, uint8_t src_type, uint8_t ot, uint8_
 }
 
 void dift_sync( void ) {
-	
+
+	uint64_t rec = 0;
+
     if( dift_code_loc != 0 ) {
+
+		rec |=  dift_code_loc;
+		rec <<= 0x10;
+
+		rec |=  dift_code_cntr;
+		rec <<= 0x10;
+
         dift_rec_enqueue( REC_END_SYMBOL | REC_BEFORE_BLOCK_BEGIN );
-        dift_rec_enqueue( dift_code_loc | dift_code_cntr );
+        dift_rec_enqueue( rec );
     }
 
     dift_rec_enqueue( REC_END_SYMBOL | REC_SYNC );
@@ -996,14 +983,12 @@ void dift_sync( void ) {
 int dift_start( void ) {
     
     int err;
-
-#if defined(CONFIG_DIFT_DEBUG)
+	
 	dift_logfile = fopen( DIFT_LOG, "w+" );
 	if( dift_logfile == NULL ) {
 		fprintf( stderr, "Fail to create DIFT log file\n" );
 		return -1;
 	}
-#endif
 
     pre_generate_routine();
 

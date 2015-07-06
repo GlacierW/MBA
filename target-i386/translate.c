@@ -357,7 +357,7 @@ static inline TCGMemOp mo_b_d32(int b, TCGMemOp ot)
 
 /* Modified by Glacier */
 #if defined(CONFIG_DIFT)
-/// Herein defined the set of DIFT TCG_IR generation functions
+/// Herein defined the set of DIFT TCG IR generation functions
 /// All of these functions should be named with "gen_dift" prefix
 #define WADDR 1
 #define RADDR 0
@@ -370,15 +370,25 @@ static void gen_dift_sync_i64( DisasContext* s ) {
 
 static void gen_dift_enqueue_i64( DisasContext* s, uint64_t arg ) {
 
-    if( !label_or_helper_appeared ) 
-        dift_code_buffer[ s->tb->dift_code_loc + s->tb->dift_code_idx++] = arg;    
-    else 
+    if( !label_or_helper_appeared ) { 
+
+        dift_code_buffer[ s->tb->dift_code_loc + s->tb->dift_code_idx ] = arg;
+		s->tb->dift_code_idx++;
+		
+		qemu_log( "DIFT code cache enqueue: 0x%016lx\n", arg );
+
+		if( s->tb->dift_code_idx == CONFIG_IF_CODES_PER_TB - 1 ) {
+			gen_dift_sync_i64( s );
+			label_or_helper_appeared = 1;
+		}
+	}
+    else {
         tcg_gen_op1i( INDEX_op_qemu_dift_enq_i64, arg );
+		qemu_log( "DIFT normal enqueue: 0x%016lx\n", arg );
+	}
 }
 
 static void gen_dift_enqueue_addr( DisasContext* s, int is_wa ) {
-
-	qemu_log( "gen_dift_enqueue_addr => rw: %d\n", is_wa );
 
     if( is_wa ) 
         tcg_gen_op0( &tcg_ctx, INDEX_op_qemu_dift_enq_wa );
@@ -574,7 +584,7 @@ static void gen_dift_block_begin( DisasContext* s ) {
 
     uint64_t rec = REC_BLOCK_BEGIN;
 
-	qemu_log( "gen_dift_block_begin \n" );
+	qemu_log( "gen_dift_block_begin, tb->dift_code_loc = %08x\n", s->tb->dift_code_loc / CONFIG_IF_CODES_PER_TB );
 
     tcg_gen_op1i( INDEX_op_qemu_dift_tb_begin, s->tb->dift_code_loc );
     gen_dift_enqueue_i64( s, rec );
@@ -961,7 +971,7 @@ static inline void gen_movs(DisasContext *s, TCGMemOp ot)
     gen_string_movl_A0_EDI(s);
     gen_op_st_v(s, ot, cpu_T[0], cpu_A0);
 /* Modified by Glacier */
-#if defined CONFIG_DIFT
+#if defined(CONFIG_DIFT)
     gen_dift_mem_mem( s, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot );
     gen_dift_sync_i64( s );
 #endif
@@ -1391,7 +1401,7 @@ static inline void gen_stos(DisasContext *s, TCGMemOp ot)
     gen_string_movl_A0_EDI(s);
     gen_op_st_v(s, ot, cpu_T[0], cpu_A0);
 /* Modified by Glacier */
-#ifdef CONFIG_DIFT
+#if defined(CONFIG_DIFT)
     gen_dift_mem_reg( s, R_EAX, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0 );
     gen_dift_sync_i64( s );
 #endif
@@ -1406,7 +1416,7 @@ static inline void gen_lods(DisasContext *s, TCGMemOp ot)
     gen_op_ld_v(s, ot, cpu_T[0], cpu_A0);
     gen_op_mov_reg_v(ot, R_EAX, cpu_T[0]);
 /* Modified by Glacier */
-#ifdef CONFIG_DIFT
+#if defined(CONFIG_DIFT)
     gen_dift_reg_mem( s, R_EAX, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0 );
     gen_dift_sync_i64( s );
 #endif
@@ -1586,7 +1596,7 @@ static void gen_op(DisasContext *s1, int op, TCGMemOp ot, int d)
     }
 
 /* Modified by Glacier */
-#ifdef CONFIG_DIFT
+#if defined(CONFIG_DIFT)
     uint8_t effect = EFFECT_APPEND | EFFECT_ONE_TO_ONE;
 
     if( d != OR_TMP0 ) {
@@ -1719,16 +1729,6 @@ static void gen_inc(DisasContext *s1, TCGMemOp ot, int d, int c)
         set_cc_op(s1, CC_OP_DECB + ot);
     }
     gen_op_st_rm_T0_A0(s1, ot, d);
-
-/* Modified by Glacier */
-/// XXX:  I don't know why the incerement on memory operand needs to clear the taint tag
-/// TODO: confirm with Jack Wang
-/// NOTE: He saied it was a mistake XDDDDDDD
-#ifdef CONFIG_DIFT
-   // gen_dift_mem_im( s1, ot );
-   // gen_dift_sync_i32( s1 );
-#endif
-/***********************/
     tcg_gen_mov_tl(cpu_cc_dst, cpu_T[0]);
 }
 
@@ -6105,7 +6105,6 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         gen_push_v(s, cpu_T[0]);
 /* Modified by Glacier */
 #if defined(CONFIG_DIFT)
-		qemu_log( "Fuuuuuuuuu\n" );
         gen_dift_mem_reg( s, b & 7, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, dflag + MO_16, 0 );
         gen_dift_sync_i64( s );
 #endif
@@ -9251,10 +9250,14 @@ static inline void gen_intermediate_code_internal(X86CPU *cpu,
 #if defined(CONFIG_DIFT)
     dc->tb_begin = 1;
     if( dc->tb->dift_code_idx ) {
-        dift_sync();
+		
         dc->tb->dift_code_idx = 0;
+
+		dift_code_off = dift_code_cntr;
+        dift_sync();
+		dift_code_loc = (dc->tb->dift_code_loc / CONFIG_IF_CODES_PER_TB);
     }
-    label_or_helper_appeared = 1;
+	label_or_helper_appeared = 0;
 #endif
 /***********************/
     for(;;) {
@@ -9343,11 +9346,6 @@ done_generating:
     if (qemu_loglevel_mask(CPU_LOG_TB_IN_ASM)) {
         int disas_flags;
         qemu_log("----------------\n");
-/* Modified by Glacier */
-        qemu_log("CPU: \n");
-		cpu_dump_state((CPUState*)x86_env_get_cpu(env), qemu_logfile, fprintf, 0);		
-		qemu_log("\n");
-/***********************/
         qemu_log("IN: %s\n", lookup_symbol(pc_start));
 #ifdef TARGET_X86_64
         if (dc->code64)

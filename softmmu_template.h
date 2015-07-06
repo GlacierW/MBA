@@ -251,7 +251,6 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
 #if defined(CONFIG_DIFT)
         /// To remember addr1, which is the real access address, from recursion
         addr3 = last_mem_read_addr;
-	qemu_log( "1 phys_ram_base: %p, last_mem_read_addr: %p\n", phys_ram_base, last_mem_read_addr );
 #endif
 /***********************/
 
@@ -259,7 +258,6 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
 /* Modified by Glacier */
 #if defined(CONFIG_DIFT)
         last_mem_read_addr = addr3;
-	qemu_log( "2 phys_ram_base: %p, last_mem_read_addr: %p\n", phys_ram_base, last_mem_read_addr );
 #endif
 /***********************/
         shift = (addr & (DATA_SIZE - 1)) * 8;
@@ -281,7 +279,6 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
 /* Modified by Glacier */
 #if defined(CONFIG_DIFT)
     last_mem_read_addr = haddr;
-	qemu_log( "3 phys_ram_base: %p, last_mem_read_addr: %p\n", phys_ram_base, last_mem_read_addr );
 #endif
 /***********************/    
 
@@ -290,7 +287,6 @@ WORD_TYPE helper_le_ld_name(CPUArchState *env, target_ulong addr,
 #else
     res = glue(glue(ld, LSUFFIX), _le_p)((uint8_t *)haddr);
 #endif
-	qemu_log( "res: %016llx", (uint64_t)res );
     return res;
 }
 
@@ -509,8 +505,6 @@ void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
                 haddr_begin = last_mem_write_addr;
             else
                 last_mem_write_addr = haddr_begin;
-				
-			qemu_log( "1 phys_ram_base: %p, last_mem_write_addr: %p\n", phys_ram_base, last_mem_write_addr );
 #endif
 /***********************/            
         }
@@ -530,7 +524,6 @@ void helper_le_st_name(CPUArchState *env, target_ulong addr, DATA_TYPE val,
 /* Modified by Glacier */
 #if defined(CONFIG_DIFT)
     last_mem_write_addr = haddr;
-	qemu_log( "2 phys_ram_base: %p, last_mem_write_addr: %p\n", phys_ram_base, last_mem_write_addr );
 #endif
 /***********************/
 

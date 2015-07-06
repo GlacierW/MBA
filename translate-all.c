@@ -254,7 +254,6 @@ static int cpu_restore_state_from_tb(CPUState *cpu, TranslationBlock *tb,
         j--;
     }
     cpu->icount_decr.u16.low -= s->gen_opc_icount[j];
-
     restore_state_to_opc(env, tb, j);
 
 #ifdef CONFIG_PROFILER

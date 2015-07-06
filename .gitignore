@@ -108,3 +108,4 @@ TAGS
 imgs/*
 *.swp
 ext/dift/gtest_dift
+config.cmd

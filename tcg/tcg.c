@@ -2424,7 +2424,7 @@ int tcg_gen_code(TCGContext *s, tcg_insn_unit *gen_code_buf)
 int tcg_gen_code_search_pc(TCGContext *s, tcg_insn_unit *gen_code_buf,
                            long offset)
 {
-    return tcg_gen_code_common(s, gen_code_buf, offset);
+	return tcg_gen_code_common(s, gen_code_buf, offset);
 }
 
 #ifdef CONFIG_PROFILER
