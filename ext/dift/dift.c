@@ -239,7 +239,8 @@ static pthread_t dift_thread;
 const char* REG_NAME[] = {
     "RAX", "RCX", "RDX", "RBX", "RSP", "RBP", "RSI", "RDI",
     "R8",  "R9",  "R10", "R11", "R12", "R13", "R14", "R15",
-    "RIP", "ES",  "CS",  "SS",  "DS",  "FS",  "GS",  "TMP"
+    "RIP", "ES",  "CS",  "SS",  "DS",  "FS",  "GS",  "TMP",
+	"NONE"
 };
 
 
@@ -914,9 +915,6 @@ void dift_log( const char* fmt, ... ) {
 	va_start( ap, fmt );
 	if( dift_logfile ) {
 		vfprintf( dift_logfile, fmt, ap );
-
-		// XXX: causing overhead in early stage debugging
-		fflush( dift_logfile );
 	}
 	va_end( ap );
 }

@@ -13,8 +13,32 @@
 #define CONFIG_SIZE_OF_QUEUE    (16 * 1024 * 1024)
 #define CONFIG_MAX_TB_ESTI      500000
 #define CONFIG_IF_CODES_PER_TB  160
-
 #define CONFIG_INDIRECT_TAINT
+
+#if defined(CONFIG_DIFT_DEBUG)
+// Herein you should define your condition to log when the debugging
+// is activated. By default the condition macro is empty. (no condition, lots of logs)
+// e.g.
+// 		#define DIFT_DEBUG_CONDITION if( dc->tb_rip == 0x1234567812345678 )
+//
+//
+// The DIFT log of each taint propagation is presented in the following context:
+// [DATATYPE] [MAPPING] [PROPAGATION_IN_STRING] [COMPLETE_SIGN]
+//
+// 		DATATYPE => { B(yte), W(ord), D(ouble word), Q(uad) }
+// 		MAPPING  => { I(nside reg), O(ne-to-one), M(ix), C(lear) }
+// 		PROPAGATION_IN_STRING => { 
+// 			e.g.
+// 			RAX <- RCX 
+// 			RAX <= RCX
+// 			( "<-" indicates ASSIGN, whereas "<=" indicates APPEND )
+// 		}
+// 		COMPLETE_SIGN => DIFT_DEBUG_COMPLETE_SIGN
+
+#define DIFT_DEBUG_CONDITION 
+#define DIFT_DEBUG_COMPLETE_SIGN " \x1b[1;32m*\x1b[0m\n"
+#endif
+
 /* Advanced Feature for JIT & Packer Detection, yet to complete */
 //#define CONFIG_JIT_IFCODE
 //#define CONFIG_JIT_IFCODE_SIZE_PER_TB 300
@@ -66,71 +90,8 @@
 #define HD_L2_INDEX(addr)   ((addr) & ~HD_L2_INDEX_MASK)
 #define HD_PAGE(addr)       ((hd_l1_dirty_tbl[HD_L1_INDEX(addr)]))
 
-
-struct dift_record {
-
-    uint8_t case_nb;
-
-    union
-    {
-        struct
-        {
-            uint8_t reg;
-            uint8_t d_byte;
-            uint8_t s_byte;
-        }inside_r;
-
-        struct
-        {
-            uint8_t sreg;
-            uint8_t dreg;
-        }r2r;
-
-        struct
-        {
-            uint8_t sreg;
-            uint8_t dreg;
-            uint8_t sreg_byte;
-            uint8_t dreg_byte;
-        }r2r_byte;
-
-        struct
-        {
-            uint8_t reg;
-#if defined(CONFIG_INDIRECT_TAINT)
-            uint8_t reg_index;
-            uint8_t reg_base;
-#endif
-        }r2m_m2r;
-
-        struct
-        {
-            uint8_t reg;
-            uint8_t hl;
-#if defined(CONFIG_INDIRECT_TAINT)
-            uint8_t reg_index;
-            uint8_t reg_base;
-#endif
-        }r2m_m2r_byte;
-
-        struct
-        {
-            uint8_t padding1;
-            uint8_t padding2;
-            uint8_t padding3;
-            uint8_t padding4;
-            uint8_t padding5;
-            uint8_t padding6;
-            uint8_t padding7;
-        }padding;
-    } v1;
-
-} __attribute__((__packed__));
-
 enum {
-
     /* Expression: DST_SRC_MAPPING_TYPE_BYTE */
-
     /* 0 */
     INSIDE_REG_ASSIGN,
     INSIDE_REG_APPEND,
@@ -219,6 +180,88 @@ enum {
     REC_SYNC,
     REC_END
 };
+
+struct dift_record {
+
+    uint8_t case_nb;
+
+    union
+    {
+        struct
+        {
+            uint8_t reg;
+            uint8_t d_byte;
+            uint8_t s_byte;
+        }inside_r;
+
+        struct
+        {
+            uint8_t sreg;
+            uint8_t dreg;
+        }r2r;
+
+        struct
+        {
+            uint8_t sreg;
+            uint8_t dreg;
+            uint8_t sreg_byte;
+            uint8_t dreg_byte;
+        }r2r_byte;
+
+        struct
+        {
+            uint8_t reg;
+#if defined(CONFIG_INDIRECT_TAINT)
+            uint8_t reg_index;
+            uint8_t reg_base;
+#endif
+        }r2m_m2r;
+
+        struct
+        {
+            uint8_t reg;
+            uint8_t hl;
+#if defined(CONFIG_INDIRECT_TAINT)
+            uint8_t reg_index;
+            uint8_t reg_base;
+#endif
+        }r2m_m2r_byte;
+
+        struct
+        {
+            uint8_t padding1;
+            uint8_t padding2;
+            uint8_t padding3;
+            uint8_t padding4;
+            uint8_t padding5;
+            uint8_t padding6;
+            uint8_t padding7;
+        }padding;
+    } v1;
+
+} __attribute__((__packed__));
+
+struct dift_context {
+
+    uint64_t* deqptr;
+    uint32_t  tail, prev_tail;
+    CONTAMINATION_RECORD reg_dirty_tbl[24][8];
+    CONTAMINATION_RECORD *mem_dirty_tbl;
+    CONTAMINATION_RECORD **hd_l1_dirty_tbl;
+
+//#if defined(CONFIG_DIFT_DEBUG)	
+	uint64_t tb_rip;
+	uint64_t tb_tc_ptr;
+//#endif	
+
+#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
+	uint64_t tb_phyeip;
+    uint32_t force_mem_dirty;
+#endif
+};
+
+typedef struct dift_context dift_context;
+typedef struct dift_record  dift_record;
 
 extern uint64_t phys_ram_base;
 extern uint64_t phys_ram_size;
@@ -319,29 +362,6 @@ extern void clear_memory(uint64_t, uint64_t);
 extern void clear_all_taint_bit7(void);
 #endif
 
-struct dift_context {
-
-    uint64_t* deqptr;
-    uint32_t  tail, prev_tail;
-    CONTAMINATION_RECORD reg_dirty_tbl[24][8];
-    CONTAMINATION_RECORD *mem_dirty_tbl;
-    CONTAMINATION_RECORD **hd_l1_dirty_tbl;
-
-//#if defined(CONFIG_DIFT_DEBUG)	
-	uint64_t tb_rip;
-	uint64_t tb_tc_ptr;
-//#endif	
-
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-	uint64_t tb_phyeip;
-    uint32_t force_mem_dirty;
-#endif
-};
-
-typedef struct dift_context dift_context;
-typedef struct dift_record  dift_record;
-
 extern dift_context dc[];
-
 #endif
 

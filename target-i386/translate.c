@@ -2300,9 +2300,10 @@ static void gen_lea_modrm(CPUX86State *env, DisasContext *s, int modrm)
         } else if (base >= 0) {
             sum = cpu_regs[base];
         }
+
 /* Modified by Glacier */
 #if defined(CONFIG_DIFT) && defined(CONFIG_INDIRECT_TAINT)
-                s->reg_base = base;
+        s->reg_base = (base == -1) ? R_RIP : base;
 #endif
 /***********************/                
 
