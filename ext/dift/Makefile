@@ -4,8 +4,8 @@ OBJ       = gtest_main.o dift_unittest.o #dift.o
 LINKOBJ   = gtest_main.o dift_unittest.o #dift.o
 LINKFLAGS = -lpthread -lgcov -lgtest 
 BIN       = gtest_dift
-CXXFLAGS  = -Wall
-CFLAGS    = -Wall
+CXXFLAGS  = -Wall -DCONFIG_DIFT_GTEST
+CFLAGS    = -Wall -DCONFIG_DIFT_GTEST
 RM        = rm -f
 GCOV_FILE = *.gcno *.gcda *.gcov
 

@@ -17,7 +17,10 @@
 #include <sys/mman.h>
 #include <assert.h>
 #include <stdint.h>
+
+#if !defined(CONFIG_DIFT_GTEST)
 #include <config.h>
+#endif
 
 /// we try to make DIFT as standalone as possible
 //#include "../../target-i386/cpu.h"
