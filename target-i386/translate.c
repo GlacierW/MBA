@@ -7675,7 +7675,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
             }
             tcg_gen_movi_tl(cpu_T[0], next_eip);
             gen_push_v(s, cpu_T[0]);
-/* Modified by Jack Wang */
+/* Modified by Glacier */
 #if defined(CONFIG_DIFT)
             gen_dift_mem_reg( s, R_RIP, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, s->dflag + MO_16, 0 );
             gen_dift_sync_i64( s );

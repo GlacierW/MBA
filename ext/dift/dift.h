@@ -1,13 +1,24 @@
- /***********************************************************
-  * Dynamic Information Flow Tracking(DIFT) Implementation
-  * Originated from Chiwei Wang, 2009/02/16
-  *
-  * Upgraded by Chiawei Wang, 2015/04/23
-  ***********************************************************/
+/*
+ *  De-coupled Information Flow Tracking (DIFT) header
+ *
+ *  Copyright (c) 2016 Chiawei Wang
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ */
 
 #ifndef __DIFT_H__
 #define __DIFT_H__
-
 
 /* Config */
 #define CONFIG_SIZE_OF_QUEUE    (16 * 1024 * 1024)
