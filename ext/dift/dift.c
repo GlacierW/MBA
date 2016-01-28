@@ -735,11 +735,11 @@ static CONTAMINATION_RECORD* alloc_hd_dirty_page( void ) {
 
 static void set_hd_dirty_or( dift_context* dc, uint64_t hdaddr, CONTAMINATION_RECORD contamination ) {
 
-    if( dc->hd_l1_dirty_tbl[HD_L1_INDEX(hdaddr)] == NULL ) {
-        if( contamination == 0 )
-            return;
+	if( contamination == 0 )
+    	return;
+
+    if( dc->hd_l1_dirty_tbl[HD_L1_INDEX(hdaddr)] == NULL ) 
         dc->hd_l1_dirty_tbl[HD_L1_INDEX(hdaddr)] = alloc_hd_dirty_page();
-    }
 
     dc->hd_l1_dirty_tbl[HD_L1_INDEX(hdaddr)][HD_L2_INDEX(hdaddr)] |= contamination;
 }
@@ -1014,4 +1014,24 @@ int dift_start( void ) {
         return -1;
 	}
     return 0;
+}
+
+void dift_contaminate_memory_or( uint64_t addr, uint64_t len, CONTAMINATION_RECORD tag ) {
+
+	uint64_t max_fragment = 0xffffffff;
+	uint64_t fragment     = len;
+
+	while( len > 0 ) {
+
+		
+	}
+}
+
+void dift_contaminate_memory_and( uint64_t addr, uint64_t len, CONTAMINATION_RECORD tag ) {
+}
+
+void dift_contaminate_disk_or( uint64_t haddr, uint64_t len, CONTAMINATION_RECORD tag ) {
+}
+
+void dift_contaminate_disk_and( uint64_t haddr, uint64_t len, CONTAMINATION_RECORD tag ) {
 }

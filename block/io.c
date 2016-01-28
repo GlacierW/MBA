@@ -2041,7 +2041,7 @@ static void coroutine_fn bdrv_co_do_rw(void *opaque)
     if (!acb->is_write) {
         acb->req.error = bdrv_co_do_readv(bs, acb->req.sector,
             acb->req.nb_sectors, acb->req.qiov, acb->req.flags);
-        /* Modified by Glacier *
+        /* Modified by DSNS *
 		if( acb->req.error >= 0 )
 			printf("Request sector: %lx, LoLLLLL read complete\n", acb->req.sector );
 		printf("-----------------------------------------------\n");

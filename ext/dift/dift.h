@@ -34,7 +34,7 @@
 //
 //
 // The DIFT log of each taint propagation is presented in the following context:
-// [DATATYPE] [MAPPING] [PROPAGATION_IN_STRING] [COMPLETE_SIGN]
+// <DATATYPE> <MAPPING> <PROPAGATION_IN_STRING> <COMPLETE_SIGN>
 //
 // 		DATATYPE => { B(yte), W(ord), D(ouble word), Q(uad) }
 // 		MAPPING  => { I(nside reg), O(ne-to-one), M(ix), C(lear) }
@@ -102,7 +102,7 @@
 #define HD_PAGE(addr)       ((hd_l1_dirty_tbl[HD_L1_INDEX(addr)]))
 
 enum {
-    /* Expression: DST_SRC_MAPPING_TYPE_BYTE */
+    /* Expression: DST_SRC_MAPPING_TYPE_BYTES */
     /* 0 */
     INSIDE_REG_ASSIGN,
     INSIDE_REG_APPEND,
@@ -340,7 +340,7 @@ extern CONTAMINATION_RECORD cpu_get_hd_dirty(uint64_t hdaddr);
 // Usage:
 //   CONTAMINATION_RECORD mytaint=0;
 //   mem_dirty_iter(env,start,end,taint_collect,mytaint);
-extern int collect_taint(uint64_t start, uint64_t end, CONTAMINATION_RECORD taint, void* arg);
+//extern int collect_taint(uint64_t start, uint64_t end, CONTAMINATION_RECORD taint, void* arg);
 
 extern CONTAMINATION_RECORD hd_dirty_tbl[];
 extern uint64_t dift_code_buffer[];
