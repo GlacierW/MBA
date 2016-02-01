@@ -395,7 +395,7 @@ TEST( DiftUnitTest, HD_TAINTING ) {
 TEST( DiftUnitTest, HD_MEM_TAINTING ) {
 
     printf( "Taint-copy 1 byte from MEM:0000000000000000(tag = 0x1) to HD:0x0000000000001000 ... " );
-    copy_contamination_hd_mem( dc, 0x0000000000000000, 0x0000000000001000, 1 );
+    copy_contamination_hd_mem( dc, 0x0000000000001000, 0x0000000000000000, 1 );
     ASSERT_EQ( 0x1, get_hd_dirty(dc, 0x0000000000001000) );
     printf( "Done\n" );
 }
@@ -403,7 +403,7 @@ TEST( DiftUnitTest, HD_MEM_TAINTING ) {
 TEST( DiftUnitTest, MEM_HD_TAINTING ) {
  
     printf( "Taint-copy 1 byte from HD:0000000000000000(tag = 0x4) to MEM:0x0000000000001000 ... " );
-    copy_contamination_mem_hd( dc, 0x0000000000000000, 0x0000000000001000, 1 );
+    copy_contamination_mem_hd( dc, 0x0000000000001000, 0x0000000000000000, 1 );
     ASSERT_EQ( 0x4, get_mem_dirty(dc, 0x0000000000001000) );
     printf( "Done\n" );
 }

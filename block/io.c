@@ -2061,36 +2061,12 @@ static void coroutine_fn bdrv_co_do_rw(void *opaque)
     if (!acb->is_write) {
         acb->req.error = bdrv_co_do_readv(bs, acb->req.sector,
             acb->req.nb_sectors, acb->req.qiov, acb->req.flags);
-/* Modified by Glacier */
-#if defined(CONFIG_DIFT)		
-		/*
-		if( acb->req.error >= 0 ) 
-			printf("Request %d sectors from sector number %lx, LoLLLLL read complete\n", acb->req.nb_sectors, acb->req.sector );
-		
-		for( i = 0; i < dbs->sg_cur_index; ++i )
-			printf( "memory: %llx, len: %llx, operation: %s\n", dbs->sg->sg[i].base, dbs->sg->sg[i].len, (dbs->dir)? "read" : "write" );
-		printf("-----------------------------------------------\n");
-		*/
-#endif
-/***********************/
-
     } else {
         acb->req.error = bdrv_co_do_writev(bs, acb->req.sector,
             acb->req.nb_sectors, acb->req.qiov, acb->req.flags);
-/* Modified by Glacier */
-#if defined(CONFIG_DIFT)
-		/*
-		if( acb->req.error >= 0 ) 
-			printf("Request %d sectors from sector number %lx,  LoLLLLL write complete\n", acb->req.nb_sectors, acb->req.sector );
-
-		for( i = 0; i < dbs->sg_cur_index; ++i )
-			printf( "memory: %llx, len: %llx, operation: %s\n", dbs->sg->sg[i].base, dbs->sg->sg[i].len, (dbs->dir)? "read" : "write" );
-		printf("-----------------------------------------------\n");
-		*/
-#endif
-/********************/
     }
 
+/* Modified by Glacier */
 #if defined(CONFIG_DIFT)
 	if( acb->req.error >= 0 ) {
 
@@ -2111,6 +2087,7 @@ static void coroutine_fn bdrv_co_do_rw(void *opaque)
 		}
 	}
 #endif
+/**********************/
 
     bdrv_co_complete(acb);
 

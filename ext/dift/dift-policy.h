@@ -1575,7 +1575,7 @@ rt_mem_hd:
 	wa = (wa < phys_ram_size) ? wa : phys_ram_size + 1; 
     hdaddr = DEQ_FROM_ADDR();
     l = DEQ_FROM_ADDR();
-    copy_contamination_mem_hd(dc, hdaddr, wa, l);
+    copy_contamination_mem_hd(dc, wa, hdaddr, l);
     THREADED_DISPATCH();
 
 rt_hd_mem:
@@ -1583,7 +1583,7 @@ rt_hd_mem:
 	ra = (ra < phys_ram_size) ? ra : phys_ram_size; 
     hdaddr = DEQ_FROM_ADDR();
     l = DEQ_FROM_ADDR();
-    copy_contamination_hd_mem(dc, ra, hdaddr, l);
+    copy_contamination_hd_mem(dc, hdaddr, ra, l);
     THREADED_DISPATCH();
 
 rt_rec_contaminate_mem_or:

@@ -748,11 +748,6 @@ static void ide_dma_cb(void *opaque, int ret)
            sector_num, n, s->dma_cmd);
 #endif
 
-	/* Modified by DSNS *
-	 printf("ide_dma_cb: sector_num=%lx n=%d, cmd_cmd=%s\n",
-           sector_num, n, (s->dma_cmd)? "write" : "read");
-	********************/
-
     if ((s->dma_cmd == IDE_DMA_READ || s->dma_cmd == IDE_DMA_WRITE) &&
         !ide_sect_range_ok(s, sector_num, n)) {
         ide_dma_error(s);

@@ -144,10 +144,6 @@ static void dma_blk_cb(void *opaque, int ret)
         cur_addr = dbs->sg->sg[dbs->sg_cur_index].base + dbs->sg_cur_byte;
         cur_len = dbs->sg->sg[dbs->sg_cur_index].len - dbs->sg_cur_byte;
 
-		/* Modified by DSNS *
-		printf( "sg_cur_index: %d, base: %llx, len: %llx, operation: %s\n", dbs->sg_cur_index, dbs->sg->sg[dbs->sg_cur_index].base, dbs->sg->sg[dbs->sg_cur_index].len, (dbs->dir)? "read" : "write" );
-		printf( "sector_num: %llx, sector size: %llx, cur_addr: %lx, cur_len: %x\n", dbs->sector_num, BDRV_SECTOR_SIZE, (unsigned long)cur_addr, (unsigned int)cur_len );
-		********************/
         mem = dma_memory_map(dbs->sg->as, cur_addr, &cur_len, dbs->dir);
         if (!mem)
             break;

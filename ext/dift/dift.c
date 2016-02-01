@@ -761,7 +761,7 @@ static CONTAMINATION_RECORD get_hd_dirty( dift_context* dc, uint64_t hdaddr ) {
 
 /// DIFT Private API - MEM <--> HD taint propogation (copy_contamination_DST_SRC)
 /// TODO: re-order the parameters
-static void copy_contamination_hd_mem( dift_context* dc, uint64_t ra, uint64_t hdaddr, uint64_t len ) {
+static void copy_contamination_hd_mem( dift_context* dc, uint64_t hdaddr, uint64_t ra, uint64_t len ) {
 
     uint64_t progress = ((hdaddr + (1 << HD_L2_INDEX_BITS)) & HD_L2_INDEX_MASK) - hdaddr;
 
@@ -785,7 +785,7 @@ static void copy_contamination_hd_mem( dift_context* dc, uint64_t ra, uint64_t h
     }
 }
 
-static void copy_contamination_mem_hd( dift_context* dc, uint64_t hdaddr, uint64_t wa, uint64_t len ) {
+static void copy_contamination_mem_hd( dift_context* dc, uint64_t wa, uint64_t hdaddr, uint64_t len ) {
     
     uint64_t progress = ((hdaddr + (1 << HD_L2_INDEX_BITS)) & HD_L2_INDEX_MASK) - hdaddr;
 
@@ -1081,6 +1081,10 @@ void dift_contaminate_disk_and( uint64_t haddr, uint64_t len, CONTAMINATION_RECO
 	dift_rec_enqueue( *((uint64_t*)&rec) );
 	dift_rec_enqueue( haddr );
 	dift_rec_enqueue( len ); 
+}
+
+CONTAMINATION_RECORD dift_get_memory_dirty( uint64_t addr ) {
+	return get_mem_dirty( dc, addr );
 }
 
 CONTAMINATION_RECORD dift_get_disk_dirty( uint64_t haddr ) {
