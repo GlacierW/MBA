@@ -1,2 +1,2 @@
-#include "config-host.h"
-#include "config-target.h"
+#include <config-host.h>
+#include <config-target.h>

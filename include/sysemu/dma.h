@@ -218,4 +218,21 @@ uint64_t dma_buf_write(uint8_t *ptr, int32_t len, QEMUSGList *sg);
 void dma_acct_start(BlockBackend *blk, BlockAcctCookie *cookie,
                     QEMUSGList *sg, enum BlockAcctType type);
 
+#if defined(CONFIG_DIFT)
+// the original definition w/o DIFT should be located in dma-helper.c
+typedef struct {
+    BlockAIOCB common;
+    BlockBackend *blk;
+    BlockAIOCB *acb;
+    QEMUSGList *sg;
+    uint64_t sector_num;
+    DMADirection dir;
+    int sg_cur_index;
+    dma_addr_t sg_cur_byte;
+    QEMUIOVector iov;
+    QEMUBH *bh;
+    DMAIOFunc *io_func;
+} DMAAIOCB;
+#endif
+
 #endif

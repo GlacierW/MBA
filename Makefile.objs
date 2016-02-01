@@ -108,3 +108,7 @@ target-obj-y += trace/
 # by libqemuutil.a.  These should be moved to a separate .json schema.
 qga-obj-y = qga/
 qga-vss-dll-obj-y = qga/
+
+######################################################################
+# DSNS Extension
+common-obj-y += ext/dift/dift.o

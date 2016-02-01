@@ -1821,7 +1821,7 @@ static void tcg_out_qemu_dift_tb_begin( TCGContext* s, const TCGArg* args ) {
     tcg_out8(s, 0xc2);                          // or rdx, rax
 
 	tcg_out8(s, 0xa1);
-    tcg_out64(s, (uint64_t)&dift_code_off);    // mov eax, [&dift_code_off]
+    tcg_out64(s, (uint64_t)&dift_code_off);		// mov eax, [&dift_code_off]
 
     tcg_out8(s, 0x48);
     tcg_out8(s, 0x09);
@@ -1831,7 +1831,7 @@ static void tcg_out_qemu_dift_tb_begin( TCGContext* s, const TCGArg* args ) {
     tcg_out32(s, (uint32_t)(rt_enqueue_one_rec - (s->code_ptr + 4)));   // call rt_enqueue_one_rec
 
     tcg_out8(s, 0xb8); 
-    tcg_out32(s, (uint32_t)(args[0] / CONFIG_IF_CODES_PER_TB));    // mov eax, (args[0]/CONFIG_IF_CODES_PER_TB)
+    tcg_out32(s, (uint32_t)(args[0] / CONFIG_IF_CODES_PER_TB));			// mov eax, (args[0]/CONFIG_IF_CODES_PER_TB)
 
     tcg_out8(s, 0xa3);
     tcg_out64(s, (uint64_t)&dift_code_loc);                             // mov [&dift_code_loc], eax
@@ -1843,7 +1843,7 @@ static void tcg_out_qemu_dift_tb_begin( TCGContext* s, const TCGArg* args ) {
     tcg_out64(s, (uint64_t)&dift_code_cntr);    // mov [&dift_code_cntr], eax
 	
 	tcg_out8(s, 0xa3);
-    tcg_out64(s, (uint64_t)&dift_code_off);    // mov [&dift_code_off], eax
+    tcg_out64(s, (uint64_t)&dift_code_off);		// mov [&dift_code_off], eax
 
 }
 #endif

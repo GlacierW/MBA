@@ -27,28 +27,28 @@
 #define CONFIG_INDIRECT_TAINT
 
 #if defined(CONFIG_DIFT_DEBUG)
-// Herein you should define your condition to log when the debugging
-// is activated. By default the condition macro is empty. (no condition, lots of logs)
-// e.g.
-// 		#define DIFT_DEBUG_CONDITION if( dc->tb_rip == 0x1234567812345678 )
-//
-//
-// The DIFT log of each taint propagation is presented in the following context:
-// <DATATYPE> <MAPPING> <PROPAGATION_IN_STRING> <COMPLETE_SIGN>
-//
-// 		DATATYPE => { B(yte), W(ord), D(ouble word), Q(uad) }
-// 		MAPPING  => { I(nside reg), O(ne-to-one), M(ix), C(lear) }
-// 		PROPAGATION_IN_STRING => { 
-// 			e.g.
-// 			RAX <- RCX 
-// 			RAX <= RCX
-// 			( "<-" indicates ASSIGN, whereas "<=" indicates APPEND )
-// 		}
-// 		COMPLETE_SIGN => DIFT_DEBUG_COMPLETE_SIGN
-
+/// Herein you should define your condition to log when the debugging
+/// is activated. By default the condition macro is empty. (no condition, lots of logs)
+/// e.g.
+///		#define DIFT_DEBUG_CONDITION if( dc->tb_rip == 0x1234567812345678 )
+///
+///
+/// The DIFT log of each taint propagation is presented in the following context:
+/// <DATATYPE> <MAPPING> <PROPAGATION_IN_STRING> <COMPLETE_SIGN>
+///
+/// 		DATATYPE => { B(yte), W(ord), D(ouble word), Q(uad) }
+/// 		MAPPING  => { I(nside reg), O(ne-to-one), M(ix), C(lear) }
+/// 		PROPAGATION_IN_STRING => { 
+/// 			e.g.
+/// 			RAX <- RCX 
+/// 			RAX <= RCX
+/// 			( "<-" indicates ASSIGN, whereas "<=" indicates APPEND )
+/// 		}
+/// 		COMPLETE_SIGN => DIFT_DEBUG_COMPLETE_SIGN
 #define DIFT_DEBUG_CONDITION 
 #define DIFT_DEBUG_COMPLETE_SIGN " \x1b[1;32m*\x1b[0m\n"
 #endif
+
 
 /* Advanced Feature for JIT & Packer Detection, yet to complete */
 //#define CONFIG_JIT_IFCODE
@@ -260,10 +260,10 @@ struct dift_context {
     CONTAMINATION_RECORD *mem_dirty_tbl;
     CONTAMINATION_RECORD **hd_l1_dirty_tbl;
 
-//#if defined(CONFIG_DIFT_DEBUG)	
+#if defined(CONFIG_DIFT_DEBUG)	
 	uint64_t tb_rip;
 	uint64_t tb_tc_ptr;
-//#endif	
+#endif	
 
 #if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
 	uint64_t tb_phyeip;
@@ -304,18 +304,14 @@ extern void dift_sync(void);
 
 ///
 /// DIFT Logging functions
+///
+#define DIFT_LOG "dift.log"
 extern FILE* dift_logfile;
 extern void  dift_log( const char*, ... );
 
 CONTAMINATION_RECORD get_valid_taint_mask(void);
 int is_valid_taint(const CONTAMINATION_RECORD* taint);
 
-///
-/// Get the contamination status of a phsical memory byte.
-/// The most significant bit is used for marking whether a code block contains tainted code.
-///
-extern CONTAMINATION_RECORD cpu_get_mem_dirty(uint64_t offset);
-extern CONTAMINATION_RECORD cpu_get_hd_dirty(uint64_t hdaddr);
 
 ///
 /// Get the taint status of virtual memory
@@ -357,9 +353,15 @@ extern uint8_t dift_rec_case_nb(uint8_t, uint8_t, uint8_t, uint8_t);
 
 extern void dift_contaminate_memory_or(uint64_t, uint64_t, CONTAMINATION_RECORD);
 extern void dift_contaminate_memory_and(uint64_t, uint64_t, CONTAMINATION_RECORD);
-extern void dift_contaminate_hd_or(uint64_t, uint64_t, CONTAMINATION_RECORD);
-extern void dift_contaminate_hd_and(uint64_t, uint64_t, CONTAMINATION_RECORD);
+extern void dift_contaminate_disk_or(uint64_t, uint64_t, CONTAMINATION_RECORD);
+extern void dift_contaminate_disk_and(uint64_t, uint64_t, CONTAMINATION_RECORD);
 
+///
+/// Get the contamination status of a phsical memory byte.
+/// The most significant bit is used for marking whether a code block contains tainted code.
+///
+extern CONTAMINATION_RECORD dift_get_memory_dirty(uint64_t offset);
+extern CONTAMINATION_RECORD dift_get_disk_dirty(uint64_t hdaddr);
 
 ///
 /// Flush the record queue if needed.

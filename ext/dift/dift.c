@@ -31,7 +31,7 @@
 #include <stdint.h>
 
 #if !defined(CONFIG_DIFT_GTEST)
-#include <config.h>
+#include <config-host.h>
 #endif
 
 /// we try to make DIFT as standalone as possible
@@ -72,7 +72,6 @@ enum {
 uint64_t phys_ram_base = 0;
 uint64_t phys_ram_size = 0;
 
-#define DIFT_LOG "dift.log"
 FILE* dift_logfile = NULL;
 
 /* Emulator part */
@@ -257,7 +256,6 @@ const char* REG_NAME[] = {
     "RIP", "ES",  "CS",  "SS",  "DS",  "FS",  "GS",  "TMP",
 	"NONE"
 };
-
 
 /// Pre-generate routine for DIFT TCG usage
 static void gen_rt_finish_curr_block( void ) {
@@ -762,12 +760,13 @@ static CONTAMINATION_RECORD get_hd_dirty( dift_context* dc, uint64_t hdaddr ) {
 }
 
 /// DIFT Private API - MEM <--> HD taint propogation (copy_contamination_DST_SRC)
+/// TODO: re-order the parameters
 static void copy_contamination_hd_mem( dift_context* dc, uint64_t ra, uint64_t hdaddr, uint64_t len ) {
 
     uint64_t progress = ((hdaddr + (1 << HD_L2_INDEX_BITS)) & HD_L2_INDEX_MASK) - hdaddr;
 
     while( len ) {
-
+		
         progress = progress < len ? progress : len;
 
         if( dc->hd_l1_dirty_tbl[HD_L1_INDEX(hdaddr)] == NULL )
@@ -1018,20 +1017,72 @@ int dift_start( void ) {
 
 void dift_contaminate_memory_or( uint64_t addr, uint64_t len, CONTAMINATION_RECORD tag ) {
 
-	uint64_t max_fragment = 0xffffffff;
-	uint64_t fragment     = len;
+	dift_record rec;
 
+	uint64_t len_pt,
+			 len_pt_max = 0xffffffff; 
+
+	rec.case_nb = REC_CONTAMINATE_MEM_OR;
 	while( len > 0 ) {
-
 		
+		len_pt = (len > len_pt_max)? len_pt_max : len;
+		
+		*((uint64_t*)&rec) |= ((0x00000000000000ff & tag)    << 8);
+		*((uint64_t*)&rec) |= ((0x00000000ffffffff & len_pt) << 16);
+
+		dift_rec_enqueue( *((uint64_t*)&rec) );
+		dift_rec_enqueue( addr );
+
+		len -= len_pt;
 	}
 }
 
 void dift_contaminate_memory_and( uint64_t addr, uint64_t len, CONTAMINATION_RECORD tag ) {
+	
+	dift_record rec;
+
+	uint64_t len_pt,
+			 len_pt_max = 0xffffffff; 
+
+	rec.case_nb = REC_CONTAMINATE_MEM_AND;
+	while( len > 0 ) {
+		
+		len_pt = (len > len_pt_max)? len_pt_max : len;
+		
+		*((uint64_t*)&rec) |= ((0x00000000000000ff & tag)    << 8);
+		*((uint64_t*)&rec) |= ((0x00000000ffffffff & len_pt) << 16);
+
+		dift_rec_enqueue( *((uint64_t*)&rec) );
+		dift_rec_enqueue( addr );
+
+		len -= len_pt;
+	}
 }
 
 void dift_contaminate_disk_or( uint64_t haddr, uint64_t len, CONTAMINATION_RECORD tag ) {
+
+	dift_record rec;
+
+	rec.case_nb = REC_CONTAMINATE_HD_OR;
+	*((uint64_t*)&rec) |= ((0x00000000000000ff &tag) << 8);
+
+	dift_rec_enqueue( *((uint64_t*)&rec) );
+	dift_rec_enqueue( haddr );
+	dift_rec_enqueue( len ); 
 }
 
 void dift_contaminate_disk_and( uint64_t haddr, uint64_t len, CONTAMINATION_RECORD tag ) {
+
+	dift_record rec;
+
+	rec.case_nb = REC_CONTAMINATE_HD_AND;
+	*((uint64_t*)&rec) |= ((0x00000000000000ff &tag) << 8);
+
+	dift_rec_enqueue( *((uint64_t*)&rec) );
+	dift_rec_enqueue( haddr );
+	dift_rec_enqueue( len ); 
+}
+
+CONTAMINATION_RECORD dift_get_disk_dirty( uint64_t haddr ) {
+	return get_hd_dirty( dc, haddr );
 }

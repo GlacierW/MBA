@@ -1,7 +1,8 @@
 # Makefile for QEMU.
 
-# Modified by DSNS
-CFLAGS=$(CFLAGS) + " -g"
+## Modified by Glacier ##
+CFLAGS+=-g
+#########################
 
 # Always point to the root of the build tree (needs GNU make).
 BUILD_DIR=$(CURDIR)
@@ -216,6 +217,16 @@ Makefile: $(version-obj-y) $(version-lobj-y)
 
 libqemustub.a: $(stub-obj-y)
 libqemuutil.a: $(util-obj-y)
+
+## Modified by Glacier ##
+
+# DIFT 
+ifdef  CONFIG_DIFT
+libdift.a: ext/dift/dift.o
+block-obj-y += libdift.a
+endif
+
+#########################
 
 block-modules = $(foreach o,$(block-obj-m),"$(basename $(subst /,-,$o))",) NULL
 util/module.o-cflags = -D'CONFIG_BLOCK_MODULES=$(block-modules)'

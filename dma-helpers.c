@@ -67,6 +67,8 @@ void qemu_sglist_destroy(QEMUSGList *qsg)
     memset(qsg, 0, sizeof(*qsg));
 }
 
+#if !defined(CONFIG_DIFT)
+// if DIFT is enabled, the structure definition is moved to dma.h for global usage
 typedef struct {
     BlockAIOCB common;
     BlockBackend *blk;
@@ -80,6 +82,7 @@ typedef struct {
     QEMUBH *bh;
     DMAIOFunc *io_func;
 } DMAAIOCB;
+#endif
 
 static void dma_blk_cb(void *opaque, int ret);
 
@@ -142,7 +145,8 @@ static void dma_blk_cb(void *opaque, int ret)
         cur_len = dbs->sg->sg[dbs->sg_cur_index].len - dbs->sg_cur_byte;
 
 		/* Modified by DSNS *
-		printf( "sector size: %llx, cur_addr: %lx, cur_len: %x\n", BDRV_SECTOR_SIZE, (unsigned long)cur_addr, (unsigned int)cur_len );
+		printf( "sg_cur_index: %d, base: %llx, len: %llx, operation: %s\n", dbs->sg_cur_index, dbs->sg->sg[dbs->sg_cur_index].base, dbs->sg->sg[dbs->sg_cur_index].len, (dbs->dir)? "read" : "write" );
+		printf( "sector_num: %llx, sector size: %llx, cur_addr: %lx, cur_len: %x\n", dbs->sector_num, BDRV_SECTOR_SIZE, (unsigned long)cur_addr, (unsigned int)cur_len );
 		********************/
         mem = dma_memory_map(dbs->sg->as, cur_addr, &cur_len, dbs->dir);
         if (!mem)

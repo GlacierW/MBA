@@ -27,6 +27,11 @@
 #include "block/blockjob.h"
 #include "block/block_int.h"
 
+#if defined(CONFIG_DIFT)
+#include "ext/dift/dift.h"
+#include "sysemu/dma.h"
+#endif
+
 #define NOT_DONE 0x7fffffff /* used while emulated sync operation in progress */
 
 static BlockAIOCB *bdrv_aio_readv_em(BlockDriverState *bs,
@@ -2032,32 +2037,84 @@ static void bdrv_co_maybe_schedule_bh(BlockAIOCBCoroutine *acb)
     }
 }
 
+
 /* Invoke bdrv_co_do_readv/bdrv_co_do_writev */
 static void coroutine_fn bdrv_co_do_rw(void *opaque)
 {
     BlockAIOCBCoroutine *acb = opaque;
     BlockDriverState *bs = acb->common.bs;
 
+/* Modified by Glacier */	
+#if defined(CONFIG_DIFT)
+	DMAAIOCB* dbs = acb->common.opaque;
+
+	dift_record rec;
+
+	dma_addr_t addr_mem;
+	uint64_t   addr_sec;
+	uint64_t   len;
+
+	int idx;
+#endif
+/***********************/
+
     if (!acb->is_write) {
         acb->req.error = bdrv_co_do_readv(bs, acb->req.sector,
             acb->req.nb_sectors, acb->req.qiov, acb->req.flags);
-        /* Modified by DSNS *
-		if( acb->req.error >= 0 )
-			printf("Request sector: %lx, LoLLLLL read complete\n", acb->req.sector );
+/* Modified by Glacier */
+#if defined(CONFIG_DIFT)		
+		/*
+		if( acb->req.error >= 0 ) 
+			printf("Request %d sectors from sector number %lx, LoLLLLL read complete\n", acb->req.nb_sectors, acb->req.sector );
+		
+		for( i = 0; i < dbs->sg_cur_index; ++i )
+			printf( "memory: %llx, len: %llx, operation: %s\n", dbs->sg->sg[i].base, dbs->sg->sg[i].len, (dbs->dir)? "read" : "write" );
 		printf("-----------------------------------------------\n");
-		********************/
+		*/
+#endif
+/***********************/
 
     } else {
         acb->req.error = bdrv_co_do_writev(bs, acb->req.sector,
             acb->req.nb_sectors, acb->req.qiov, acb->req.flags);
-        /* Modified by Glacier *
-		if( acb->req.error >= 0 )
-			printf("Request sector: %lx,  LoLLLLL write complete\n", acb->req.sector );
+/* Modified by Glacier */
+#if defined(CONFIG_DIFT)
+		/*
+		if( acb->req.error >= 0 ) 
+			printf("Request %d sectors from sector number %lx,  LoLLLLL write complete\n", acb->req.nb_sectors, acb->req.sector );
+
+		for( i = 0; i < dbs->sg_cur_index; ++i )
+			printf( "memory: %llx, len: %llx, operation: %s\n", dbs->sg->sg[i].base, dbs->sg->sg[i].len, (dbs->dir)? "read" : "write" );
 		printf("-----------------------------------------------\n");
-		********************/
+		*/
+#endif
+/********************/
     }
 
+#if defined(CONFIG_DIFT)
+	if( acb->req.error >= 0 ) {
+
+		rec.case_nb = (acb->is_write)? HD_MEM : MEM_HD;
+
+		addr_sec = acb->req.sector * BDRV_SECTOR_SIZE;
+		for( idx = 0; idx < dbs->sg_cur_index; ++idx ) {
+			
+			addr_mem = dbs->sg->sg[idx].base;
+			len      = dbs->sg->sg[idx].len;
+			
+			dift_rec_enqueue( *(uint64_t*)&rec );
+			dift_rec_enqueue( addr_mem );
+			dift_rec_enqueue( addr_sec );
+			dift_rec_enqueue( len );
+			
+			addr_sec += len;
+		}
+	}
+#endif
+
     bdrv_co_complete(acb);
+
+
 }
 
 static BlockAIOCB *bdrv_co_aio_rw_vector(BlockDriverState *bs,
