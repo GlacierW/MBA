@@ -32,7 +32,6 @@
 /// e.g.
 ///		#define DIFT_DEBUG_CONDITION if( dc->tb_rip == 0x1234567812345678 )
 ///
-///
 /// The DIFT log of each taint propagation is presented in the following context:
 /// <DATATYPE> <MAPPING> <PROPAGATION_IN_STRING> <COMPLETE_SIGN>
 ///
@@ -45,15 +44,9 @@
 /// 			( "<-" indicates ASSIGN, whereas "<=" indicates APPEND )
 /// 		}
 /// 		COMPLETE_SIGN => DIFT_DEBUG_COMPLETE_SIGN
-#define DIFT_DEBUG_CONDITION 
+#define DIFT_DEBUG_CONDITION
 #define DIFT_DEBUG_COMPLETE_SIGN " \x1b[1;32m*\x1b[0m\n"
 #endif
-
-
-/* Advanced Feature for JIT & Packer Detection, yet to complete */
-//#define CONFIG_JIT_IFCODE
-//#define CONFIG_JIT_IFCODE_SIZE_PER_TB 300
-//#define CONFIG_TX_CHECK
 
 /* Constant Definition */
 #define REC_END_SYMBOL  0x9a0a0a0000000000
@@ -264,11 +257,6 @@ struct dift_context {
 	uint64_t tb_rip;
 	uint64_t tb_tc_ptr;
 #endif	
-
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-	uint64_t tb_phyeip;
-    uint32_t force_mem_dirty;
-#endif
 };
 
 typedef struct dift_context dift_context;
@@ -307,36 +295,10 @@ extern void dift_sync(void);
 ///
 #define DIFT_LOG "dift.log"
 extern FILE* dift_logfile;
-extern void  dift_log( const char*, ... );
+extern int   dift_log( const char*, ... );
 
 CONTAMINATION_RECORD get_valid_taint_mask(void);
 int is_valid_taint(const CONTAMINATION_RECORD* taint);
-
-
-///
-/// Get the taint status of virtual memory
-/// For pages not in physical memory, it assumes that the pages are clear.
-/// For each continuous tainted memory range of a same taint type in virtual memory,
-/// it calls the 'callback' with the starting virtual address, ending virtual address(inclusive),
-/// and the taint status.
-/// It the callback function returns zero, it stops and return.
-/// p.s. The reason why it doesn't use 'len' of 'end', is that if the whole virtual memory space is tainted with the same
-/// type, it will cause problem, or the requested virtual memory range is the whole virtual memory space, it will cause
-/// problem.
-///
-/// \param env         CPU state structure of the process
-/// \param addr        starting virtual addr
-/// \param end         ending virtual addr(inclusive)
-/// \param filter      filter out the bits that should be ignored
-/// \param callback    the callback function to be called
-///
-//extern void mem_dirty_iter(CPUState* env, target_ulong addr, target_ulong end, CONTAMINATION_RECORD filter, int(*callback)(target_ulong,target_ulong,CONTAMINATION_RECORD,void*), void*);
-
-// Collect the taint status in a single CONTAMINATION_RECORD
-// Usage:
-//   CONTAMINATION_RECORD mytaint=0;
-//   mem_dirty_iter(env,start,end,taint_collect,mytaint);
-//extern int collect_taint(uint64_t start, uint64_t end, CONTAMINATION_RECORD taint, void* arg);
 
 extern CONTAMINATION_RECORD hd_dirty_tbl[];
 extern uint64_t dift_code_buffer[];
@@ -371,10 +333,9 @@ extern CONTAMINATION_RECORD dift_get_disk_dirty(uint64_t hdaddr);
 ///
 void record_queue_flush(size_t cnt);
 extern void clear_memory(uint64_t, uint64_t);
-#if defined(CONFIG_SET_BIT7_ON_DIRTY_INS_OUTPUT)
-extern void clear_all_taint_bit7(void);
-#endif
 
+
+/// DIFT context
 extern dift_context dc[];
 #endif
 

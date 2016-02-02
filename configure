@@ -5371,7 +5371,7 @@ if test "$dift" = "yes"; then
 fi
 
 if test "$dift_debug" = "yes"; then
-  echo "CONFIG_DIFT=y" >> $config_host_mak
+  echo "CONFIG_DIFT_DEBUG=y" >> $config_host_mak
   echo "CONFIG_DIFT_DEBUG=y" >> $config_target_mak
 fi
 #########################

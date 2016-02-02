@@ -18,22 +18,23 @@
  */
 
 rt_inside_reg_assign:
+	i = rec.v1.inside_r.reg;
+    j = rec.v1.inside_r.d_byte;
+    l = rec.v1.inside_r.s_byte;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "B I %s[%d] <- %s[%d]", 
-			REG_NAME[rec.v1.inside_r.reg],
-			rec.v1.inside_r.d_byte,
-			REG_NAME[rec.v1.inside_r.reg],
-			rec.v1.inside_r.s_byte );
+				REG_NAME[i],
+				j,
+				REG_NAME[i],
+				l );
 }
 #endif
 
-    i = rec.v1.inside_r.reg;
-    j = rec.v1.inside_r.d_byte;
-    l = rec.v1.inside_r.s_byte;
-
     dc->reg_dirty_tbl[i][j] = dc->reg_dirty_tbl[i][l];
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
@@ -43,22 +44,23 @@ DIFT_DEBUG_CONDITION
     THREADED_DISPATCH();
 
 rt_inside_reg_append:
+	i = rec.v1.inside_r.reg;
+    j = rec.v1.inside_r.d_byte;
+    l = rec.v1.inside_r.s_byte;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "B I %s[%d] <= %s[%d]", 
-				REG_NAME[rec.v1.inside_r.reg],
-				rec.v1.inside_r.d_byte,
-				REG_NAME[rec.v1.inside_r.reg],
-				rec.v1.inside_r.s_byte );
+				REG_NAME[i],
+				j,
+				REG_NAME[i],
+				l );
 }
 #endif
 
-    i = rec.v1.inside_r.reg;
-    j = rec.v1.inside_r.d_byte;
-    l = rec.v1.inside_r.s_byte;
-
     dc->reg_dirty_tbl[i][j] |= dc->reg_dirty_tbl[i][l];
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION 
 {
@@ -68,22 +70,24 @@ DIFT_DEBUG_CONDITION
     THREADED_DISPATCH();
 
 rt_reg_reg_oo_assign_mo8:
-#if defined(CONFIG_DIFT_DEBUG)
-DIFT_DEBUG_CONDITION
-{
-	dift_log( "B O %s[%d] <- %s[%d]", 
-				REG_NAME[rec.v1.r2r_byte.dreg],
-				rec.v1.r2r_byte.dreg_byte,
-				REG_NAME[rec.v1.r2r_byte.sreg],
-				rec.v1.r2r_byte.sreg_byte );
-}
-#endif
-    i = rec.v1.r2r_byte.dreg;
+	i = rec.v1.r2r_byte.dreg;
     k = rec.v1.r2r_byte.dreg_byte;
     j = rec.v1.r2r_byte.sreg;
     l = rec.v1.r2r_byte.sreg_byte;
 
+#if defined(CONFIG_DIFT_DEBUG)
+DIFT_DEBUG_CONDITION
+{
+	dift_log( "B O %s[%d] <- %s[%d]", 
+				REG_NAME[i],
+				k,
+				REG_NAME[j],
+				l );
+}
+#endif
+
     dc->reg_dirty_tbl[i][k] = dc->reg_dirty_tbl[j][l];
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
@@ -93,19 +97,20 @@ DIFT_DEBUG_CONDITION
     THREADED_DISPATCH();
 
 rt_reg_reg_oo_assign_mo16:
+	i = rec.v1.r2r.dreg;
+    j = rec.v1.r2r.sreg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "W O %s <- %s", 
-				REG_NAME[rec.v1.r2r.dreg],
-				REG_NAME[rec.v1.r2r.sreg] );
+				REG_NAME[i],
+				REG_NAME[j] );
 }
 #endif
 
-    i = rec.v1.r2r.dreg;
-    j = rec.v1.r2r.sreg;
-
     *(uint16_t*)&dc->reg_dirty_tbl[i][0] = *(uint16_t*)&dc->reg_dirty_tbl[j][0];
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
@@ -115,19 +120,20 @@ DIFT_DEBUG_CONDITION
     THREADED_DISPATCH();
 
 rt_reg_reg_oo_assign_mo32:
+	i = rec.v1.r2r.dreg;
+    j = rec.v1.r2r.sreg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "D O %s <- %s", 
-				REG_NAME[rec.v1.r2r.dreg],
-				REG_NAME[rec.v1.r2r.sreg] );
+				REG_NAME[i],
+				REG_NAME[j] );
 }
 #endif
 
-    i = rec.v1.r2r.dreg;
-    j = rec.v1.r2r.sreg;
-
     *(uint32_t*)&dc->reg_dirty_tbl[i][0] = *(uint32_t*)&dc->reg_dirty_tbl[j][0];
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
@@ -137,19 +143,20 @@ DIFT_DEBUG_CONDITION
     THREADED_DISPATCH();
 
 rt_reg_reg_oo_assign_mo64:
+	i = rec.v1.r2r.dreg;
+    j = rec.v1.r2r.sreg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "Q O %s <- %s", 
-				REG_NAME[rec.v1.r2r.dreg],
-				REG_NAME[rec.v1.r2r.sreg] );
+				REG_NAME[i],
+				REG_NAME[j] );
 }
 #endif
 
-    i = rec.v1.r2r.dreg;
-    j = rec.v1.r2r.sreg;
-
     *(uint64_t*)&dc->reg_dirty_tbl[i][0] = *(uint64_t*)&dc->reg_dirty_tbl[j][0];
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
@@ -159,23 +166,24 @@ DIFT_DEBUG_CONDITION
     THREADED_DISPATCH();
 
 rt_reg_reg_oo_append_mo8:
+    i = rec.v1.r2r_byte.dreg;
+    k = rec.v1.r2r_byte.dreg_byte;
+	j = rec.v1.r2r_byte.sreg;
+    l = rec.v1.r2r_byte.sreg_byte;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "B O %s[%d] <= %s[%d]", 
-				REG_NAME[rec.v1.r2r_byte.dreg],
-				rec.v1.r2r_byte.dreg_byte,
-				REG_NAME[rec.v1.r2r_byte.sreg],
-				rec.v1.r2r_byte.sreg_byte );
+				REG_NAME[i],
+				k,
+				REG_NAME[j],
+				l );
 }
 #endif
 
-    j = rec.v1.r2r_byte.sreg;
-    l = rec.v1.r2r_byte.sreg_byte;
-    i = rec.v1.r2r_byte.dreg;
-    k = rec.v1.r2r_byte.dreg_byte;
-
     dc->reg_dirty_tbl[i][k] |= dc->reg_dirty_tbl[j][l];
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
@@ -185,19 +193,20 @@ DIFT_DEBUG_CONDITION
     THREADED_DISPATCH();
 
 rt_reg_reg_oo_append_mo16:
+	i = rec.v1.r2r.dreg;
+    j = rec.v1.r2r.sreg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "W O %s <= %s", 
-				REG_NAME[rec.v1.r2r.dreg],
-				REG_NAME[rec.v1.r2r.sreg] );
+				REG_NAME[i],
+				REG_NAME[j] );
 }
 #endif
 
-    i = rec.v1.r2r.dreg;
-    j = rec.v1.r2r.sreg;
-
     *(uint16_t*)&dc->reg_dirty_tbl[i][0] |= *(uint16_t*)&dc->reg_dirty_tbl[j][0];
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
@@ -207,18 +216,20 @@ DIFT_DEBUG_CONDITION
     THREADED_DISPATCH();
 
 rt_reg_reg_oo_append_mo32:
+	i = rec.v1.r2r.dreg;
+    j = rec.v1.r2r.sreg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
-	dift_log( "D O %s <= %s %d", 
-				REG_NAME[rec.v1.r2r.dreg],
-				REG_NAME[rec.v1.r2r.sreg], rec.v1.r2r.sreg );
+	dift_log( "D O %s <= %s", 
+				REG_NAME[i],
+				REG_NAME[j] );
 }
 #endif
-    i = rec.v1.r2r.dreg;
-    j = rec.v1.r2r.sreg;
 
     *(uint32_t*)&dc->reg_dirty_tbl[i][0] |= *(uint32_t*)&dc->reg_dirty_tbl[j][0];
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
@@ -228,19 +239,20 @@ DIFT_DEBUG_CONDITION
     THREADED_DISPATCH();
 
 rt_reg_reg_oo_append_mo64:
+	i = rec.v1.r2r.dreg;
+    j = rec.v1.r2r.sreg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "Q O %s <= %s", 
-				REG_NAME[rec.v1.r2r.dreg],
-				REG_NAME[rec.v1.r2r.sreg] );
+				REG_NAME[i],
+				REG_NAME[j] );
 }
 #endif
 
-    i = rec.v1.r2r.dreg;
-    j = rec.v1.r2r.sreg;
-
     *(uint64_t*)&dc->reg_dirty_tbl[i][0] |= *(uint64_t*)&dc->reg_dirty_tbl[j][0];
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
@@ -249,23 +261,25 @@ DIFT_DEBUG_CONDITION
 #endif
     THREADED_DISPATCH();
 
-rt_reg_reg_mix_append_mo16:
+rt_reg_reg_mix_append_mo16: 
+    i = rec.v1.r2r.dreg;
+	j = rec.v1.r2r.sreg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "W M %s <= %s", 
-				REG_NAME[rec.v1.r2r.dreg],
-				REG_NAME[rec.v1.r2r.sreg] );
+				REG_NAME[i],
+				REG_NAME[j] );
 }
 #endif
 
-    j = rec.v1.r2r.sreg;
-    i = rec.v1.r2r.dreg;
-    t = dc->reg_dirty_tbl[j][0] | dc->reg_dirty_tbl[j][1]
-        | dc->reg_dirty_tbl[i][0] | dc->reg_dirty_tbl[i][1];
+    t = dc->reg_dirty_tbl[i][0] | dc->reg_dirty_tbl[i][1]
+        | dc->reg_dirty_tbl[j][0] | dc->reg_dirty_tbl[j][1];
 
     dc->reg_dirty_tbl[i][0] |= t;
     dc->reg_dirty_tbl[i][1] |= t;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
@@ -275,17 +289,17 @@ DIFT_DEBUG_CONDITION
     THREADED_DISPATCH();
 
 rt_reg_reg_mix_append_mo32:
+    i = rec.v1.r2r.dreg;
+	j = rec.v1.r2r.sreg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "D M %s <= %s", 
-				REG_NAME[rec.v1.r2r.dreg],
-				REG_NAME[rec.v1.r2r.sreg] );
+				REG_NAME[i],
+				REG_NAME[j] );
 }
 #endif
-
-    j = rec.v1.r2r.sreg;
-    i = rec.v1.r2r.dreg;
 
     dc->reg_dirty_tbl[i][0] |=
         dc->reg_dirty_tbl[j][0] | dc->reg_dirty_tbl[j][1]
@@ -305,17 +319,17 @@ DIFT_DEBUG_CONDITION
     THREADED_DISPATCH();
 
 rt_reg_reg_mix_append_mo64:
+    i = rec.v1.r2r.dreg;
+	j = rec.v1.r2r.sreg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "Q M %s <- %s", 
-				REG_NAME[rec.v1.r2r.dreg],
-				REG_NAME[rec.v1.r2r.sreg] );
+				REG_NAME[i],
+				REG_NAME[j] );
 }
 #endif
-
-    j = rec.v1.r2r.sreg;
-    i = rec.v1.r2r.dreg;
 
     dc->reg_dirty_tbl[i][0] |=
           dc->reg_dirty_tbl[j][0] | dc->reg_dirty_tbl[j][1]
@@ -334,6 +348,7 @@ DIFT_DEBUG_CONDITION
     dc->reg_dirty_tbl[i][5] = dc->reg_dirty_tbl[i][0];
     dc->reg_dirty_tbl[i][6] = dc->reg_dirty_tbl[i][0];
     dc->reg_dirty_tbl[i][7] = dc->reg_dirty_tbl[i][0];
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
@@ -345,27 +360,27 @@ DIFT_DEBUG_CONDITION
 rt_reg_mem_oo_assign_mo8:
     ra = DEQ_FROM_ADDR();
 	ra = (ra < phys_ram_size) ? ra : phys_ram_size; 
+    i = rec.v1.r2m_m2r_byte.reg;
+    k = rec.v1.r2m_m2r_byte.hl;
 
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "B O %s <- [%p]",
-				REG_NAME[rec.v1.r2m_m2r_byte.reg],
+				REG_NAME[i],
 				ra );			
 }
 #endif
-
-    i = rec.v1.r2m_m2r_byte.reg;
-    k = rec.v1.r2m_m2r_byte.hl;
 
 #if defined(CONFIG_INDIRECT_TAINT)
     j = rec.v1.r2m_m2r_byte.reg_base;
     l = rec.v1.r2m_m2r_byte.reg_index;
 
-    dc->reg_dirty_tbl[i][k] = get_mem_dirty(dc, ra) |
-                        dc->reg_dirty_tbl[j][0] |
-                        dc->reg_dirty_tbl[l][0];
+	t = 0;
+	t |= (j == R_NONE)? 0 : dc->reg_dirty_tbl[j][0];
+	t |= (l == R_NONE)? 0 : dc->reg_dirty_tbl[l][0];
 
+    dc->reg_dirty_tbl[i][k] = get_mem_dirty(dc, ra) | t;
 #else
     dc->reg_dirty_tbl[i][k] = get_mem_dirty(dc, ra);
 #endif
@@ -381,23 +396,25 @@ DIFT_DEBUG_CONDITION
 rt_reg_mem_oo_assign_mo16:
     ra = DEQ_FROM_ADDR();
 	ra = (ra < phys_ram_size) ? ra : phys_ram_size; 
+    i = rec.v1.r2m_m2r.reg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "W O %s <- [%p]",
-				REG_NAME[rec.v1.r2m_m2r.reg],
+				REG_NAME[i],
 				ra );
 }
 #endif
-
-    i = rec.v1.r2m_m2r.reg;
 
 #if defined(CONFIG_INDIRECT_TAINT)
     j = rec.v1.r2m_m2r.reg_base;
     l = rec.v1.r2m_m2r.reg_index;
 
-    t = dc->reg_dirty_tbl[j][0] | dc->reg_dirty_tbl[j][1] |
-        dc->reg_dirty_tbl[l][0] | dc->reg_dirty_tbl[l][1];
+	t = 0;
+	t |= (j == R_NONE)? 0 : (dc->reg_dirty_tbl[j][0] | dc->reg_dirty_tbl[j][1]);
+	t |= (l == R_NONE)? 0 : (dc->reg_dirty_tbl[l][0] | dc->reg_dirty_tbl[l][1]);
+
     dc->reg_dirty_tbl[i][0] = get_mem_dirty(dc, ra) | t;
     dc->reg_dirty_tbl[i][1] = get_mem_dirty(dc, ra + 1) | t;
 #else
@@ -416,26 +433,17 @@ DIFT_DEBUG_CONDITION
 rt_reg_mem_oo_assign_mo32:
     ra = DEQ_FROM_ADDR();
 	ra = (ra < phys_ram_size) ? ra : phys_ram_size; 
+    i = rec.v1.r2m_m2r.reg;
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "D O %s <- [%p]",
-				REG_NAME[rec.v1.r2m_m2r.reg],
+				REG_NAME[i],
 				ra );
 }
 #endif
 
-#if defined(CONFIG_INDIRECT_TAINT)
-    //j = rec.v1.r2m_m2r.reg_base;
-    //l = rec.v1.r2m_m2r.reg_index;
-#endif
-    i = rec.v1.r2m_m2r.reg;
-
-#if defined(CONFIG_INDIRECT_TAINT)
     *(uint32_t*)&dc->reg_dirty_tbl[i][0] = *(uint32_t*)&dc->mem_dirty_tbl[ra];
-#else
-    *(uint32_t*)&dc->reg_dirty_tbl[i][0] = *(uint32_t*)&dc->mem_dirty_tbl[ra];
-#endif
 
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
@@ -448,16 +456,16 @@ DIFT_DEBUG_CONDITION
 rt_reg_mem_oo_assign_mo64:
     ra = DEQ_FROM_ADDR();
 	ra = (ra < phys_ram_size) ? ra : phys_ram_size; 
+    i = rec.v1.r2m_m2r.reg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "Q O %s <- [%p]",
-				REG_NAME[rec.v1.r2m_m2r.reg],
+				REG_NAME[i],
 				ra );
 }
 #endif
-
-    i = rec.v1.r2m_m2r.reg;
 
     *(uint64_t*)&dc->reg_dirty_tbl[i][0] = *(uint64_t*)&dc->mem_dirty_tbl[ra];
 
@@ -472,20 +480,16 @@ DIFT_DEBUG_CONDITION
 rt_reg_mem_oo_append_mo8:
     ra = DEQ_FROM_ADDR();
 	ra = (ra < phys_ram_size) ? ra : phys_ram_size; 
+	i = rec.v1.r2m_m2r_byte.reg;
+    k = rec.v1.r2m_m2r_byte.hl;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "B O %s <= [%p]",
-				REG_NAME[rec.v1.r2m_m2r_byte.reg],
+				REG_NAME[i],
 				ra );
 }				
-#endif
-
-    i = rec.v1.r2m_m2r_byte.reg;
-    k = rec.v1.r2m_m2r_byte.hl;
-#if defined(CONFIG_INDIRECT_TAINT)
-    //j = rec.v1.r2m_m2r_byte.reg_base;
-    //l = rec.v1.r2m_m2r_byte.reg_index;
 #endif
 
     t = get_mem_dirty(dc, ra);
@@ -502,20 +506,17 @@ DIFT_DEBUG_CONDITION
 rt_reg_mem_oo_append_mo16:
     ra = DEQ_FROM_ADDR();
 	ra = (ra < phys_ram_size) ? ra : phys_ram_size; 
+    i = rec.v1.r2m_m2r.reg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "W O %s <= [%p]",
-				REG_NAME[rec.v1.r2m_m2r.reg],
+				REG_NAME[i],
 				ra );
 }
 #endif
 
-#if defined(CONFIG_INDIRECT_TAINT)
-    //j = rec.v1.r2m_m2r.reg_base;
-    //l = rec.v1.r2m_m2r.reg_index;
-#endif
-    i = rec.v1.r2m_m2r.reg;
     t = get_mem_dirty(dc, ra);
     dc->reg_dirty_tbl[i][0] |= t;
 
@@ -533,18 +534,19 @@ DIFT_DEBUG_CONDITION
 rt_reg_mem_oo_append_mo32:
     ra = DEQ_FROM_ADDR();
 	ra = (ra < phys_ram_size) ? ra : phys_ram_size; 
+    i = rec.v1.r2m_m2r.reg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "D O %s <= [%p]",
-				REG_NAME[rec.v1.r2m_m2r.reg],
+				REG_NAME[i],
 				ra );
 }
 #endif
 
-    i = rec.v1.r2m_m2r.reg;
-
     *(uint32_t*)&dc->reg_dirty_tbl[i][0] |= *(uint32_t*)&dc->mem_dirty_tbl[ra];
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
@@ -556,18 +558,19 @@ DIFT_DEBUG_CONDITION
 rt_reg_mem_oo_append_mo64:
     ra = DEQ_FROM_ADDR();
 	ra = (ra < phys_ram_size) ? ra : phys_ram_size; 
+    i = rec.v1.r2m_m2r.reg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "Q O %s <= [%p]",
-				REG_NAME[rec.v1.r2m_m2r.reg],
+				REG_NAME[i],
 				ra );
 }
 #endif
 
-    i = rec.v1.r2m_m2r.reg;
-
     *(uint64_t*)&dc->reg_dirty_tbl[i][0] |= *(uint64_t*)&dc->mem_dirty_tbl[ra];
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
@@ -579,20 +582,17 @@ DIFT_DEBUG_CONDITION
 rt_reg_mem_mix_assign_mo16:
     ra = DEQ_FROM_ADDR();
 	ra = (ra < phys_ram_size) ? ra : phys_ram_size; 
+    i = rec.v1.r2m_m2r.reg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "W M %s <- [%p]",
-				REG_NAME[rec.v1.r2m_m2r.reg],
+				REG_NAME[i],
 				ra );
 }
 #endif
 
-#if defined(CONFIG_INDIRECT_TAINT)
-    //j = rec.v1.r2m_m2r.reg_base;
-    //l = rec.v1.r2m_m2r.reg_index;
-#endif
-    i = rec.v1.r2m_m2r.reg;
     t = get_mem_dirty(dc, ra) | get_mem_dirty(dc, ra + 1);
     dc->reg_dirty_tbl[i][0] = t;
     dc->reg_dirty_tbl[i][1] = t;
@@ -608,16 +608,16 @@ DIFT_DEBUG_CONDITION
 rt_reg_mem_mix_assign_mo32:
     ra = DEQ_FROM_ADDR();
 	ra = (ra < phys_ram_size) ? ra : phys_ram_size; 
+    i = rec.v1.r2m_m2r.reg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "D M %s <- [%p]",
-				REG_NAME[rec.v1.r2m_m2r.reg],
+				REG_NAME[i],
 				ra );
 }
 #endif
-
-    i = rec.v1.r2m_m2r.reg;
 
     t =   get_mem_dirty(dc, ra)     | get_mem_dirty(dc, ra + 1)
         | get_mem_dirty(dc, ra + 2) | get_mem_dirty(dc, ra + 3);
@@ -638,16 +638,16 @@ DIFT_DEBUG_CONDITION
 rt_reg_mem_mix_assign_mo64:
     ra = DEQ_FROM_ADDR();
 	ra = (ra < phys_ram_size) ? ra : phys_ram_size; 
+    i = rec.v1.r2m_m2r.reg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "Q M %s <- [%p]",
-				REG_NAME[rec.v1.r2m_m2r.reg],
+				REG_NAME[i],
 				ra );
 }
 #endif
-
-    i = rec.v1.r2m_m2r.reg;
 
     t =   get_mem_dirty(dc, ra)     | get_mem_dirty(dc, ra + 1)
         | get_mem_dirty(dc, ra + 2) | get_mem_dirty(dc, ra + 3)
@@ -674,20 +674,17 @@ DIFT_DEBUG_CONDITION
 rt_reg_mem_mix_append_mo16:
     ra = DEQ_FROM_ADDR();
 	ra = (ra < phys_ram_size) ? ra : phys_ram_size; 
+    i = rec.v1.r2m_m2r.reg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "W M %s <= [%p]",
-				REG_NAME[rec.v1.r2m_m2r.reg],
+				REG_NAME[i],
 				ra );
 }
 #endif
 
-#if defined(CONFIG_INDIRECT_TAINT)
-    //j = rec.v1.r2m_m2r.reg_base;
-    //l = rec.v1.r2m_m2r.reg_index;
-#endif
-    i = rec.v1.r2m_m2r.reg;
     t = get_mem_dirty(dc, ra) | get_mem_dirty(dc, ra + 1)
         | dc->reg_dirty_tbl[i][0] | dc->reg_dirty_tbl[i][1];
     dc->reg_dirty_tbl[i][0] |= t;
@@ -704,16 +701,17 @@ DIFT_DEBUG_CONDITION
 rt_reg_mem_mix_append_mo32:
     ra = DEQ_FROM_ADDR();
 	ra = (ra < phys_ram_size) ? ra : phys_ram_size; 
+    i = rec.v1.r2m_m2r.reg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "D M %s <= [%p]",
-				REG_NAME[rec.v1.r2m_m2r.reg],
+				REG_NAME[i],
 				ra );
 }
 #endif
 
-    i = rec.v1.r2m_m2r.reg;
     s = *(uint32_t*)&dc->mem_dirty_tbl[ra] | *(uint32_t*)&dc->reg_dirty_tbl[i][0];
     t = *((uint8_t*)&s) | *(((uint8_t*)&s) + 1) | *(((uint8_t*)&s) + 2) | *(((uint8_t*)&s) + 3);
     dc->reg_dirty_tbl[i][0] |= t;
@@ -732,16 +730,17 @@ DIFT_DEBUG_CONDITION
 rt_reg_mem_mix_append_mo64:
     ra = DEQ_FROM_ADDR();
 	ra = (ra < phys_ram_size) ? ra : phys_ram_size; 
+    i = rec.v1.r2m_m2r.reg;
+	
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "Q M %s <= [%p]",
-				REG_NAME[rec.v1.r2m_m2r.reg],
+				REG_NAME[i],
 				ra );
 }
 #endif
 
-    i = rec.v1.r2m_m2r.reg;
     s = *(uint64_t*)&dc->mem_dirty_tbl[ra] | *(uint64_t*)&dc->reg_dirty_tbl[i][0];
     t =   *((uint8_t*)&s)       | *(((uint8_t*)&s) + 1)
         | *(((uint8_t*)&s) + 2) | *(((uint8_t*)&s) + 3)
@@ -768,22 +767,19 @@ DIFT_DEBUG_CONDITION
 rt_mem_reg_oo_assign_mo8:
     wa = DEQ_FROM_ADDR();
 	wa = (wa < phys_ram_size) ? wa : phys_ram_size + 1; 
+	i = rec.v1.r2m_m2r_byte.reg;
+    k = rec.v1.r2m_m2r_byte.hl;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "B O [%p] <- %s",
 				wa,
-				REG_NAME[rec.v1.r2m_m2r_byte.reg] );
+				REG_NAME[i] );
 }
 #endif
 
-    i = rec.v1.r2m_m2r_byte.reg;
-    k = rec.v1.r2m_m2r_byte.hl;
-
     set_mem_dirty(dc, wa, dc->reg_dirty_tbl[i][k], 0);
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-    set_mem_dirty(dc, wa, dc->force_mem_dirty, 1);
-#endif
 
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
@@ -796,24 +792,19 @@ DIFT_DEBUG_CONDITION
 rt_mem_reg_oo_assign_mo16:
     wa = DEQ_FROM_ADDR();
 	wa = (wa < phys_ram_size) ? wa : phys_ram_size + 1; 
+    i = rec.v1.r2m_m2r.reg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "W O [%p] <- %s",
 				wa,
-				REG_NAME[rec.v1.r2m_m2r.reg] );
+				REG_NAME[i] );
 }
 #endif
 
-    i = rec.v1.r2m_m2r.reg;
-
-#if !defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
     set_mem_dirty(dc, wa, dc->reg_dirty_tbl[i][0], 0);
     set_mem_dirty(dc, wa + 1, dc->reg_dirty_tbl[i][1], 0);
-#else
-    set_mem_dirty(dc, wa, dc->reg_dirty_tbl[i][0] | dc->force_mem_dirty, 0);
-    set_mem_dirty(dc, wa + 1, dc->reg_dirty_tbl[i][1] | dc->force_mem_dirty, 0);
-#endif
 
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
@@ -826,23 +817,17 @@ DIFT_DEBUG_CONDITION
 rt_mem_reg_oo_assign_mo32:
     wa = DEQ_FROM_ADDR();
 	wa = (wa < phys_ram_size) ? wa : phys_ram_size + 1; 
+    i = rec.v1.r2m_m2r.reg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "D O [%p] <- %s",
 				wa,
-				REG_NAME[rec.v1.r2m_m2r.reg] );
+				REG_NAME[i] );
 }
 #endif
 
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-    if(dc->force_mem_dirty) {
-        *(uint32_t*)&dc->mem_dirty_tbl[wa] = dc->force_mem_dirty;
-        THREADED_DISPATCH();
-    }
-#endif
-
-    i = rec.v1.r2m_m2r.reg;
     *(uint32_t*)&dc->mem_dirty_tbl[wa] = *(uint32_t*)&dc->reg_dirty_tbl[i][0];
 
 #if defined(CONFIG_DIFT_DEBUG)
@@ -856,23 +841,17 @@ DIFT_DEBUG_CONDITION
 rt_mem_reg_oo_assign_mo64:
     wa = DEQ_FROM_ADDR();
 	wa = (wa < phys_ram_size) ? wa : phys_ram_size + 1; 
+    i = rec.v1.r2m_m2r.reg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "Q O [%p] <- %s",
 				wa,
-				REG_NAME[rec.v1.r2m_m2r.reg] );
+				REG_NAME[i] );
 }
 #endif
 
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-    if(dc->force_mem_dirty) {
-        *(uint64_t*)&dc->mem_dirty_tbl[wa] = dc->force_mem_dirty;
-        THREADED_DISPATCH();
-    }
-#endif
-
-    i = rec.v1.r2m_m2r.reg;
     *(uint64_t*)&dc->mem_dirty_tbl[wa] = *(uint64_t*)&dc->reg_dirty_tbl[i][0];
 
 #if defined(CONFIG_DIFT_DEBUG)
@@ -886,23 +865,16 @@ DIFT_DEBUG_CONDITION
 rt_mem_reg_oo_append_mo8:
     wa = DEQ_FROM_ADDR();
 	wa = (wa < phys_ram_size) ? wa : phys_ram_size + 1; 
+	i = rec.v1.r2m_m2r_byte.reg;
+    k = rec.v1.r2m_m2r_byte.hl;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "B O [%p] <= %s",
 				wa,
-				REG_NAME[rec.v1.r2m_m2r_byte.reg] );
+				REG_NAME[i] );
 }
-#endif
-
-    i = rec.v1.r2m_m2r_byte.reg;
-    k = rec.v1.r2m_m2r_byte.hl;
-
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-    if(dc->force_mem_dirty) {
-        set_mem_dirty(dc, wa, dc->force_mem_dirty, 1);
-        THREADED_DISPATCH();
-    }
 #endif
 
     set_mem_dirty(dc, wa, dc->reg_dirty_tbl[i][k], 1);
@@ -918,23 +890,17 @@ DIFT_DEBUG_CONDITION
 rt_mem_reg_oo_append_mo16:
     wa = DEQ_FROM_ADDR();
 	wa = (wa < phys_ram_size) ? wa : phys_ram_size + 1; 
+    i = rec.v1.r2m_m2r.reg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "W O [%p] <= %s",
 				wa,
-				REG_NAME[rec.v1.r2m_m2r.reg] );
+				REG_NAME[i] );
 }
 #endif
 
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-    if(dc->force_mem_dirty) {
-        *(uint16_t*)&dc->mem_dirty_tbl[wa] |= dc->force_mem_dirty;
-        THREADED_DISPATCH();
-    }
-#endif
-
-    i = rec.v1.r2m_m2r.reg;
     set_mem_dirty(dc, wa, dc->reg_dirty_tbl[i][0], 1);
     set_mem_dirty(dc, wa + 1, dc->reg_dirty_tbl[i][1], 1);
 
@@ -949,23 +915,17 @@ DIFT_DEBUG_CONDITION
 rt_mem_reg_oo_append_mo32:
     wa = DEQ_FROM_ADDR();
 	wa = (wa < phys_ram_size) ? wa : phys_ram_size + 1; 
+    i = rec.v1.r2m_m2r.reg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "D O [%p] <= %s",
 				wa,
-				REG_NAME[rec.v1.r2m_m2r.reg] );
+				REG_NAME[i] );
 }
 #endif
 
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-    if(dc->force_mem_dirty) {
-        *(uint32_t*)&dc->mem_dirty_tbl[wa] |= dc->force_mem_dirty;
-        THREADED_DISPATCH();
-    }
-#endif
-
-    i = rec.v1.r2m_m2r.reg;
     set_mem_dirty(dc, wa, dc->reg_dirty_tbl[i][0], 1);
     set_mem_dirty(dc, wa + 1, dc->reg_dirty_tbl[i][1], 1);
     set_mem_dirty(dc, wa + 2, dc->reg_dirty_tbl[i][2], 1);
@@ -982,23 +942,17 @@ DIFT_DEBUG_CONDITION
 rt_mem_reg_oo_append_mo64:
     wa = DEQ_FROM_ADDR();
 	wa = (wa < phys_ram_size) ? wa : phys_ram_size + 1; 
+    i = rec.v1.r2m_m2r.reg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "Q O [%p] <= %s",
 				wa,
-				REG_NAME[rec.v1.r2m_m2r.reg] );
+				REG_NAME[i] );
 }
 #endif
 
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-    if(dc->force_mem_dirty) {
-        *(uint64_t*)&dc->mem_dirty_tbl[wa] |= dc->force_mem_dirty;
-        THREADED_DISPATCH();
-    }
-#endif
-
-    i = rec.v1.r2m_m2r.reg;
     set_mem_dirty(dc, wa,     dc->reg_dirty_tbl[i][0], 1);
     set_mem_dirty(dc, wa + 1, dc->reg_dirty_tbl[i][1], 1);
     set_mem_dirty(dc, wa + 2, dc->reg_dirty_tbl[i][2], 1);
@@ -1019,23 +973,17 @@ DIFT_DEBUG_CONDITION
 rt_mem_reg_mix_assign_mo16:
     wa = DEQ_FROM_ADDR();
 	wa = (wa < phys_ram_size) ? wa : phys_ram_size + 1; 
+    i = rec.v1.r2m_m2r.reg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "W M [%p] <- %s",
 				wa,
-				REG_NAME[rec.v1.r2m_m2r.reg] );
+				REG_NAME[i] );
 }
 #endif
 
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-    if(dc->force_mem_dirty) {
-        *(uint16_t*)&dc->mem_dirty_tbl[wa] = dc->force_mem_dirty;
-        THREADED_DISPATCH();
-    }
-#endif
-
-    i = rec.v1.r2m_m2r.reg;
     t = dc->reg_dirty_tbl[i][0] | dc->reg_dirty_tbl[i][1];
 
     set_mem_dirty(dc, wa, t, 0);
@@ -1052,26 +1000,19 @@ DIFT_DEBUG_CONDITION
 rt_mem_reg_mix_assign_mo32:
     wa = DEQ_FROM_ADDR();
 	wa = (wa < phys_ram_size) ? wa : phys_ram_size + 1; 
+    i = rec.v1.r2m_m2r.reg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "D M [%p] <- %s",
 				wa,
-				REG_NAME[rec.v1.r2m_m2r.reg] );
+				REG_NAME[i] );
 }
 #endif
 
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-    if(dc->force_mem_dirty) {
-        *(uint32_t*)&dc->mem_dirty_tbl[wa] = dc->force_mem_dirty;
-        THREADED_DISPATCH();
-    }
-#endif
-
-    i = rec.v1.r2m_m2r.reg;
     t =   dc->reg_dirty_tbl[i][0] | dc->reg_dirty_tbl[i][1]
         | dc->reg_dirty_tbl[i][2] | dc->reg_dirty_tbl[i][3];
-
 
     set_mem_dirty(dc, wa, t, 0);
     set_mem_dirty(dc, wa + 1, t, 0);
@@ -1089,28 +1030,21 @@ DIFT_DEBUG_CONDITION
 rt_mem_reg_mix_assign_mo64:
     wa = DEQ_FROM_ADDR();
 	wa = (wa < phys_ram_size) ? wa : phys_ram_size + 1; 
+    i = rec.v1.r2m_m2r.reg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "Q M [%p] <- %s",
 				wa,
-				REG_NAME[rec.v1.r2m_m2r.reg] );
+				REG_NAME[i] );
 }
 #endif
 
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-    if(dc->force_mem_dirty) {
-        *(uint32_t*)&dc->mem_dirty_tbl[wa] = dc->force_mem_dirty;
-        THREADED_DISPATCH();
-    }
-#endif
-
-    i = rec.v1.r2m_m2r.reg;
     t =   dc->reg_dirty_tbl[i][0] | dc->reg_dirty_tbl[i][1]
         | dc->reg_dirty_tbl[i][2] | dc->reg_dirty_tbl[i][3]
         | dc->reg_dirty_tbl[i][4] | dc->reg_dirty_tbl[i][5]
         | dc->reg_dirty_tbl[i][6] | dc->reg_dirty_tbl[i][7];
-
 
     set_mem_dirty(dc, wa,     t, 0);
     set_mem_dirty(dc, wa + 1, t, 0);
@@ -1132,22 +1066,17 @@ DIFT_DEBUG_CONDITION
 rt_mem_reg_mix_append_mo16:
     wa = DEQ_FROM_ADDR();
 	wa = (wa < phys_ram_size) ? wa : phys_ram_size + 1; 
+    i = rec.v1.r2m_m2r.reg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "W M [%p] <= %s",
 				wa,
-				REG_NAME[rec.v1.r2m_m2r.reg] );
+				REG_NAME[i] );
 }
 #endif
 
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-    if(dc->force_mem_dirty) {
-        *(uint16_t*)&dc->mem_dirty_tbl[wa] |= dc->force_mem_dirty;
-        THREADED_DISPATCH();
-    }
-#endif
-    i = rec.v1.r2m_m2r.reg;
     t = dc->reg_dirty_tbl[i][0] | dc->reg_dirty_tbl[i][1]
         | get_mem_dirty(dc, wa) | get_mem_dirty(dc, wa + 1);
 
@@ -1165,22 +1094,17 @@ DIFT_DEBUG_CONDITION
 rt_mem_reg_mix_append_mo32:
     wa = DEQ_FROM_ADDR();
 	wa = (wa < phys_ram_size) ? wa : phys_ram_size + 1; 
+    i = rec.v1.r2m_m2r.reg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "D M [%p] <= %s",
 				wa,
-				REG_NAME[rec.v1.r2m_m2r.reg] );
+				REG_NAME[i] );
 }
 #endif
 
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-    if(dc->force_mem_dirty) {
-        *(uint32_t*)&dc->mem_dirty_tbl[wa] |= dc->force_mem_dirty;
-        THREADED_DISPATCH();
-    }
-#endif
-    i = rec.v1.r2m_m2r.reg;
     t =   dc->reg_dirty_tbl[i][0] | dc->reg_dirty_tbl[i][1]
         | dc->reg_dirty_tbl[i][2] | dc->reg_dirty_tbl[i][3]
         | get_mem_dirty(dc, wa)     | get_mem_dirty(dc, wa + 1)
@@ -1202,22 +1126,17 @@ DIFT_DEBUG_CONDITION
 rt_mem_reg_mix_append_mo64:
     wa = DEQ_FROM_ADDR();
 	wa = (wa < phys_ram_size) ? wa : phys_ram_size + 1; 
+    i = rec.v1.r2m_m2r.reg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "Q M [%p] <= %s",
 				wa,
-				REG_NAME[rec.v1.r2m_m2r.reg] );
+				REG_NAME[i] );
 }
 #endif
 
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-    if(dc->force_mem_dirty) {
-        *(uint64_t*)&dc->mem_dirty_tbl[wa] |= dc->force_mem_dirty;
-        THREADED_DISPATCH();
-    }
-#endif
-    i = rec.v1.r2m_m2r.reg;
     t =   dc->reg_dirty_tbl[i][0] | dc->reg_dirty_tbl[i][1]
         | dc->reg_dirty_tbl[i][2] | dc->reg_dirty_tbl[i][3]
         | dc->reg_dirty_tbl[i][4] | dc->reg_dirty_tbl[i][5]
@@ -1249,6 +1168,7 @@ rt_mem_mem_oo_assign_mo8:
 	wa = (wa < phys_ram_size) ? wa : phys_ram_size + 1; 
     ra = DEQ_FROM_ADDR();
 	ra = (ra < phys_ram_size) ? ra : phys_ram_size; 
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
@@ -1256,13 +1176,6 @@ DIFT_DEBUG_CONDITION
 				wa,
 				ra );
 }
-#endif
-
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-    if(dc->force_mem_dirty) {
-        set_mem_dirty(dc, wa, dc->force_mem_dirty, 0);
-        THREADED_DISPATCH();
-    }
 #endif
 
     set_mem_dirty(dc, wa, get_mem_dirty(dc, ra), 0);
@@ -1280,6 +1193,7 @@ rt_mem_mem_oo_assign_mo16:
 	wa = (wa < phys_ram_size) ? wa : phys_ram_size + 1; 
     ra = DEQ_FROM_ADDR();
 	ra = (ra < phys_ram_size) ? ra : phys_ram_size; 
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
@@ -1287,13 +1201,6 @@ DIFT_DEBUG_CONDITION
 				wa,
 				ra );
 }
-#endif
-
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-    if(dc->force_mem_dirty) {
-        *(uint16_t*)&dc->mem_dirty_tbl[wa] = dc->force_mem_dirty;
-        THREADED_DISPATCH();
-    }
 #endif
 
     set_mem_dirty(dc, wa, get_mem_dirty(dc, ra), 0);
@@ -1312,6 +1219,7 @@ rt_mem_mem_oo_assign_mo32:
 	wa = (wa < phys_ram_size) ? wa : phys_ram_size + 1; 
     ra = DEQ_FROM_ADDR();
 	ra = (ra < phys_ram_size) ? ra : phys_ram_size; 
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
@@ -1319,13 +1227,6 @@ DIFT_DEBUG_CONDITION
 				wa,
 				ra );
 }
-#endif
-
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-    if(dc->force_mem_dirty) {
-        *(uint32_t*)&dc->mem_dirty_tbl[wa] = dc->force_mem_dirty;
-        THREADED_DISPATCH();
-    }
 #endif
 
     set_mem_dirty(dc, wa, get_mem_dirty(dc, ra), 0);
@@ -1346,6 +1247,7 @@ rt_mem_mem_oo_assign_mo64:
 	wa = (wa < phys_ram_size) ? wa : phys_ram_size + 1; 
     ra = DEQ_FROM_ADDR();
 	ra = (ra < phys_ram_size) ? ra : phys_ram_size; 
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
@@ -1353,13 +1255,6 @@ DIFT_DEBUG_CONDITION
 				wa,
 				ra );
 }
-#endif
-
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-    if(dc->force_mem_dirty) {
-        *(uint32_t*)&dc->mem_dirty_tbl[wa] = dc->force_mem_dirty;
-        THREADED_DISPATCH();
-    }
 #endif
 
     set_mem_dirty(dc, wa,     get_mem_dirty(dc, ra),     0);
@@ -1380,17 +1275,18 @@ DIFT_DEBUG_CONDITION
     THREADED_DISPATCH();
 
 rt_reg_im_clear_mo8:
+	i = rec.v1.r2m_m2r_byte.reg;
+    k = rec.v1.r2m_m2r_byte.hl;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "B C: %s",
-				REG_NAME[rec.v1.r2m_m2r_byte.reg] );
+				REG_NAME[i] );
 }
 #endif
 
-    i = rec.v1.r2m_m2r_byte.reg;
-    k = rec.v1.r2m_m2r_byte.hl;
-    dc->reg_dirty_tbl[i][k] = 0;
+       dc->reg_dirty_tbl[i][k] = 0;
 
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION 
@@ -1401,15 +1297,16 @@ DIFT_DEBUG_CONDITION
     THREADED_DISPATCH();
 
 rt_reg_im_clear_mo16:
+    i = rec.v1.r2m_m2r.reg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "W C %s",
-				REG_NAME[rec.v1.r2m_m2r_byte.reg] );
+				REG_NAME[i] );
 }
 #endif
 
-    i = rec.v1.r2m_m2r.reg;
     *(uint16_t*)&dc->reg_dirty_tbl[i][0] = 0;
 
 #if defined(CONFIG_DIFT_DEBUG)
@@ -1421,15 +1318,16 @@ DIFT_DEBUG_CONDITION
     THREADED_DISPATCH();
 
 rt_reg_im_clear_mo32:
+    i = rec.v1.r2m_m2r.reg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "D C %s",
-				REG_NAME[rec.v1.r2m_m2r_byte.reg] );
+				REG_NAME[i] );
 }
 #endif
 
-    i = rec.v1.r2m_m2r.reg;
     *(uint32_t*)&dc->reg_dirty_tbl[i][0] = 0;
 
 #if defined(CONFIG_DIFT_DEBUG)
@@ -1441,15 +1339,16 @@ DIFT_DEBUG_CONDITION
     THREADED_DISPATCH();
 
 rt_reg_im_clear_mo64:
+    i = rec.v1.r2m_m2r.reg;
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "Q C %s",
-				REG_NAME[rec.v1.r2m_m2r_byte.reg] );
+				REG_NAME[i] );
 }
 #endif
 
-    i = rec.v1.r2m_m2r.reg;
     *(uint64_t*)&dc->reg_dirty_tbl[i][0] = 0;
 
 #if defined(CONFIG_DIFT_DEBUG)
@@ -1463,6 +1362,7 @@ DIFT_DEBUG_CONDITION
 rt_mem_im_clear_mo8:
     wa = DEQ_FROM_ADDR();
 	wa = (wa < phys_ram_size) ? wa : phys_ram_size + 1; 
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
@@ -1471,12 +1371,6 @@ DIFT_DEBUG_CONDITION
 }
 #endif
 
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-    if(dc->force_mem_dirty) {
-        set_mem_dirty(dc, wa, dc->force_mem_dirty, 0);
-        THREADED_DISPATCH();
-    }
-#endif
     set_mem_dirty(dc, wa, 0, 0);
 
 #if defined(CONFIG_DIFT_DEBUG)
@@ -1490,6 +1384,7 @@ DIFT_DEBUG_CONDITION
 rt_mem_im_clear_mo16:
     wa = DEQ_FROM_ADDR();
 	wa = (wa < phys_ram_size) ? wa : phys_ram_size + 1; 
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
@@ -1498,12 +1393,6 @@ DIFT_DEBUG_CONDITION
 }
 #endif
 
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-    if(dc->force_mem_dirty) {
-        *(uint16_t*)&dc->mem_dirty_tbl[wa] = dc->force_mem_dirty;
-        THREADED_DISPATCH();
-    }
-#endif
     *(uint16_t*)&dc->mem_dirty_tbl[wa] = 0;
 
 #if defined(CONFIG_DIFT_DEBUG)
@@ -1517,19 +1406,13 @@ DIFT_DEBUG_CONDITION
 rt_mem_im_clear_mo32:
     wa = DEQ_FROM_ADDR();
 	wa = (wa < phys_ram_size) ? wa : phys_ram_size + 1; 
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "D C [%p]",
 				wa );
 }
-#endif
-
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-    if(dc->force_mem_dirty) {
-        *(uint32_t*)&dc->mem_dirty_tbl[wa] = dc->force_mem_dirty;
-        THREADED_DISPATCH();
-    }
 #endif
 
     *(uint32_t*)&dc->mem_dirty_tbl[wa] = 0;
@@ -1545,19 +1428,13 @@ DIFT_DEBUG_CONDITION
 rt_mem_im_clear_mo64:
     wa = DEQ_FROM_ADDR();
 	wa = (wa < phys_ram_size) ? wa : phys_ram_size + 1; 
+
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
 {
 	dift_log( "Q C [%p]",
 				wa );
 }
-#endif
-
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-    if(dc->force_mem_dirty) {
-        *(uint64_t*)&dc->mem_dirty_tbl[wa] = dc->force_mem_dirty;
-        THREADED_DISPATCH();
-    }
 #endif
 
     *(uint64_t*)&dc->mem_dirty_tbl[wa] = 0;
@@ -1593,6 +1470,7 @@ rt_rec_contaminate_mem_or:
     l = ((*(uint64_t*)&rec) & 0x0000ffffffff0000) >> 16;
     for(i = 0 ; i < l ; i++)
         set_mem_dirty(dc, wa + i, j, 1);
+	dift_log( "rec_contaminate_mem_or\n" );
     THREADED_DISPATCH();
 
 rt_rec_contaminate_mem_and:
@@ -1602,6 +1480,7 @@ rt_rec_contaminate_mem_and:
     l = ((*(uint64_t*)&rec) & 0x0000ffffffff0000) >> 16;
     for(i = 0 ; i < l ; i++)
         and_mem_dirty(dc, wa + i, j);
+	dift_log( "rec_contaminate_mem_and\n" );
     THREADED_DISPATCH();
 
 rt_rec_contaminate_hd_or:
@@ -1611,6 +1490,7 @@ rt_rec_contaminate_hd_or:
     j = ((*(uint64_t*)&rec) & 0x000000000000ff00) >> 8;
     for(i = 0 ; i < l ; i++)
         set_hd_dirty_or(dc, hdaddr + i, j);
+	dift_log( "rec_contaminate_hd_or\n" );
     THREADED_DISPATCH();
 
 rt_rec_contaminate_hd_and:
@@ -1620,6 +1500,7 @@ rt_rec_contaminate_hd_and:
     j = ((*(uint64_t*)&rec) & 0x000000000000ff00) >> 8;
     for(i = 0 ; i < l ; i++)
         set_hd_dirty_and(dc, hdaddr + i, j);
+	dift_log( "rec_contaminate_hd_and\n" );
     THREADED_DISPATCH();
 
 rt_rec_clear_mem:
@@ -1629,26 +1510,10 @@ rt_rec_clear_mem:
 
     for(i = 0; i < l; i++)
         set_mem_dirty(dc, wa + i, 0, 0);
+	dift_log( "rec_clear_mem\n" );
     THREADED_DISPATCH();
 
 rt_rec_block_begin:
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-    dc->phyeip = DEQ_FROM_CODE();
-    /* We only check the first 4 bytes of the first instruction in this code block */
-    uint32_t tt = *(uint32_t*)&dc->mem_dirty_tbl[dc->phyeip];
-    if(tt) {
-        uint32_t ss = ((tt & 0xff000000) >> 24) |
-                      ((tt & 0xff0000) >> 16) |
-                      ((tt & 0xff00) >> 8) |
-                      ((tt & 0xff));
-#if defined(CONFIG_SET_BIT7_ON_DIRTY_INS_OUTPUT)
-        ss |= (1 << 7);
-#endif
-        tt = (ss << 24) | (ss << 16) | (ss << 8) | ss;
-    }
-    dc->force_mem_dirty = tt;
-#endif
-
 #if defined(CONFIG_DIFT_DEBUG)
 	dc->tb_rip = DEQ_FROM_CODE();
 	dc->tb_tc_ptr = DEQ_FROM_CODE();

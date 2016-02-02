@@ -2248,14 +2248,30 @@ static void gen_lea_modrm(CPUX86State *env, DisasContext *s, int modrm)
         }
         base |= REX_B(s);
 
+/* Modified by Glacier */
+#if defined(CONFIG_DIFT)
+		s->reg_base = base;
+#endif
+/***********************/					
+
         switch (mod) {
         case 0:
             if ((base & 7) == 5) {
                 base = -1;
+/* Modified by Glacier */
+#if defined(CONFIG_DIFT)
+				s->reg_base = R_NONE;
+#endif
+/***********************/					
                 disp = (int32_t)cpu_ldl_code(env, s->pc);
-                s->pc += 4;
+                s->pc += 4;				
                 if (CODE64(s) && !havesib) {
                     disp += s->pc + s->rip_offset;
+/* Modified by Glacier */
+#if defined(CONFIG_DIFT)
+					s->reg_base = R_RIP;
+#endif
+/***********************/					
                 }
             } else {
                 disp = 0;
@@ -2281,13 +2297,14 @@ static void gen_lea_modrm(CPUX86State *env, DisasContext *s, int modrm)
 
         // SIB case
         if (index >= 0) {
-            if (scale == 0) {
-                sum = cpu_regs[index];
 /* Modified by Glacier */
 #if defined(CONFIG_DIFT) && defined(CONFIG_INDIRECT_TAINT)
-                s->reg_index = index;
+        	s->reg_index = index;
 #endif
 /***********************/                
+
+            if (scale == 0) {
+                sum = cpu_regs[index];
 
             } else {
                 tcg_gen_shli_tl(cpu_A0, cpu_regs[index], scale);
@@ -2300,12 +2317,6 @@ static void gen_lea_modrm(CPUX86State *env, DisasContext *s, int modrm)
         } else if (base >= 0) {
             sum = cpu_regs[base];
         }
-
-/* Modified by Glacier */
-#if defined(CONFIG_DIFT) && defined(CONFIG_INDIRECT_TAINT)
-        s->reg_base = (base == -1) ? R_RIP : base;
-#endif
-/***********************/                
 
         if (TCGV_IS_UNUSED(sum)) {
             tcg_gen_movi_tl(cpu_A0, disp);
@@ -6553,14 +6564,25 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         gen_op_mov_reg_v(ot, reg, cpu_A0);
 /* Modified by Glacier */
 #if defined(CONFIG_DIFT) && defined(CONFIG_INDIRECT_TAINT)
-        if( reg != s->reg_base && reg != s->reg_index ) {
-            gen_dift_reg_reg( s, reg, s->reg_base, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0, 0 );
-            gen_dift_reg_reg( s, reg, s->reg_index, EFFECT_APPEND | EFFECT_ONE_TO_ONE, ot, 0, 0 );
-        } else if( reg != s->reg_base ) {
+
+		if( s->reg_base != R_NONE && reg != s->reg_base )
             gen_dift_reg_reg( s, reg, s->reg_base, EFFECT_APPEND | EFFECT_ONE_TO_ONE, ot, 0, 0 );
-        } else if( reg != s->reg_index ) {
+
+		if( s->reg_index != R_NONE && reg != s->reg_index )
+            gen_dift_reg_reg( s, reg, s->reg_index, EFFECT_APPEND | EFFECT_ONE_TO_ONE, ot, 0, 0 );
+
+		/*
+        if( reg != s->reg_base && reg != s->reg_index ) {
+			if( s->reg_base != R_NONE )
+	            gen_dift_reg_reg( s, reg, s->reg_base, EFFECT_ASSIGN | EFFECT_ONE_TO_ONE, ot, 0, 0 );
+			if( s->reg_index != R_NONE )
+	            gen_dift_reg_reg( s, reg, s->reg_index, EFFECT_APPEND | EFFECT_ONE_TO_ONE, ot, 0, 0 );
+        } else if( reg != s->reg_base && s->reg_base != R_NONE ) {
+            gen_dift_reg_reg( s, reg, s->reg_base, EFFECT_APPEND | EFFECT_ONE_TO_ONE, ot, 0, 0 );
+        } else if( reg != s->reg_index && s->reg_index != R_NONE ) {
             gen_dift_reg_reg( s, reg, s->reg_index, EFFECT_APPEND | EFFECT_ONE_TO_ONE, ot, 0, 0 );
         }
+		*/
         gen_dift_sync_i64( s );
 #endif
 /***********************/

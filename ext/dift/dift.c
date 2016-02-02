@@ -34,12 +34,7 @@
 #include <config-host.h>
 #endif
 
-/// we try to make DIFT as standalone as possible
-//#include "../../target-i386/cpu.h"
-//#include "../../tcg/tcg.h"
-
 #include "dift.h"
-//#include "ifcode-translator.h"
 
 #define likely(x)   __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
@@ -566,7 +561,7 @@ static void pre_generate_routine( void ) {
     gen_rt_enqueue_raddr();
     gen_rt_enqueue_waddr();
 
-#if defined(CONFIG_DIFT_DEBUG)
+#if defined(CONFIG_DIFT_DEBUG) 
 	dift_log( "rt_finish_curr_block @ %16p\n", rt_finish_curr_block );
 	dift_log( "rt_get_next_enqptr   @ %16p\n", rt_get_next_enqptr );
 	dift_log( "rt_enqueue_one_rec   @ %16p\n", rt_enqueue_one_rec );
@@ -575,7 +570,7 @@ static void pre_generate_routine( void ) {
 	dift_log( "-------------------------------------------------\n" );
 #endif	
 
-    /* map */
+    // memory map as executable buffer
     page_size = getpagesize();
     start = (uintptr_t)pre_generated_routine;
     start &= ~(page_size - 1);
@@ -615,7 +610,7 @@ static void init_case_mapping( void ) {
 
 static void init_dift_context( dift_context *dc ) {
 
-	bzero(dc, sizeof(struct dift_context));
+	bzero( dc, sizeof(dift_context) );
 	
 	dc->tail = 0;
     dc->prev_tail = Q_CHUNKS_SIZE - 1;
@@ -633,8 +628,8 @@ static void init_dift_context( dift_context *dc ) {
         exit( 1 );
     }
 
-    clean_source = phys_ram_base + phys_ram_size + 0;
-    null_sink    = phys_ram_base + phys_ram_size + 1;
+    clean_source = phys_ram_size + 0;
+    null_sink    = phys_ram_size + 1;
 
     // allocation for harddisk taint
     dc->hd_l1_dirty_tbl = (CONTAMINATION_RECORD**)calloc( 1 << HD_L1_INDEX_BITS, sizeof(CONTAMINATION_RECORD*) );
@@ -642,9 +637,6 @@ static void init_dift_context( dift_context *dc ) {
         fprintf( stderr, "Not enough memory for hd_l1_dirty_tbl\n" );
         exit( 1 );
     }
-#if defined(CONFIG_TAINT_DIRTY_INS_OUTPUT)
-    dc->force_mem_dirty = 0;
-#endif
 }
 
 /// DIFT Private API - Queue manipulation
@@ -654,9 +646,9 @@ static uint64_t* next_block( dift_context *dc ) {
     while(unlikely(q_chunks_flag[dc->tail] != CHUNK_FILLED))
     {   
         if( sleepness )
-            usleep(1000);
+            usleep( 1000 );
         else
-            asm volatile("pause");
+            asm volatile( "pause" );
     }
     q_chunks_flag[dc->tail] = CHUNK_CONSUMING;
     dc->deqptr = q_chunks_ptr[dc->tail];
@@ -760,7 +752,6 @@ static CONTAMINATION_RECORD get_hd_dirty( dift_context* dc, uint64_t hdaddr ) {
 }
 
 /// DIFT Private API - MEM <--> HD taint propogation (copy_contamination_DST_SRC)
-/// TODO: re-order the parameters
 static void copy_contamination_hd_mem( dift_context* dc, uint64_t hdaddr, uint64_t ra, uint64_t len ) {
 
     uint64_t progress = ((hdaddr + (1 << HD_L2_INDEX_BITS)) & HD_L2_INDEX_MASK) - hdaddr;
@@ -922,15 +913,20 @@ static void* analysis_mainloop( void* arg ) {
 }
 
 /// DIFT Public API - All of the public APIs are named with the prefix "dift_"
-void dift_log( const char* fmt, ... ) {
-	
+int dift_log( const char* fmt, ... ) {
+
+	int ret = -1;
+
 	va_list ap;
 	
 	va_start( ap, fmt );
 	if( dift_logfile ) {
-		vfprintf( dift_logfile, fmt, ap );
+		ret = vfprintf( dift_logfile, fmt, ap );
+		fflush( dift_logfile );
 	}
 	va_end( ap );
+
+	return ret;
 }
 
 void dift_rec_enqueue( uint64_t data_in ) {
