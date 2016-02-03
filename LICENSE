@@ -1,4 +1,4 @@
-The following points clarify the QEMU license:
+The following points clarify the MBA license:
 
 1) QEMU as a whole is released under the GNU General Public License,
 version 2.
@@ -18,4 +18,7 @@ or directories: bsd-user/, linux-user/, hw/vfio/, hw/xen/xen_pt*.
 
 4) QEMU is a trademark of Fabrice Bellard.
 
-Fabrice Bellard and the QEMU team
+5) The modification to the QEMU source and the newly added MBA source are 
+   released under the GNU General Public License, version 2 or later
+
+Fabrice Bellard, the QEMU team, and the MBA team

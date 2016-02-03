@@ -368,19 +368,19 @@ static void gen_dift_enqueue_i64( DisasContext* s, uint64_t arg ) {
     if( !label_or_helper_appeared ) { 
 
         dift_code_buffer[ s->tb->dift_code_loc + s->tb->dift_code_idx ] = arg;
-		s->tb->dift_code_idx++;
-		
-		qemu_log( "DIFT code cache enqueue: 0x%016lx\n", arg );
+        s->tb->dift_code_idx++;
+        
+        qemu_log( "DIFT code cache enqueue: 0x%016lx\n", arg );
 
-		if( s->tb->dift_code_idx == CONFIG_IF_CODES_PER_TB - 1 ) {
-			gen_dift_sync_i64( s );
-			label_or_helper_appeared = 1;
-		}
-	}
+        if( s->tb->dift_code_idx == CONFIG_IF_CODES_PER_TB - 1 ) {
+            gen_dift_sync_i64( s );
+            label_or_helper_appeared = 1;
+        }
+    }
     else {
         tcg_gen_op1i( INDEX_op_qemu_dift_enq_i64, arg );
-		qemu_log( "DIFT normal enqueue: 0x%016lx\n", arg );
-	}
+        qemu_log( "DIFT normal enqueue: 0x%016lx\n", arg );
+    }
 }
 
 static void gen_dift_enqueue_addr( DisasContext* s, int is_wa ) {
@@ -395,7 +395,7 @@ static void gen_dift_reg_reg( DisasContext* s, uint16_t dreg, uint16_t sreg, uin
 
     dift_record rec;
 
-	qemu_log( "gen_dift_reg_reg => dreg: %d, sreg: %d, ot: %d\n", dreg, sreg, ot );
+    qemu_log( "gen_dift_reg_reg => dreg: %d, sreg: %d, ot: %d\n", dreg, sreg, ot );
 
     rec.case_nb = dift_rec_case_nb( OPT_REG, OPT_REG, ot & 0x03, effect );
     if( ot == MO_8 )
@@ -420,7 +420,7 @@ static void gen_dift_reg_mem( DisasContext* s, uint16_t dst_reg_name, uint8_t ef
 
     dift_record rec;
 
-	qemu_log( "gen_dift_reg_mem => dreg: %d, ot: %d\n", dst_reg_name, ot );
+    qemu_log( "gen_dift_reg_mem => dreg: %d, ot: %d\n", dst_reg_name, ot );
 
     rec.case_nb = dift_rec_case_nb( OPT_REG, OPT_MEM, ot & 0x03, effect );
     if( ot == MO_8 ) {
@@ -446,7 +446,7 @@ static void gen_dift_mem_reg( DisasContext* s, uint16_t src_reg_name, uint8_t ef
 
     dift_record rec;
 
-	qemu_log( "gen_dift_mem_reg => sreg: %d, ot: %d\n", src_reg_name, ot );
+    qemu_log( "gen_dift_mem_reg => sreg: %d, ot: %d\n", src_reg_name, ot );
 
     rec.case_nb = dift_rec_case_nb( OPT_MEM, OPT_REG, ot & 0x03, effect );
     if( ot == MO_8 ) {
@@ -472,7 +472,7 @@ static void gen_dift_mem_mem( DisasContext* s, uint8_t effect, uint8_t ot ) {
 
     dift_record rec;
 
-	qemu_log( "gen_dift_mem_mem => ot: %d\n", ot );
+    qemu_log( "gen_dift_mem_mem => ot: %d\n", ot );
 
     rec.case_nb = dift_rec_case_nb( OPT_MEM, OPT_MEM, ot & 0x03, effect );
     gen_dift_enqueue_i64(s, *(uint64_t*)&rec);
@@ -484,7 +484,7 @@ static void gen_dift_reg_im( DisasContext* s, uint16_t dst_reg_name, uint8_t ot,
 
     dift_record rec;
 
-	qemu_log( "gen_dift_reg_im => dreg: %d, ot: %d\n", dst_reg_name, ot );
+    qemu_log( "gen_dift_reg_im => dreg: %d, ot: %d\n", dst_reg_name, ot );
 
     rec.case_nb = dift_rec_case_nb( OPT_REG, OPT_IM, ot & 0x03, EFFECT_CLEAR );
     if( ot == MO_8 ) {
@@ -500,7 +500,7 @@ static void gen_dift_mem_im( DisasContext* s, uint8_t ot ) {
 
     dift_record rec;
 
-	qemu_log( "gen_dift_mem_im => ot: %d\n", ot );
+    qemu_log( "gen_dift_mem_im => ot: %d\n", ot );
 
     rec.case_nb = dift_rec_case_nb( OPT_MEM, OPT_IM, ot & 0x03, EFFECT_CLEAR );
     gen_dift_enqueue_i64( s, *(uint64_t*)&rec );
@@ -520,30 +520,30 @@ static void gen_dift_op( DisasContext* s, uint8_t effect, int ot ) {
                         effect, ot,
                         s->dst_reg > 3 ? 1 : 0,
                         s->src_reg > 3 ? 1 : 0 );
-			}
+            }
             else {
                 gen_dift_reg_reg( s, s->dst_reg, s->src_reg, effect, ot, 0, 0 );
-			}
+            }
         }
         else if( s->src_type == OPT_MEM ) {
             if( ot == MO_8 ) {
                 gen_dift_reg_mem(
-						s,
+                        s,
                         s->dst_reg > 3 ? s->dst_reg - 4 : s->dst_reg,
                         effect, ot,
                         s->dst_reg > 3 ? 1 : 0 );
             }
             else {
-            	gen_dift_reg_mem( s, s->dst_reg, effect, ot, 0 );
+                gen_dift_reg_mem( s, s->dst_reg, effect, ot, 0 );
             }
         }
     }
     else if( s->dst_type == OPT_MEM ) {
 
-    	if( s->src_type == OPT_REG ) {
-        	if( ot == MO_8 ) {
+        if( s->src_type == OPT_REG ) {
+            if( ot == MO_8 ) {
                 gen_dift_mem_reg(
-						s,
+                        s,
                         s->src_reg > 3 ? s->src_reg - 4 : s->src_reg,
                         effect, ot,
                         s->src_reg > 3 ? 1 : 0 );
@@ -551,13 +551,13 @@ static void gen_dift_op( DisasContext* s, uint8_t effect, int ot ) {
             else {
                 gen_dift_mem_reg( s, s->src_reg, effect, ot, 0 );
             }
-		}
+        }
         else if( s->src_type == OPT_MEM ) {
             gen_dift_mem_mem( s, effect, ot );
-		}
+        }
         else if( s->src_type == OPT_IM ) {
             gen_dift_mem_im( s, ot );
-		}
+        }
     }
     gen_dift_sync_i64( s );
 }
@@ -566,7 +566,7 @@ static void gen_dift_inside_reg( DisasContext* s, uint16_t reg, uint8_t dst_byte
 
     dift_record rec;
 
-	qemu_log( "gen_dift_inside_reg => reg: %d, dbyte:%d, sbyte:%d\n", reg, dst_byte, src_byte );
+    qemu_log( "gen_dift_inside_reg => reg: %d, dbyte:%d, sbyte:%d\n", reg, dst_byte, src_byte );
 
     rec.case_nb = dift_rec_case_nb( OPT_REG, OPT_REG, MO_8, effect | EFFECT_INSIDE_REG );
     rec.v1.inside_r.reg     = reg;
@@ -579,11 +579,11 @@ static void gen_dift_block_begin( DisasContext* s ) {
 
     uint64_t rec = REC_BLOCK_BEGIN;
 
-	qemu_log( "gen_dift_block_begin, tb->dift_code_loc = %08x\n", s->tb->dift_code_loc / CONFIG_IF_CODES_PER_TB );
+    qemu_log( "gen_dift_block_begin, tb->dift_code_loc = %08x\n", s->tb->dift_code_loc / CONFIG_IF_CODES_PER_TB );
 
     tcg_gen_op1i( INDEX_op_qemu_dift_tb_begin, s->tb->dift_code_loc );
     gen_dift_enqueue_i64( s, rec );
-#if defined(CONFIG_DIFT_DEBUG)	
+#if defined(CONFIG_DIFT_DEBUG)  
     gen_dift_enqueue_i64( s, (uint64_t)s->tb->pc );
     gen_dift_enqueue_i64( s, (uint64_t)s->tb->tc_ptr );
 #endif
@@ -2221,7 +2221,7 @@ static void gen_lea_modrm(CPUX86State *env, DisasContext *s, int modrm)
         base |= REX_B(s);
 
 #if defined(CONFIG_DIFT)
-		s->reg_base = base;
+        s->reg_base = base;
 #endif
 
         switch (mod) {
@@ -2229,14 +2229,14 @@ static void gen_lea_modrm(CPUX86State *env, DisasContext *s, int modrm)
             if ((base & 7) == 5) {
                 base = -1;
 #if defined(CONFIG_DIFT)
-				s->reg_base = R_NONE;
+                s->reg_base = R_NONE;
 #endif
                 disp = (int32_t)cpu_ldl_code(env, s->pc);
-                s->pc += 4;				
+                s->pc += 4;             
                 if (CODE64(s) && !havesib) {
                     disp += s->pc + s->rip_offset;
 #if defined(CONFIG_DIFT)
-					s->reg_base = R_RIP;
+                    s->reg_base = R_RIP;
 #endif
                 }
             } else {
@@ -2264,7 +2264,7 @@ static void gen_lea_modrm(CPUX86State *env, DisasContext *s, int modrm)
         // SIB case
         if (index >= 0) {
 #if defined(CONFIG_DIFT) && defined(CONFIG_INDIRECT_TAINT)
-        	s->reg_index = index;
+            s->reg_index = index;
 #endif
 
             if (scale == 0) {
@@ -3766,7 +3766,7 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
         case 0x172:
         case 0x173:
             if (b1 >= 2) {
-	        goto illegal_op;
+            goto illegal_op;
             }
             val = cpu_ldub_code(env, s->pc++);
             if (is_xmm) {
@@ -6374,10 +6374,10 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         gen_op_mov_reg_v(ot, reg, cpu_A0);
 #if defined(CONFIG_DIFT) && defined(CONFIG_INDIRECT_TAINT)
 
-		if( s->reg_base != R_NONE && reg != s->reg_base )
+        if( s->reg_base != R_NONE && reg != s->reg_base )
             gen_dift_reg_reg( s, reg, s->reg_base, EFFECT_APPEND | EFFECT_ONE_TO_ONE, ot, 0, 0 );
 
-		if( s->reg_index != R_NONE && reg != s->reg_index )
+        if( s->reg_index != R_NONE && reg != s->reg_index )
             gen_dift_reg_reg( s, reg, s->reg_index, EFFECT_APPEND | EFFECT_ONE_TO_ONE, ot, 0, 0 );
 
         gen_dift_sync_i64( s );
@@ -7308,7 +7308,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                      SVM_IOIO_TYPE_MASK | svm_is_rep(prefixes));
         if (s->tb->cflags & CF_USE_ICOUNT) {
             gen_io_start();
-	}
+    }
         tcg_gen_movi_i32(cpu_tmp2_i32, val);
         gen_helper_in_func(ot, cpu_T[1], cpu_tmp2_i32);
         gen_op_mov_reg_v(ot, R_EAX, cpu_T[1]);
@@ -7328,7 +7328,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
 
         if (s->tb->cflags & CF_USE_ICOUNT) {
             gen_io_start();
-	}
+    }
         tcg_gen_movi_i32(cpu_tmp2_i32, val);
         tcg_gen_trunc_tl_i32(cpu_tmp3_i32, cpu_T[1]);
         gen_helper_out_func(ot, cpu_tmp2_i32, cpu_tmp3_i32);
@@ -7345,7 +7345,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                      SVM_IOIO_TYPE_MASK | svm_is_rep(prefixes));
         if (s->tb->cflags & CF_USE_ICOUNT) {
             gen_io_start();
-	}
+    }
         tcg_gen_trunc_tl_i32(cpu_tmp2_i32, cpu_T[0]);
         gen_helper_in_func(ot, cpu_T[1], cpu_tmp2_i32);
         gen_op_mov_reg_v(ot, R_EAX, cpu_T[1]);
@@ -7364,7 +7364,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
 
         if (s->tb->cflags & CF_USE_ICOUNT) {
             gen_io_start();
-	}
+    }
         tcg_gen_trunc_tl_i32(cpu_tmp2_i32, cpu_T[0]);
         tcg_gen_trunc_tl_i32(cpu_tmp3_i32, cpu_T[1]);
         gen_helper_out_func(ot, cpu_tmp2_i32, cpu_tmp3_i32);
@@ -8088,7 +8088,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         gen_jmp_im(pc_start - s->cs_base);
         if (s->tb->cflags & CF_USE_ICOUNT) {
             gen_io_start();
-	}
+    }
         gen_helper_rdtsc(cpu_env);
         if (s->tb->cflags & CF_USE_ICOUNT) {
             gen_io_end();
@@ -8484,7 +8484,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
                     gen_jmp_im(pc_start - s->cs_base);
                     if (s->tb->cflags & CF_USE_ICOUNT) {
                         gen_io_start();
-		    }
+            }
                     gen_helper_rdtscp(cpu_env);
                     if (s->tb->cflags & CF_USE_ICOUNT) {
                         gen_io_end();
@@ -9034,14 +9034,14 @@ static inline void gen_intermediate_code_internal(X86CPU *cpu,
 #if defined(CONFIG_DIFT)
     dc->tb_begin = 1;
     if( dc->tb->dift_code_idx ) {
-		
+        
         dc->tb->dift_code_idx = 0;
 
-		dift_code_off = dift_code_cntr;
+        dift_code_off = dift_code_cntr;
         dift_sync();
-		dift_code_loc = (dc->tb->dift_code_loc / CONFIG_IF_CODES_PER_TB);
+        dift_code_loc = (dc->tb->dift_code_loc / CONFIG_IF_CODES_PER_TB);
     }
-	label_or_helper_appeared = 0;
+    label_or_helper_appeared = 0;
 #endif
     for(;;) {
         if (unlikely(!QTAILQ_EMPTY(&cs->breakpoints))) {

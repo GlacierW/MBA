@@ -33,37 +33,37 @@
 /// Herein you should define your condition to log when the debugging
 /// is activated. By default the condition macro is empty. (no condition, lots of logs)
 /// e.g.
-///		#define DIFT_DEBUG_CONDITION if( dc->tb_rip == 0x1234567812345678 )
+///     #define DIFT_DEBUG_CONDITION if( dc->tb_rip == 0x1234567812345678 )
 /// 
 /// The DIFT log can be divided into three catogories and have their own logging formats: 
-///		1. REG & MEM
-///		2. MEM & DISK
-///		3. DIRECT MEM/DISK TAINT
+///     1. REG & MEM
+///     2. MEM & DISK
+///     3. DIRECT MEM/DISK TAINT
 /// 
 /// 1. REG & MEM
-/// 	The general taint propagation between registers and memory is logged in the following context:
-/// 	<DATATYPE> <MAPPING> <OPERAND_DST(TAINT_TAG_HEX)> <OPERATOR> <OPERAND_SRC_IF_ANY(TAINT_TAG_HEX)> <COMPLETE_OPERATOR>
+///     The general taint propagation between registers and memory is logged in the following context:
+///     <DATATYPE> <MAPPING> <OPERAND_DST(TAINT_TAG_HEX)> <OPERATOR> <OPERAND_SRC_IF_ANY(TAINT_TAG_HEX)> <COMPLETE_OPERATOR>
 ///
-/// 		DATATYPE => { B(yte), W(ord), D(ouble word), Q(uad) }
-/// 		MAPPING  => { I(nside reg), O(ne-to-one), M(ix), C(lear) }
-///			OPERAND	 => { e.g. RAX(0), [0xdeadbeed](1) }
-/// 		OPERATOR => { DIFT_DEBUG_OP_ASSIGN, DIFT_DEBUG_OP_APPEND }
-/// 		COMPLETE_OPERATOR => DIFT_DEBUG_OP_COMPLETE
+///         DATATYPE => { B(yte), W(ord), D(ouble word), Q(uad) }
+///         MAPPING  => { I(nside reg), O(ne-to-one), M(ix), C(lear) }
+///         OPERAND  => { e.g. RAX(0), [0xdeadbeed](1) }
+///         OPERATOR => { DIFT_DEBUG_OP_ASSIGN, DIFT_DEBUG_OP_APPEND }
+///         COMPLETE_OPERATOR => DIFT_DEBUG_OP_COMPLETE
 /// 
 /// 2. MEM & DISK
-/// 	The logging format is shown as follows:
-///		<TYPE_DST[ADDRRESS]> <TYPE_SRC[ADDRESS]> <LENGTH> <COMPLETE_OPERATOR>
-///			
-///			TYPE => { H(arddisk), M(emory) }
-/// 		COMPLETE_OPERATOR => DIFT_DEBUG_OP_COMPLETE
+///     The logging format is shown as follows:
+///     <TYPE_DST[ADDRRESS]> <TYPE_SRC[ADDRESS]> <LENGTH> <COMPLETE_OPERATOR>
+///         
+///         TYPE => { H(arddisk), M(emory) }
+///         COMPLETE_OPERATOR => DIFT_DEBUG_OP_COMPLETE
 /// 
 /// 3. DIRECT MEM/DISK TAINT/UNTAINT
-///		When a user directly mark a register/memory/disk region as tainted, the operation is logged:
-///		<TYPE> <DST> <TAINT_TAG_HEX> <LENGTH> <COMPLETE_OPERATOR>
+///     When a user directly mark a register/memory/disk region as tainted, the operation is logged:
+///     <TYPE> <DST> <TAINT_TAG_HEX> <LENGTH> <COMPLETE_OPERATOR>
 ///
-///			TYPE => { T(aint), U(n-taint) }
-///			DST	 => { e.g. M[0x11223344], H[0x11223344] }
-/// 		COMPLETE_OPERATOR => DIFT_DEBUG_OP_COMPLETE
+///         TYPE => { T(aint), U(n-taint) }
+///         DST  => { e.g. M[0x11223344], H[0x11223344] }
+///         COMPLETE_OPERATOR => DIFT_DEBUG_OP_COMPLETE
 ///
 /// Note that if the colour log is enabled, a tainted operand will be shown in red or green otherwise.
 ///
@@ -74,18 +74,18 @@
 #define DIFT_DEBUG_OP_COMPLETE " *\n"
 
 #if defined(DIFT_DEBUG_COLOR)
-#define DIFT_DEBUG_COLOR_TAINTED 	"\x1b[1;31m"
-#define DIFT_DEBUG_COLOR_CLEAN		"\x1b[1;32m"
-#define DIFT_DEBUG_COLOR_OPERATOR	"\x1b[0m"
-#define DIFT_DEBUG_COLOR_RESET		"\x1b[0m"
+#define DIFT_DEBUG_COLOR_TAINTED    "\x1b[1;31m"
+#define DIFT_DEBUG_COLOR_CLEAN      "\x1b[1;32m"
+#define DIFT_DEBUG_COLOR_OPERATOR   "\x1b[0m"
+#define DIFT_DEBUG_COLOR_RESET      "\x1b[0m"
 #else
-#define DIFT_DEBUG_COLOR_TAINTED 	""
-#define DIFT_DEBUG_COLOR_CLEAN		""
-#define DIFT_DEBUG_COLOR_OPERATOR	""
-#define DIFT_DEBUG_COLOR_RESET		""
+#define DIFT_DEBUG_COLOR_TAINTED    ""
+#define DIFT_DEBUG_COLOR_CLEAN      ""
+#define DIFT_DEBUG_COLOR_OPERATOR   ""
+#define DIFT_DEBUG_COLOR_RESET      ""
 #endif
 
-#define DIFT_DEBUG_COMPLETE_SIGN	" *\n"
+#define DIFT_DEBUG_COMPLETE_SIGN    " *\n"
 #endif
 
 /* Constant Definition */
@@ -96,8 +96,8 @@
 #define CHUNK_CONSUMING 3
 
 #define SIZE_OF_CHUNK       (1 << 12)
-#define CHUNK_BITSIZEMASK	~(SIZE_OF_CHUNK - 1)
-#define Q_CHUNKS_SIZE		(CONFIG_SIZE_OF_QUEUE / SIZE_OF_CHUNK)
+#define CHUNK_BITSIZEMASK   ~(SIZE_OF_CHUNK - 1)
+#define Q_CHUNKS_SIZE       (CONFIG_SIZE_OF_QUEUE / SIZE_OF_CHUNK)
 
 #define EFFECT_CLEAR        (1 << 0)
 #define EFFECT_ASSIGN       (1 << 1)
@@ -112,7 +112,7 @@
 #define OPT_IM   2
 #define OPT_HD   3
 
-#define R_RIP      			16
+#define R_RIP               16
 #define R_SEG_REG_BASE      17
 #define R_DIFT_TMP          23
 #define R_NONE              24
@@ -293,10 +293,10 @@ struct dift_context {
     CONTAMINATION_RECORD *mem_dirty_tbl;
     CONTAMINATION_RECORD **hd_l1_dirty_tbl;
 
-#if defined(CONFIG_DIFT_DEBUG)	
-	uint64_t tb_rip;
-	uint64_t tb_tc_ptr;
-#endif	
+#if defined(CONFIG_DIFT_DEBUG)  
+    uint64_t tb_rip;
+    uint64_t tb_tc_ptr;
+#endif  
 };
 
 typedef struct dift_context dift_context;

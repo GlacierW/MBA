@@ -488,11 +488,11 @@ int cpu_exec(CPUArchState *env)
                 }
 /* Modified by Glacier */
 #if defined(CONFIG_DIFT)
-				// Herein we check if the DIFT code cache is nearly full
-				if( dift_code_top + 10000 > CONFIG_MAX_TB_ESTI )
-					tb_flush( env );
+                // Herein we check if the DIFT code cache is nearly full
+                if( dift_code_top + 10000 > CONFIG_MAX_TB_ESTI )
+                    tb_flush( env );
 #endif
-/***********************/					
+/***********************/                   
 
                 spin_lock(&tcg_ctx.tb_ctx.tb_lock);
                 have_tb_lock = true;

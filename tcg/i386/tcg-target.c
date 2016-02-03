@@ -277,12 +277,12 @@ static inline int tcg_target_const_match(tcg_target_long val, TCGType type,
 }
 
 #if TCG_TARGET_REG_BITS == 64
-# define LOWREGMASK(x)	((x) & 7)
+# define LOWREGMASK(x)  ((x) & 7)
 #else
-# define LOWREGMASK(x)	(x)
+# define LOWREGMASK(x)  (x)
 #endif
 
-#define P_EXT		0x100		/* 0x0f opcode prefix */
+#define P_EXT       0x100       /* 0x0f opcode prefix */
 #define P_EXT38         0x200           /* 0x0f 0x38 opcode prefix */
 #define P_DATA16        0x400           /* 0x66 opcode prefix */
 #if TCG_TARGET_REG_BITS == 64
@@ -292,64 +292,64 @@ static inline int tcg_target_const_match(tcg_target_long val, TCGType type,
 # define P_REXB_RM      0x4000          /* R/M field as byte register */
 # define P_GS           0x8000          /* gs segment override */
 #else
-# define P_ADDR32	0
-# define P_REXW		0
-# define P_REXB_R	0
-# define P_REXB_RM	0
+# define P_ADDR32   0
+# define P_REXW     0
+# define P_REXB_R   0
+# define P_REXB_RM  0
 # define P_GS           0
 #endif
 #define P_SIMDF3        0x10000         /* 0xf3 opcode prefix */
 #define P_SIMDF2        0x20000         /* 0xf2 opcode prefix */
 
-#define OPC_ARITH_EvIz	(0x81)
-#define OPC_ARITH_EvIb	(0x83)
-#define OPC_ARITH_GvEv	(0x03)		/* ... plus (ARITH_FOO << 3) */
+#define OPC_ARITH_EvIz  (0x81)
+#define OPC_ARITH_EvIb  (0x83)
+#define OPC_ARITH_GvEv  (0x03)      /* ... plus (ARITH_FOO << 3) */
 #define OPC_ANDN        (0xf2 | P_EXT38)
-#define OPC_ADD_GvEv	(OPC_ARITH_GvEv | (ARITH_ADD << 3))
-#define OPC_BSWAP	(0xc8 | P_EXT)
-#define OPC_CALL_Jz	(0xe8)
+#define OPC_ADD_GvEv    (OPC_ARITH_GvEv | (ARITH_ADD << 3))
+#define OPC_BSWAP   (0xc8 | P_EXT)
+#define OPC_CALL_Jz (0xe8)
 #define OPC_CMOVCC      (0x40 | P_EXT)  /* ... plus condition code */
-#define OPC_CMP_GvEv	(OPC_ARITH_GvEv | (ARITH_CMP << 3))
-#define OPC_DEC_r32	(0x48)
-#define OPC_IMUL_GvEv	(0xaf | P_EXT)
-#define OPC_IMUL_GvEvIb	(0x6b)
-#define OPC_IMUL_GvEvIz	(0x69)
-#define OPC_INC_r32	(0x40)
-#define OPC_JCC_long	(0x80 | P_EXT)	/* ... plus condition code */
-#define OPC_JCC_short	(0x70)		/* ... plus condition code */
-#define OPC_JMP_long	(0xe9)
-#define OPC_JMP_short	(0xeb)
+#define OPC_CMP_GvEv    (OPC_ARITH_GvEv | (ARITH_CMP << 3))
+#define OPC_DEC_r32 (0x48)
+#define OPC_IMUL_GvEv   (0xaf | P_EXT)
+#define OPC_IMUL_GvEvIb (0x6b)
+#define OPC_IMUL_GvEvIz (0x69)
+#define OPC_INC_r32 (0x40)
+#define OPC_JCC_long    (0x80 | P_EXT)  /* ... plus condition code */
+#define OPC_JCC_short   (0x70)      /* ... plus condition code */
+#define OPC_JMP_long    (0xe9)
+#define OPC_JMP_short   (0xeb)
 #define OPC_LEA         (0x8d)
-#define OPC_MOVB_EvGv	(0x88)		/* stores, more or less */
-#define OPC_MOVL_EvGv	(0x89)		/* stores, more or less */
-#define OPC_MOVL_GvEv	(0x8b)		/* loads, more or less */
+#define OPC_MOVB_EvGv   (0x88)      /* stores, more or less */
+#define OPC_MOVL_EvGv   (0x89)      /* stores, more or less */
+#define OPC_MOVL_GvEv   (0x8b)      /* loads, more or less */
 #define OPC_MOVB_EvIz   (0xc6)
-#define OPC_MOVL_EvIz	(0xc7)
+#define OPC_MOVL_EvIz   (0xc7)
 #define OPC_MOVL_Iv     (0xb8)
 #define OPC_MOVBE_GyMy  (0xf0 | P_EXT38)
 #define OPC_MOVBE_MyGy  (0xf1 | P_EXT38)
-#define OPC_MOVSBL	(0xbe | P_EXT)
-#define OPC_MOVSWL	(0xbf | P_EXT)
-#define OPC_MOVSLQ	(0x63 | P_REXW)
-#define OPC_MOVZBL	(0xb6 | P_EXT)
-#define OPC_MOVZWL	(0xb7 | P_EXT)
-#define OPC_POP_r32	(0x58)
-#define OPC_PUSH_r32	(0x50)
-#define OPC_PUSH_Iv	(0x68)
-#define OPC_PUSH_Ib	(0x6a)
-#define OPC_RET		(0xc3)
-#define OPC_SETCC	(0x90 | P_EXT | P_REXB_RM) /* ... plus cc */
-#define OPC_SHIFT_1	(0xd1)
-#define OPC_SHIFT_Ib	(0xc1)
-#define OPC_SHIFT_cl	(0xd3)
+#define OPC_MOVSBL  (0xbe | P_EXT)
+#define OPC_MOVSWL  (0xbf | P_EXT)
+#define OPC_MOVSLQ  (0x63 | P_REXW)
+#define OPC_MOVZBL  (0xb6 | P_EXT)
+#define OPC_MOVZWL  (0xb7 | P_EXT)
+#define OPC_POP_r32 (0x58)
+#define OPC_PUSH_r32    (0x50)
+#define OPC_PUSH_Iv (0x68)
+#define OPC_PUSH_Ib (0x6a)
+#define OPC_RET     (0xc3)
+#define OPC_SETCC   (0x90 | P_EXT | P_REXB_RM) /* ... plus cc */
+#define OPC_SHIFT_1 (0xd1)
+#define OPC_SHIFT_Ib    (0xc1)
+#define OPC_SHIFT_cl    (0xd3)
 #define OPC_SARX        (0xf7 | P_EXT38 | P_SIMDF3)
 #define OPC_SHLX        (0xf7 | P_EXT38 | P_DATA16)
 #define OPC_SHRX        (0xf7 | P_EXT38 | P_SIMDF2)
-#define OPC_TESTL	(0x85)
-#define OPC_XCHG_ax_r32	(0x90)
+#define OPC_TESTL   (0x85)
+#define OPC_XCHG_ax_r32 (0x90)
 
-#define OPC_GRP3_Ev	(0xf7)
-#define OPC_GRP5	(0xff)
+#define OPC_GRP3_Ev (0xf7)
+#define OPC_GRP5    (0xff)
 
 /* Group 1 opcode extensions for 0x80-0x83.
    These are also used as modifiers for OPC_ARITH.  */
@@ -378,10 +378,10 @@ static inline int tcg_target_const_match(tcg_target_long val, TCGType type,
 #define EXT3_IDIV  7
 
 /* Group 5 opcode extensions for 0xff.  To be used with OPC_GRP5.  */
-#define EXT5_INC_Ev	0
-#define EXT5_DEC_Ev	1
-#define EXT5_CALLN_Ev	2
-#define EXT5_JMPN_Ev	4
+#define EXT5_INC_Ev 0
+#define EXT5_DEC_Ev 1
+#define EXT5_CALLN_Ev   2
+#define EXT5_JMPN_Ev    4
 
 /* Condition codes to be added to OPC_JCC_{long,short}.  */
 #define JCC_JMP (-1)
@@ -1558,13 +1558,13 @@ static void tcg_out_qemu_ld(TCGContext *s, const TCGArg *args, bool is64)
 
 #if defined(CONFIG_DIFT)
     // [&last_mem_read_addr] = TCG_REG_L1  (TCG_REG_L0 is now available), comments in Intel syntax
-	tcg_out8(s, 0x48);
-	tcg_out8(s, 0xb8 + TCG_REG_L0 );
-	tcg_out64(s, (uint64_t)&last_mem_read_addr);	// mov TCG_REG_L0, &last_mem_read_addr
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0xb8 + TCG_REG_L0 );
+    tcg_out64(s, (uint64_t)&last_mem_read_addr);    // mov TCG_REG_L0, &last_mem_read_addr
 
-	tcg_out8(s, 0x48);
-	tcg_out8(s, 0x89);					
-	tcg_out8(s, (0x0 << 6) | (TCG_REG_L1 << 3) | (TCG_REG_L0));	// mov [TCG_REG_L0], TCG_REG_L1
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0x89);                  
+    tcg_out8(s, (0x0 << 6) | (TCG_REG_L1 << 3) | (TCG_REG_L0)); // mov [TCG_REG_L0], TCG_REG_L1
 #endif
 
     /* TLB Hit.  */
@@ -1702,13 +1702,13 @@ static void tcg_out_qemu_st(TCGContext *s, const TCGArg *args, bool is64)
  
 #if defined(CONFIG_DIFT)
     // [&last_mem_write_addr] = TCG_REG_L1  (TCG_REG_L0 is now available), comments in Intel syntax
-	tcg_out8(s, 0x48);
-	tcg_out8(s, 0xb8 + TCG_REG_L0 );
-	tcg_out64(s, (uint64_t)&last_mem_write_addr);	// mov TCG_REG_L0, &last_mem_write_addr
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0xb8 + TCG_REG_L0 );
+    tcg_out64(s, (uint64_t)&last_mem_write_addr);   // mov TCG_REG_L0, &last_mem_write_addr
 
-	tcg_out8(s, 0x48);
-	tcg_out8(s, 0x89);					
-	tcg_out8(s, (0x0 << 6) | (TCG_REG_L1 << 3) | (TCG_REG_L0));	// mov [TCG_REG_L0], TCG_REG_L1
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0x89);                  
+    tcg_out8(s, (0x0 << 6) | (TCG_REG_L1 << 3) | (TCG_REG_L0)); // mov [TCG_REG_L0], TCG_REG_L1
 #endif
    
     /* TLB Hit.  */
@@ -1792,10 +1792,10 @@ static void tcg_out_qemu_dift_tb_begin( TCGContext* s, const TCGArg* args ) {
     tcg_out8(s, 0xa1);
     tcg_out64(s, (uint64_t)&dift_code_loc);     // mov eax, [&dift_code_loc]
 
-	tcg_out8(s, 0x48);
-	tcg_out8(s, 0xc1);
-	tcg_out8(s, 0xe0);
-	tcg_out8(s, 0x20);							// shl rax, 0x20
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0xc1);
+    tcg_out8(s, 0xe0);
+    tcg_out8(s, 0x20);                          // shl rax, 0x20
 
     tcg_out8(s, 0x48);
     tcg_out8(s, 0x89);
@@ -1804,17 +1804,17 @@ static void tcg_out_qemu_dift_tb_begin( TCGContext* s, const TCGArg* args ) {
     tcg_out8(s, 0xa1);
     tcg_out64(s, (uint64_t)&dift_code_cntr);    // mov eax, [&dift_code_cntr]
 
-	tcg_out8(s, 0x48);
-	tcg_out8(s, 0xc1);
-	tcg_out8(s, 0xe0);
-	tcg_out8(s, 0x10);							// shl rax, 0x10
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0xc1);
+    tcg_out8(s, 0xe0);
+    tcg_out8(s, 0x10);                          // shl rax, 0x10
 
     tcg_out8(s, 0x48);
     tcg_out8(s, 0x09);
     tcg_out8(s, 0xc2);                          // or rdx, rax
 
-	tcg_out8(s, 0xa1);
-    tcg_out64(s, (uint64_t)&dift_code_off);		// mov eax, [&dift_code_off]
+    tcg_out8(s, 0xa1);
+    tcg_out64(s, (uint64_t)&dift_code_off);     // mov eax, [&dift_code_off]
 
     tcg_out8(s, 0x48);
     tcg_out8(s, 0x09);
@@ -1824,7 +1824,7 @@ static void tcg_out_qemu_dift_tb_begin( TCGContext* s, const TCGArg* args ) {
     tcg_out32(s, (uint32_t)(rt_enqueue_one_rec - (s->code_ptr + 4)));   // call rt_enqueue_one_rec
 
     tcg_out8(s, 0xb8); 
-    tcg_out32(s, (uint32_t)(args[0] / CONFIG_IF_CODES_PER_TB));			// mov eax, (args[0]/CONFIG_IF_CODES_PER_TB)
+    tcg_out32(s, (uint32_t)(args[0] / CONFIG_IF_CODES_PER_TB));         // mov eax, (args[0]/CONFIG_IF_CODES_PER_TB)
 
     tcg_out8(s, 0xa3);
     tcg_out64(s, (uint64_t)&dift_code_loc);                             // mov [&dift_code_loc], eax
@@ -1834,9 +1834,9 @@ static void tcg_out_qemu_dift_tb_begin( TCGContext* s, const TCGArg* args ) {
     
     tcg_out8(s, 0xa3);
     tcg_out64(s, (uint64_t)&dift_code_cntr);    // mov [&dift_code_cntr], eax
-	
-	tcg_out8(s, 0xa3);
-    tcg_out64(s, (uint64_t)&dift_code_off);		// mov [&dift_code_off], eax
+    
+    tcg_out8(s, 0xa3);
+    tcg_out64(s, (uint64_t)&dift_code_off);     // mov [&dift_code_off], eax
 
 }
 #endif
@@ -2404,8 +2404,8 @@ static void tcg_target_qemu_prologue(TCGContext *s)
     tcg_out_addi(s, TCG_REG_ESP, -stack_addend);
     /* jmp *tb.  */
     tcg_out_modrm_offset(s, OPC_GRP5, EXT5_JMPN_Ev, TCG_REG_ESP,
-		         (ARRAY_SIZE(tcg_target_callee_save_regs) + 2) * 4
-			 + stack_addend);
+                 (ARRAY_SIZE(tcg_target_callee_save_regs) + 2) * 4
+             + stack_addend);
 #else
     tcg_out_mov(s, TCG_TYPE_PTR, TCG_AREG0, tcg_target_call_iarg_regs[0]);
     tcg_out_addi(s, TCG_REG_ESP, -stack_addend);

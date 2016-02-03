@@ -60,8 +60,8 @@ static void tcg_emit_op(TCGContext *ctx, TCGOpcode opc, int args)
 #if defined(CONFIG_DIFT)
 void tcg_gen_op0(TCGContext *ctx, TCGOpcode opc)
 {
-	int pi = ctx->gen_next_parm_idx;
-	tcg_emit_op(ctx, opc, pi);
+    int pi = ctx->gen_next_parm_idx;
+    tcg_emit_op(ctx, opc, pi);
 }
 #endif
 

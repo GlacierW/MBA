@@ -757,11 +757,11 @@ static void rtl8139_write_buffer(RTL8139State *s, const void *buf, int size)
     if (s->RxBufAddr + size > s->RxBufferSize)
     {
         int wrapped = MOD2(s->RxBufAddr + size, s->RxBufferSize);
-		/* Modified by CWWang *
-		printf( "RTL8139 write %d bytes to memory: \n", size );
-		printf( "RxBuffer: %016lx, RxBufferSize: %016lx, RxBufAddr: %016lx\n", (unsigned long)s->RxBuf, (unsigned long)s->RxBufferSize, (unsigned long)s->RxBufAddr );
-		printf( "-----------------------------------\n" );
-		********************/
+        /* Modified by CWWang *
+        printf( "RTL8139 write %d bytes to memory: \n", size );
+        printf( "RxBuffer: %016lx, RxBufferSize: %016lx, RxBufAddr: %016lx\n", (unsigned long)s->RxBuf, (unsigned long)s->RxBufferSize, (unsigned long)s->RxBufAddr );
+        printf( "-----------------------------------\n" );
+        ********************/
 
         /* write packet data */
         if (wrapped && !(s->RxBufferSize < 65536 && rtl8139_RxWrap(s)))
@@ -1077,9 +1077,9 @@ static ssize_t rtl8139_do_receive(NetClientState *nc, const uint8_t *buf, size_t
             pci_dma_write(d, rx_addr, buf, size);
         }
 
-		/* Modified by CWWang
-		// packet buffer to memory
-		********************/
+        /* Modified by CWWang
+        // packet buffer to memory
+        ********************/
 
         if (s->CpCmd & CPlusRxChkSum)
         {
@@ -1843,16 +1843,16 @@ static void rtl8139_transfer_frame(RTL8139State *s, uint8_t *buf, int size,
 #if defined(CONFIG_DIFT)
 static void parse_pkt_tainted( void ) 
 {
-	// TODO: parse & show info.
-	printf( "TODO: parse tainted packet content\n" );
+    // TODO: parse & show info.
+    printf( "TODO: parse tainted packet content\n" );
 }
 
 static int is_pkt_tainted( dma_addr_t begin, dma_addr_t end )
 {
-	for(; begin < end; ++begin ) 
-		if( dift_get_memory_dirty(begin) ) 
-			return 1;
-	return 0;
+    for(; begin < end; ++begin ) 
+        if( dift_get_memory_dirty(begin) ) 
+            return 1;
+    return 0;
 }
 #endif
 /***********************/
@@ -1884,8 +1884,8 @@ static int rtl8139_transmit_one(RTL8139State *s, int descriptor)
 
 /* Modified by Glacier */
 #if defined(CONFIG_DIFT)
-	if( is_pkt_tainted(s->TxAddr[descriptor], s->TxAddr[descriptor] + txsize) )
-		parse_pkt_tainted();
+    if( is_pkt_tainted(s->TxAddr[descriptor], s->TxAddr[descriptor] + txsize) )
+        parse_pkt_tainted();
 #endif
 /***********************/
 
@@ -1927,14 +1927,14 @@ typedef struct ip_header
 
 typedef struct tcp_header
 {
-    uint16_t th_sport;		/* source port */
-    uint16_t th_dport;		/* destination port */
-    uint32_t th_seq;			/* sequence number */
-    uint32_t th_ack;			/* acknowledgement number */
+    uint16_t th_sport;      /* source port */
+    uint16_t th_dport;      /* destination port */
+    uint32_t th_seq;            /* sequence number */
+    uint32_t th_ack;            /* acknowledgement number */
     uint16_t th_offset_flags; /* data offset, reserved 6 bits, TCP protocol flags */
-    uint16_t th_win;			/* window */
-    uint16_t th_sum;			/* checksum */
-    uint16_t th_urp;			/* urgent pointer */
+    uint16_t th_win;            /* window */
+    uint16_t th_sum;            /* checksum */
+    uint16_t th_urp;            /* urgent pointer */
 } tcp_header;
 
 typedef struct udp_header

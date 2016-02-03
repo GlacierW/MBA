@@ -1,3 +1,19 @@
-Read the documentation in qemu-doc.html or on http://wiki.qemu-project.org
 
-- QEMU team
+Malware Behavior Analyzer, MBA
+
+MBA is QEMU-based, sandbox system dedicated to malware analysis for Windows x64 OS
+Currently, MBA supports the following features:
+
+    1. De-coupled Information Flow Tracking (DIFT)
+       It is also known as taint analysis.
+       Leveraging the DIFT feature, the contamination 
+       conducted by malware to the guest OS can be identified.
+
+       For further details of DIFT, please refer to the publication:
+       http://www.iis.sinica.edu.tw/page/jise/2015/201507_15.pdf
+
+More features are under development.
+
+- MBA Team,
+  Network Security Lab,
+  National Chiao-Tung University, Taiwan

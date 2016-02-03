@@ -14,16 +14,16 @@ GCOV_FILE = *.gcno *.gcda *.gcov
 all: $(BIN)
 
 clean: 
-	${RM} $(OBJ) $(BIN) $(GCOV_FILE)
+    ${RM} $(OBJ) $(BIN) $(GCOV_FILE)
 
 $(BIN): $(OBJ)
-	$(CPP) $(LINKOBJ) -o $(BIN) $(LIBS) $(LINKFLAGS)
+    $(CPP) $(LINKOBJ) -o $(BIN) $(LIBS) $(LINKFLAGS)
 
 gtest_main.o: gtest_main.cc
-	$(CPP) -c gtest_main.cc -o gtest_main.o $(CXXFLAGS)
+    $(CPP) -c gtest_main.cc -o gtest_main.o $(CXXFLAGS)
 
 #dift.o: dift.c
-#	$(CPP) -c dift.c -o dift.o $(CXXFLAGS)
+#   $(CPP) -c dift.c -o dift.o $(CXXFLAGS)
 
 dift_unittest.o: dift_unittest.cc
-	$(CPP) -c dift_unittest.cc -o dift_unittest.o $(CXXFLAGS)
+    $(CPP) -c dift_unittest.cc -o dift_unittest.o $(CXXFLAGS)

@@ -2044,17 +2044,17 @@ static void coroutine_fn bdrv_co_do_rw(void *opaque)
     BlockAIOCBCoroutine *acb = opaque;
     BlockDriverState *bs = acb->common.bs;
 
-/* Modified by Glacier */	
+/* Modified by Glacier */   
 #if defined(CONFIG_DIFT)
-	DMAAIOCB* dbs = acb->common.opaque;
+    DMAAIOCB* dbs = acb->common.opaque;
 
-	dift_record rec;
+    dift_record rec;
 
-	dma_addr_t addr_mem;
-	uint64_t   addr_sec;
-	uint64_t   len;
+    dma_addr_t addr_mem;
+    uint64_t   addr_sec;
+    uint64_t   len;
 
-	int idx;
+    int idx;
 #endif
 /***********************/
 
@@ -2068,24 +2068,24 @@ static void coroutine_fn bdrv_co_do_rw(void *opaque)
 
 /* Modified by Glacier */
 #if defined(CONFIG_DIFT)
-	if( acb->req.error >= 0 ) {
+    if( acb->req.error >= 0 ) {
 
-		rec.case_nb = (acb->is_write)? HD_MEM : MEM_HD;
+        rec.case_nb = (acb->is_write)? HD_MEM : MEM_HD;
 
-		addr_sec = acb->req.sector * BDRV_SECTOR_SIZE;
-		for( idx = 0; idx < dbs->sg_cur_index; ++idx ) {
-			
-			addr_mem = dbs->sg->sg[idx].base;
-			len      = dbs->sg->sg[idx].len;
-			
-			dift_rec_enqueue( *(uint64_t*)&rec );
-			dift_rec_enqueue( addr_mem );
-			dift_rec_enqueue( addr_sec );
-			dift_rec_enqueue( len );
-			
-			addr_sec += len;
-		}
-	}
+        addr_sec = acb->req.sector * BDRV_SECTOR_SIZE;
+        for( idx = 0; idx < dbs->sg_cur_index; ++idx ) {
+            
+            addr_mem = dbs->sg->sg[idx].base;
+            len      = dbs->sg->sg[idx].len;
+            
+            dift_rec_enqueue( *(uint64_t*)&rec );
+            dift_rec_enqueue( addr_mem );
+            dift_rec_enqueue( addr_sec );
+            dift_rec_enqueue( len );
+            
+            addr_sec += len;
+        }
+    }
 #endif
 /**********************/
 
