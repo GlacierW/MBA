@@ -402,11 +402,9 @@ static inline int tcg_target_const_match(tcg_target_long val, TCGType type,
 #define JCC_JLE 0xe
 #define JCC_JG  0xf
 
-/* Modified by Glacier */
 #if defined(CONFIG_DIFT)
 #include "../../ext/dift/dift.h"
 #endif
-/***********************/
 
 static const uint8_t tcg_cond_to_jcc[] = {
     [TCG_COND_EQ] = JCC_JE,
@@ -1558,7 +1556,6 @@ static void tcg_out_qemu_ld(TCGContext *s, const TCGArg *args, bool is64)
     tcg_out_tlb_load(s, addrlo, addrhi, mem_index, s_bits,
                      label_ptr, offsetof(CPUTLBEntry, addr_read));
 
-/* Modified by Glacier */
 #if defined(CONFIG_DIFT)
     // [&last_mem_read_addr] = TCG_REG_L1  (TCG_REG_L0 is now available), comments in Intel syntax
 	tcg_out8(s, 0x48);
@@ -1569,7 +1566,6 @@ static void tcg_out_qemu_ld(TCGContext *s, const TCGArg *args, bool is64)
 	tcg_out8(s, 0x89);					
 	tcg_out8(s, (0x0 << 6) | (TCG_REG_L1 << 3) | (TCG_REG_L0));	// mov [TCG_REG_L0], TCG_REG_L1
 #endif
-/***********************/  
 
     /* TLB Hit.  */
     tcg_out_qemu_ld_direct(s, datalo, datahi, TCG_REG_L1, 0, 0, opc);
@@ -1704,7 +1700,6 @@ static void tcg_out_qemu_st(TCGContext *s, const TCGArg *args, bool is64)
     tcg_out_tlb_load(s, addrlo, addrhi, mem_index, s_bits,
                      label_ptr, offsetof(CPUTLBEntry, addr_write));
  
-/* Modified by Glacier */
 #if defined(CONFIG_DIFT)
     // [&last_mem_write_addr] = TCG_REG_L1  (TCG_REG_L0 is now available), comments in Intel syntax
 	tcg_out8(s, 0x48);
@@ -1715,7 +1710,6 @@ static void tcg_out_qemu_st(TCGContext *s, const TCGArg *args, bool is64)
 	tcg_out8(s, 0x89);					
 	tcg_out8(s, (0x0 << 6) | (TCG_REG_L1 << 3) | (TCG_REG_L0));	// mov [TCG_REG_L0], TCG_REG_L1
 #endif
-/***********************/  
    
     /* TLB Hit.  */
     tcg_out_qemu_st_direct(s, datalo, datahi, TCG_REG_L1, 0, 0, opc);
@@ -1750,7 +1744,6 @@ static void tcg_out_qemu_st(TCGContext *s, const TCGArg *args, bool is64)
 #endif
 }
 
-/* Modified by Glacier */
 #if defined(CONFIG_DIFT)
 
 /// all of the assembly comments are given in Intel syntax
@@ -1847,7 +1840,6 @@ static void tcg_out_qemu_dift_tb_begin( TCGContext* s, const TCGArg* args ) {
 
 }
 #endif
-/***********************/
 
 static inline void tcg_out_op(TCGContext *s, TCGOpcode opc,
                               const TCGArg *args, const int *const_args)
@@ -2094,7 +2086,6 @@ static inline void tcg_out_op(TCGContext *s, TCGOpcode opc,
     case INDEX_op_qemu_st_i64:
         tcg_out_qemu_st(s, args, 1);
         break;
-/* Modified by Glacier */
 #if defined(CONFIG_DIFT)
     case INDEX_op_qemu_dift_enq_i64:
         tcg_out_qemu_dift_enq_i64( s, args );
@@ -2112,7 +2103,6 @@ static inline void tcg_out_op(TCGContext *s, TCGOpcode opc,
         tcg_out_qemu_dift_tb_begin( s, args );
         break;
 #endif
-/***********************/
 
     OP_32_64(mulu2):
         tcg_out_modrm(s, OPC_GRP3_Ev + rexw, EXT3_MUL, args[3]);
@@ -2347,7 +2337,6 @@ static const TCGTargetOpDef x86_op_defs[] = {
     { INDEX_op_qemu_ld_i64, { "r", "r", "L", "L" } },
     { INDEX_op_qemu_st_i64, { "L", "L", "L", "L" } },
 #endif
-/* Modified by Glacier */
 #if defined(CONFIG_DIFT)
     { INDEX_op_qemu_dift_enq_i64, {} },
     { INDEX_op_qemu_dift_enq_ra, {} },
@@ -2355,7 +2344,6 @@ static const TCGTargetOpDef x86_op_defs[] = {
     { INDEX_op_qemu_dift_inc_diftcodes, {} },
     { INDEX_op_qemu_dift_tb_begin, {} },
 #endif    
-/***********************/
     { -1 },
 };
 

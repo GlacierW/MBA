@@ -57,7 +57,6 @@ static void tcg_emit_op(TCGContext *ctx, TCGOpcode opc, int args)
     };
 }
 
-/* Modified by Glacier */
 #if defined(CONFIG_DIFT)
 void tcg_gen_op0(TCGContext *ctx, TCGOpcode opc)
 {
@@ -65,7 +64,6 @@ void tcg_gen_op0(TCGContext *ctx, TCGOpcode opc)
 	tcg_emit_op(ctx, opc, pi);
 }
 #endif
-/***********************/
 
 void tcg_gen_op1(TCGContext *ctx, TCGOpcode opc, TCGArg a1)
 {

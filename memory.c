@@ -1210,7 +1210,6 @@ void memory_region_init_ram(MemoryRegion *mr,
     mr->destructor = memory_region_destructor_ram;
     mr->ram_addr = qemu_ram_alloc(size, mr, errp);
 
-/* Modified by Glacier */
 #if defined(CONFIG_DIFT)
 	qemu_log( "memory_region_init_ram: ram alloc %016lx bytes for %s: \n", size, name );
     qemu_log( "    mr->ram_addr = %016lx, qemu_get_ram_ptr = %p\n", mr->ram_addr, qemu_get_ram_ptr(mr->ram_addr) );
@@ -1220,7 +1219,6 @@ void memory_region_init_ram(MemoryRegion *mr,
 		phys_ram_size = size;
 	}
 #endif
-/***********************/
 }
 
 void memory_region_init_resizeable_ram(MemoryRegion *mr,

@@ -757,7 +757,7 @@ static void rtl8139_write_buffer(RTL8139State *s, const void *buf, int size)
     if (s->RxBufAddr + size > s->RxBufferSize)
     {
         int wrapped = MOD2(s->RxBufAddr + size, s->RxBufferSize);
-		/* Modified by DSNS *
+		/* Modified by CWWang *
 		printf( "RTL8139 write %d bytes to memory: \n", size );
 		printf( "RxBuffer: %016lx, RxBufferSize: %016lx, RxBufAddr: %016lx\n", (unsigned long)s->RxBuf, (unsigned long)s->RxBufferSize, (unsigned long)s->RxBufAddr );
 		printf( "-----------------------------------\n" );
@@ -1077,7 +1077,7 @@ static ssize_t rtl8139_do_receive(NetClientState *nc, const uint8_t *buf, size_t
             pci_dma_write(d, rx_addr, buf, size);
         }
 
-		/* Modified by DSNS *
+		/* Modified by CWWang
 		// packet buffer to memory
 		********************/
 

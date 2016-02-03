@@ -167,7 +167,6 @@ DEF(muls2_i64, 2, 2, 0, IMPL64 | IMPL(TCG_TARGET_HAS_muls2_i64))
 DEF(muluh_i64, 1, 2, 0, IMPL(TCG_TARGET_HAS_muluh_i64))
 DEF(mulsh_i64, 1, 2, 0, IMPL(TCG_TARGET_HAS_mulsh_i64))
 
-/* Modified by Glacier */
 #if defined(CONFIG_DIFT)
 DEF(qemu_dift_enq_i64, 0, 0, 1, TCG_OPF_CALL_CLOBBER | TCG_OPF_SIDE_EFFECTS)
 DEF(qemu_dift_enq_ra, 0, 0, 0, TCG_OPF_CALL_CLOBBER | TCG_OPF_SIDE_EFFECTS)
@@ -175,7 +174,6 @@ DEF(qemu_dift_enq_wa, 0, 0, 0, TCG_OPF_CALL_CLOBBER | TCG_OPF_SIDE_EFFECTS)
 DEF(qemu_dift_inc_diftcodes, 0, 0, 1, TCG_OPF_CALL_CLOBBER)
 DEF(qemu_dift_tb_begin, 0, 0, 1, TCG_OPF_CALL_CLOBBER | TCG_OPF_SIDE_EFFECTS)
 #endif
-/***********************/
 
 
 /* QEMU specific */

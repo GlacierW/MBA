@@ -62,11 +62,9 @@
 #include "qemu/bitmap.h"
 #include "qemu/timer.h"
 
-/* Modified by Glacier */
 #if defined(CONFIG_DIFT)
 #include "ext/dift/dift.h"
 #endif
-/***********************/
 
 //#define DEBUG_TB_INVALIDATE
 //#define DEBUG_FLUSH
@@ -715,13 +713,11 @@ static TranslationBlock *tb_alloc(target_ulong pc)
     tb = &tcg_ctx.tb_ctx.tbs[tcg_ctx.tb_ctx.nb_tbs++];
     tb->pc = pc;
     tb->cflags = 0;
-/* Modified by Glacier */
 #if defined(CONFIG_DIFT)
     tb->virt_safe = 0;
     tb->dift_code_loc = (dift_code_top++) * CONFIG_IF_CODES_PER_TB;
     tb->dift_code_idx = 0;
 #endif
-/***********************/
     return tb;
 }
 
@@ -785,12 +781,10 @@ void tb_flush(CPUArchState *env1)
 {
     CPUState *cpu = ENV_GET_CPU(env1);
 
-/* Modified by Glacier */
 #if defined(CONFIG_DIFT)
 	dift_sync();
 	dift_code_top = 1; // loc 0 is reserved for the case REC_SYNC
 #endif
-/***********************/
 
 #if defined(DEBUG_FLUSH)
     printf("qemu: flush code_size=%ld nb_tbs=%d avg_tb_size=%ld\n",
