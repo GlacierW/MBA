@@ -20,32 +20,72 @@
 #ifndef __DIFT_H__
 #define __DIFT_H__
 
-/* Config */
+// Config 
 #define CONFIG_SIZE_OF_QUEUE    (16 * 1024 * 1024)
 #define CONFIG_MAX_TB_ESTI      500000
 #define CONFIG_IF_CODES_PER_TB  160
 #define CONFIG_INDIRECT_TAINT
 
 #if defined(CONFIG_DIFT_DEBUG)
+// By default we generate colour DIFT log. Comment this if unwanted
+#define DIFT_DEBUG_COLOR
+
 /// Herein you should define your condition to log when the debugging
 /// is activated. By default the condition macro is empty. (no condition, lots of logs)
 /// e.g.
 ///		#define DIFT_DEBUG_CONDITION if( dc->tb_rip == 0x1234567812345678 )
-///
-/// The DIFT log of each taint propagation is presented in the following context:
-/// <DATATYPE> <MAPPING> <PROPAGATION_IN_STRING> <COMPLETE_SIGN>
+/// 
+/// The DIFT log can be divided into three catogories and have their own logging formats: 
+///		1. REG & MEM
+///		2. MEM & DISK
+///		3. DIRECT MEM/DISK TAINT
+/// 
+/// 1. REG & MEM
+/// 	The general taint propagation between registers and memory is logged in the following context:
+/// 	<DATATYPE> <MAPPING> <OPERAND_DST(TAINT_TAG_HEX)> <OPERATOR> <OPERAND_SRC_IF_ANY(TAINT_TAG_HEX)> <COMPLETE_OPERATOR>
 ///
 /// 		DATATYPE => { B(yte), W(ord), D(ouble word), Q(uad) }
 /// 		MAPPING  => { I(nside reg), O(ne-to-one), M(ix), C(lear) }
-/// 		PROPAGATION_IN_STRING => { 
-/// 			e.g.
-/// 			RAX <- RCX 
-/// 			RAX <= RCX
-/// 			( "<-" indicates ASSIGN, whereas "<=" indicates APPEND )
-/// 		}
-/// 		COMPLETE_SIGN => DIFT_DEBUG_COMPLETE_SIGN
+///			OPERAND	 => { e.g. RAX(0), [0xdeadbeed](1) }
+/// 		OPERATOR => { DIFT_DEBUG_OP_ASSIGN, DIFT_DEBUG_OP_APPEND }
+/// 		COMPLETE_OPERATOR => DIFT_DEBUG_OP_COMPLETE
+/// 
+/// 2. MEM & DISK
+/// 	The logging format is shown as follows:
+///		<TYPE_DST[ADDRRESS]> <TYPE_SRC[ADDRESS]> <LENGTH> <COMPLETE_OPERATOR>
+///			
+///			TYPE => { H(arddisk), M(emory) }
+/// 		COMPLETE_OPERATOR => DIFT_DEBUG_OP_COMPLETE
+/// 
+/// 3. DIRECT MEM/DISK TAINT/UNTAINT
+///		When a user directly mark a register/memory/disk region as tainted, the operation is logged:
+///		<TYPE> <DST> <TAINT_TAG_HEX> <LENGTH> <COMPLETE_OPERATOR>
+///
+///			TYPE => { T(aint), U(n-taint) }
+///			DST	 => { e.g. M[0x11223344], H[0x11223344] }
+/// 		COMPLETE_OPERATOR => DIFT_DEBUG_OP_COMPLETE
+///
+/// Note that if the colour log is enabled, a tainted operand will be shown in red or green otherwise.
+///
 #define DIFT_DEBUG_CONDITION
-#define DIFT_DEBUG_COMPLETE_SIGN " \x1b[1;32m*\x1b[0m\n"
+
+#define DIFT_DEBUG_OP_ASSIGN   "<-"
+#define DIFT_DEBUG_OP_APPEND   "<="
+#define DIFT_DEBUG_OP_COMPLETE " *\n"
+
+#if defined(DIFT_DEBUG_COLOR)
+#define DIFT_DEBUG_COLOR_TAINTED 	"\x1b[1;31m"
+#define DIFT_DEBUG_COLOR_CLEAN		"\x1b[1;32m"
+#define DIFT_DEBUG_COLOR_OPERATOR	"\x1b[0m"
+#define DIFT_DEBUG_COLOR_RESET		"\x1b[0m"
+#else
+#define DIFT_DEBUG_COLOR_TAINTED 	""
+#define DIFT_DEBUG_COLOR_CLEAN		""
+#define DIFT_DEBUG_COLOR_OPERATOR	""
+#define DIFT_DEBUG_COLOR_RESET		""
+#endif
+
+#define DIFT_DEBUG_COMPLETE_SIGN	" *\n"
 #endif
 
 /* Constant Definition */

@@ -17,7 +17,7 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-   int i, j, k, l;
+	int i, j, k, l;
 
     uint64_t s;
     uint64_t wa, ra, hdaddr;
@@ -25,6 +25,10 @@
     dift_record rec;
 
     CONTAMINATION_RECORD t = 0;
+
+#if defined(CONFIG_DIFT_DEBUG)
+	uint64_t dt, st;
+#endif
 
     static void* dispatch[128];
     static int dispatch_init = 0;

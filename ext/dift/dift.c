@@ -29,6 +29,7 @@
 #include <sys/mman.h>
 #include <assert.h>
 #include <stdint.h>
+#include <inttypes.h>
 
 #if !defined(CONFIG_DIFT_GTEST)
 #include <config-host.h>
