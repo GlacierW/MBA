@@ -358,48 +358,75 @@ extern int label_or_helper_appeared;
 
 /// Initializes dift function.
 /// Currently called in pc_init1() (in Pc_piix.c)
+/// Returns 1 if create dift thread successfully.
+/// Returns 0 otherwise.
 extern int dift_start(void);
 
+/// arguments:
+/// 1. struct dift_record data_in, which is going to be enqueued
+/// 
 /// Pushes a "struct dift_record", or additional information(like addr) into the queue.
 /// Also specially used by dift_sync().
 extern void    dift_rec_enqueue( uint64_t data_in );
 
-/// Returns the case numbers respect to the arguments,
-/// 1.destination type,
-/// 2.source type,
-/// 3.operand type(8,16,32,etc),
-/// 4.effect type,
-/// respectively.
+/// arguments:
+/// 1. destination type
+/// 2. source type
+/// 3. operand type(8,16,32,etc)
+/// 4. effect type
 ///
+/// Returns the case number corresponding to specified arguments.
 /// The case numbers are also the indices of array "dispatch",
 /// which stores addresses for the IFcode handlers.
 /// The case number is correspond to the field .case_nb of struct dift_record.
 extern uint8_t dift_rec_case_nb(uint8_t, uint8_t, uint8_t, uint8_t);
 
-/// dift_contaminate_memory_or(addr, len, contaminate)
+/// arguments:
+/// 1. The starting memory address to be set
+/// 2. The length(in bytes) to be set
+/// 3. the contaminate value
+/// 
 /// Set contaminate if CONTAMINATION_RECORD is 1.
 /// Otherwise keep contaminate as it used to be.
 extern void dift_contaminate_memory_or(uint64_t, uint64_t, CONTAMINATION_RECORD);
 
-/// dift_contaminate_memory_or(addr, len, contaminate)
+/// arguments:
+/// 1. The starting memory address to be set
+/// 2. The length(in bytes) to be set
+/// 3. the contaminate value
+/// 
 /// Unset contaminate if CONTAMINATION_RECORD is 0.
 /// Otherwise keep contaminate as it used to be.
 extern void dift_contaminate_memory_and(uint64_t, uint64_t, CONTAMINATION_RECORD);
 
-/// dift_contaminate_memory_or(haddr, len, contaminate)
+/// arguments:
+/// 1. The starting disk address to be set
+/// 2. The length(in bytes) to be set
+/// 3. the contaminate value
+/// 
 /// Set contaminate if CONTAMINATION_RECORD is 1.
 /// Otherwise keep contaminate as it used to be.
 extern void dift_contaminate_disk_or(uint64_t, uint64_t, CONTAMINATION_RECORD);
 
-/// dift_contaminate_memory_or(haddr, len, contaminate)
+/// arguments:
+/// 1. The starting disk address to be set
+/// 2. The length(in bytes) to be set
+/// 3. the contaminate value
+/// 
 /// Unset contaminate if CONTAMINATION_RECORD is 0.
 /// Otherwise keep contaminate as it used to be.
 extern void dift_contaminate_disk_and(uint64_t, uint64_t, CONTAMINATION_RECORD);
 
+/// arguments:
+/// 1. The address of the byte in memory to be checked
+/// 
 /// Get the contamination status of a phsical memory byte.
 /// The most significant bit is used for marking whether a code block contains tainted code.
 extern CONTAMINATION_RECORD dift_get_memory_dirty(uint64_t offset);
 
+/// arguments:
+/// 1. The address of the byte in disk to be checked
+/// 
 /// Get the contamination status of a hard disk byte.
 /// The most significant bit is used for marking whether a code block contains tainted code.
 extern CONTAMINATION_RECORD dift_get_disk_dirty(uint64_t hdaddr);
@@ -408,14 +435,14 @@ extern CONTAMINATION_RECORD dift_get_disk_dirty(uint64_t hdaddr);
 ///
 /// \param cnt   Number of sets of records that have already been enqueued. Each set of records
 ///              may be enqueued by several enqueue() call.
+/// FIXME(misterlihao): Definition not found.
 void record_queue_flush(size_t cnt);
 
 /// FIXME(misterlihao): Definition not found.
 extern void clear_memory(uint64_t, uint64_t);
 
 
-/// DIFT context, contains dirty tables and deqptr
-/// FIXME(misterlihao): Don't known what's "deqptr".
+/// DIFT context, contains dirty tables and deqptr(dequeue pointer)
 extern dift_context dc[];
 #endif
 
