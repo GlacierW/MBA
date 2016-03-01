@@ -1424,7 +1424,8 @@ Advanced options (experts only):
   --enable-numa            enable libnuma support
   --disable-tcmalloc       disable tcmalloc support
   --enable-tcmalloc        enable tcmalloc support
-  --enable_dift            enable dynamic information flow tracking
+  --enable-dift            enable dynamic information flow tracking
+  --enable-debug-dift      enable debug mode of dynamic information flow tracking
 
 NOTE: The object files are built at the place where configure is launched
 EOF
