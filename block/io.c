@@ -2044,7 +2044,6 @@ static void coroutine_fn bdrv_co_do_rw(void *opaque)
     BlockAIOCBCoroutine *acb = opaque;
     BlockDriverState *bs = acb->common.bs;
 
-/* Modified by Glacier */   
 #if defined(CONFIG_DIFT)
     DMAAIOCB* dbs = acb->common.opaque;
 
@@ -2056,7 +2055,6 @@ static void coroutine_fn bdrv_co_do_rw(void *opaque)
 
     int idx;
 #endif
-/***********************/
 
     if (!acb->is_write) {
         acb->req.error = bdrv_co_do_readv(bs, acb->req.sector,
@@ -2066,7 +2064,6 @@ static void coroutine_fn bdrv_co_do_rw(void *opaque)
             acb->req.nb_sectors, acb->req.qiov, acb->req.flags);
     }
 
-/* Modified by Glacier */
 #if defined(CONFIG_DIFT)
     if( acb->req.error >= 0 ) {
 
@@ -2087,11 +2084,8 @@ static void coroutine_fn bdrv_co_do_rw(void *opaque)
         }
     }
 #endif
-/**********************/
 
     bdrv_co_complete(acb);
-
-
 }
 
 static BlockAIOCB *bdrv_co_aio_rw_vector(BlockDriverState *bs,
