@@ -367,79 +367,85 @@ extern int label_or_helper_appeared;
 
 /// Initializes dift function.
 /// Currently called in pc_init1() (in Pc_piix.c)
+/// 
 /// Returns 1 if create dift thread successfully.
 /// Returns 0 otherwise.
 extern int dift_start(void);
 
-/// arguments:
-/// 1. struct dift_record data_in, which is going to be enqueued
-/// 
 /// Pushes a "struct dift_record", or additional information(like addr) into the queue.
-/// Also specially used by dift_sync().
+/// 
+/// \param data_in  struct dift_record data_in, which is going to be enqueued
+/// 
 extern void    dift_rec_enqueue( uint64_t data_in );
 
-/// arguments:
-/// 1. destination type
-/// 2. source type
-/// 3. operand type(8,16,32,etc)
-/// 4. effect type
-///
-/// Returns the case number corresponding to specified arguments.
+/// Get the case number corresponding to specified arguments.
 /// The case numbers are also the indices of array "dispatch",
 /// which stores addresses for the IFcode handlers.
 /// The case number is correspond to the field .case_nb of struct dift_record.
+/// 
+/// \param ARG1     destination type 
+/// \param ARG2     source type
+/// \param ARG3     operand type(8,16,32,etc)
+/// \param ARG4     effect type
+///
 extern uint8_t dift_rec_case_nb(uint8_t, uint8_t, uint8_t, uint8_t);
 
 extern int dift_is_tag_valid( const CONTAMINATION_RECORD );
 
-/// arguments:
-/// 1. The starting memory address to be set
-/// 2. The length(in bytes) to be set
-/// 3. the contaminate value
-/// 
 /// Set contaminate if CONTAMINATION_RECORD is 1.
 /// Otherwise keep contaminate as it used to be.
+/// 
+/// \param ARG1     The starting memory address to be set
+/// \param ARG2     The length(in bytes) to be set
+/// \param ARG3     the contaminate value
+/// 
+/// Returns DIFT_SUCCESS while success, DIFT_ERR_FAIL otherwise.
 extern int dift_contaminate_memory_or(uint64_t, uint64_t, CONTAMINATION_RECORD);
 
-/// arguments:
-/// 1. The starting memory address to be set
-/// 2. The length(in bytes) to be set
-/// 3. the contaminate value
-/// 
 /// Unset contaminate if CONTAMINATION_RECORD is 0.
 /// Otherwise keep contaminate as it used to be.
+/// 
+/// \param ARG1     The starting memory address to be set
+/// \param ARG2     The length(in bytes) to be set
+/// \param ARG3     the contaminate value
+/// 
+/// Returns DIFT_SUCCESS while success, DIFT_ERR_FAIL otherwise.
 extern int dift_contaminate_memory_and(uint64_t, uint64_t, CONTAMINATION_RECORD);
 
-/// arguments:
-/// 1. The starting disk address to be set
-/// 2. The length(in bytes) to be set
-/// 3. the contaminate value
-/// 
 /// Set contaminate if CONTAMINATION_RECORD is 1.
 /// Otherwise keep contaminate as it used to be.
+/// 
+/// \param ARG1     The starting disk address to be set
+/// \param ARG2     The length(in bytes) to be set
+/// \param ARG3     the contaminate value
+/// 
+/// Returns DIFT_SUCCESS while success, DIFT_ERR_FAIL otherwise.
 extern int dift_contaminate_disk_or(uint64_t, uint64_t, CONTAMINATION_RECORD);
 
-/// arguments:
-/// 1. The starting disk address to be set
-/// 2. The length(in bytes) to be set
-/// 3. the contaminate value
-/// 
 /// Unset contaminate if CONTAMINATION_RECORD is 0.
 /// Otherwise keep contaminate as it used to be.
+/// 
+/// \param ARG1     The starting disk address to be set
+/// \param ARG2     The length(in bytes) to be set
+/// \param ARG3     the contaminate value
+/// 
+/// Returns DIFT_SUCCESS while success, DIFT_ERR_FAIL otherwise.
 extern int dift_contaminate_disk_and(uint64_t, uint64_t, CONTAMINATION_RECORD);
 
-/// arguments:
-/// 1. The address of the byte in memory to be checked
-/// 
 /// Get the contamination status of a phsical memory byte.
 /// The most significant bit is used for marking whether a code block contains tainted code.
+/// 
+/// \param offset   The address of the byte in memory to be checked
+/// 
+/// Returns CONTAMINATION_RECORD type.
 extern CONTAMINATION_RECORD dift_get_memory_dirty(uint64_t offset);
 
-/// arguments:
-/// 1. The address of the byte in disk to be checked
-/// 
-/// Get the contamination status of a hard disk byte.
+/// Get the contamination status of a disk memory byte.
 /// The most significant bit is used for marking whether a code block contains tainted code.
+/// 
+/// \param offset   The address of the byte in memory to be checked
+/// 
+/// Returns CONTAMINATION_RECORD type.
 extern CONTAMINATION_RECORD dift_get_disk_dirty(uint64_t hdaddr);
 
 /// Flush the record queue if needed.
