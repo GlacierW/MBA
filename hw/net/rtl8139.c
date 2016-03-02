@@ -60,11 +60,9 @@
 #include "sysemu/sysemu.h"
 #include "qemu/iov.h"
 
-/* Modified by Glacier */
 #if defined(CONFIG_DIFT)
 #include "../../ext/dift/dift.h"
 #endif
-/***********************/
 
 /* debug RTL8139 card */
 //#define DEBUG_RTL8139 1
@@ -1839,7 +1837,6 @@ static void rtl8139_transfer_frame(RTL8139State *s, uint8_t *buf, int size,
     }
 }
 
-/* Modified by Glacier */
 #if defined(CONFIG_DIFT)
 static void parse_pkt_tainted( void ) 
 {
@@ -1855,7 +1852,6 @@ static int is_pkt_tainted( dma_addr_t begin, dma_addr_t end )
     return 0;
 }
 #endif
-/***********************/
 
 static int rtl8139_transmit_one(RTL8139State *s, int descriptor)
 {
@@ -1882,12 +1878,10 @@ static int rtl8139_transmit_one(RTL8139State *s, int descriptor)
     DPRINTF("+++ transmit reading %d bytes from host memory at 0x%08x\n",
         txsize, s->TxAddr[descriptor]);
 
-/* Modified by Glacier */
 #if defined(CONFIG_DIFT)
     if( is_pkt_tainted(s->TxAddr[descriptor], s->TxAddr[descriptor] + txsize) )
         parse_pkt_tainted();
 #endif
-/***********************/
 
     pci_dma_read(d, s->TxAddr[descriptor], txbuffer, txsize);
 

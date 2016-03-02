@@ -53,11 +53,9 @@
 #  include <xen/hvm/hvm_info_table.h>
 #endif
 
-/* Modified by Glacier */
 #if defined(CONFIG_DIFT)
 #include "../../ext/dift/dift.h"
 #endif
-/***********************/
 
 #define MAX_IDE_BUS 2
 
@@ -310,14 +308,12 @@ static void pc_init1(MachineState *machine,
         pc_pci_device_init(pci_bus);
     }
 
-/* Modified by Glacier */
 #if defined(CONFIG_DIFT)
-    if( dift_start() ) {
+    if( dift_start() != DIFT_SUCCESS ) {
         fprintf( stderr, "error starting DIFT thread\n" );
         exit( 1 );
     }
 #endif
-/***********************/
 }
 
 static void pc_init_pci(MachineState *machine)
