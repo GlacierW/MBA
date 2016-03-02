@@ -28,11 +28,9 @@
 #include "exec/memory-internal.h"
 #include "qemu/rcu.h"
 
-/* Modified by Glacier */
 #if defined(CONFIG_DIFT)
 #include "ext/dift/dift.h"
 #endif
-/***********************/
 
 /* -icount align implementation. */
 
@@ -486,14 +484,12 @@ int cpu_exec(CPUArchState *env)
                     cpu->exception_index = EXCP_INTERRUPT;
                     cpu_loop_exit(cpu);
                 }
-/* Modified by Glacier */
+
 #if defined(CONFIG_DIFT)
                 // Herein we check if the DIFT code cache is nearly full
                 if( dift_code_top + 10000 > CONFIG_MAX_TB_ESTI )
                     tb_flush( env );
 #endif
-/***********************/                   
-
                 spin_lock(&tcg_ctx.tb_ctx.tb_lock);
                 have_tb_lock = true;
                 tb = tb_find_fast(env);
