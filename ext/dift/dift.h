@@ -28,9 +28,10 @@
 #define CONFIG_INDIRECT_TAINT
 
 #if defined(CONFIG_DIFT_DEBUG)
-// By default we generate colour DIFT log. Comment this if unwanted
+// By default we generate color DIFT log. Comment this if unwanted
 #define DIFT_DEBUG_COLOR
 
+///
 /// Herein you should define your condition to log when the debugging
 /// is activated. By default the condition macro is empty. (no condition, lots of logs)
 /// e.g.
@@ -66,7 +67,7 @@
 ///         DST  => { e.g. M[0x11223344], H[0x11223344] }
 ///         COMPLETE_OPERATOR => DIFT_DEBUG_OP_COMPLETE
 ///
-/// Note that if the colour log is enabled, a tainted operand will be shown in red or green otherwise.
+/// Note that if the color log is enabled, a tainted operand will be shown in red or green otherwise.
 ///
 #define DIFT_DEBUG_CONDITION
 
@@ -89,7 +90,7 @@
 #define DIFT_DEBUG_COMPLETE_SIGN    " *\n"
 #endif
 
-/* Constant Definition */
+// Constant Definition
 #define REC_END_SYMBOL  0x9a0a0a0000000000
 #define CHUNK_AVAILABLE 0
 #define CHUNK_FILLING   1
@@ -118,13 +119,22 @@
 #define R_DIFT_TMP          23
 #define R_NONE              24
 
-/* Type Definition */
+// Type Definition
 #define CONTAMINATION_RECORD uint8_t
+
+// Return Code of Public API
+enum DIFT_RETURN_CODE {
+    DIFT_SUCCESS,
+    DIFT_ERR_OUTOFRANGE,
+    DIFT_ERR_INVALIDTAG,
+    DIFT_ERR_FAIL,
+};
 
 ///
 /// We use 2-layer page table to record the harddisk taint status
 /// Since the initial image is 16GB size, the address need 36 bits to cover the addressing space
 /// (same as PAE except that we use only 2-layer page translation)
+///
 #define HD_L1_INDEX_BITS    24
 #define HD_L2_INDEX_BITS    12
 #define HD_L1_SIZE          (1<<HD_L1_INDEX_BITS)
@@ -135,9 +145,11 @@
 #define HD_L2_INDEX(addr)   ((addr) & ~HD_L2_INDEX_MASK)
 #define HD_PAGE(addr)       ((hd_l1_dirty_tbl[HD_L1_INDEX(addr)]))
 
+#define HD_MAX_SIZE 0x0000001000000000
+
 enum {
-    /* Expression: DST_SRC_MAPPING_TYPE_BYTES */
-    /* 0 */
+    // Expression: DST_SRC_MAPPING_TYPE_BYTES 
+    // 0
     INSIDE_REG_ASSIGN,
     INSIDE_REG_APPEND,
     REG_REG_OO_ASSIGN_MO8,
@@ -150,7 +162,7 @@ enum {
     REG_REG_OO_APPEND_MO32,
     REG_REG_OO_APPEND_MO64,
 
-    /* 10 */
+    // 10
     REG_REG_MIX_APPEND_MO8,
     REG_REG_MIX_APPEND_MO16,
     REG_REG_MIX_APPEND_MO32,
@@ -163,7 +175,7 @@ enum {
     REG_MEM_OO_APPEND_MO8,
     REG_MEM_OO_APPEND_MO16,
 
-    /* 20 */
+    // 20 
     REG_MEM_OO_APPEND_MO32,
     REG_MEM_OO_APPEND_MO64,
     REG_MEM_MIX_ASSIGN_MO16,
@@ -176,7 +188,7 @@ enum {
     REG_MEM_MIX_APPEND_MO64,
     MEM_REG_OO_ASSIGN_MO8,
 
-    /* 30 */ 
+    // 30 
     MEM_REG_OO_ASSIGN_MO16,
     MEM_REG_OO_ASSIGN_MO32,
     MEM_REG_OO_ASSIGN_MO64,
@@ -189,7 +201,7 @@ enum {
     MEM_REG_MIX_ASSIGN_MO32,
     MEM_REG_MIX_ASSIGN_MO64,
 
-    /* 40 */
+    // 40 
     MEM_REG_MIX_APPEND_MO8,
     MEM_REG_MIX_APPEND_MO16,
     MEM_REG_MIX_APPEND_MO32,
@@ -202,7 +214,7 @@ enum {
     REG_IM_CLEAR_MO8,
     REG_IM_CLEAR_MO16,
 
-    /* 50 */ 
+    // 50
     REG_IM_CLEAR_MO32,
     REG_IM_CLEAR_MO64,
     MEM_IM_CLEAR_MO8,
@@ -215,7 +227,7 @@ enum {
     REC_CONTAMINATE_MEM_OR,
     REC_CONTAMINATE_MEM_AND,
 
-    /* 60 */
+    // 60
     REC_CONTAMINATE_HD_OR,
     REC_CONTAMINATE_HD_AND,
     REC_CLEAR_MEM,
@@ -303,6 +315,8 @@ struct dift_context {
 typedef struct dift_context dift_context;
 typedef struct dift_record  dift_record;
 
+extern const dift_record DIFT_REC_EMPTY;
+
 extern uint64_t phys_ram_base;
 extern uint64_t phys_ram_size;
 
@@ -338,9 +352,6 @@ extern void dift_sync(void);
 extern FILE* dift_logfile;
 extern int   dift_log( const char*, ... );
 
-CONTAMINATION_RECORD get_valid_taint_mask(void);
-int is_valid_taint(const CONTAMINATION_RECORD* taint);
-
 extern CONTAMINATION_RECORD hd_dirty_tbl[];
 extern uint64_t dift_code_buffer[];
 extern uint32_t dift_code_top;
@@ -351,13 +362,17 @@ extern int label_or_helper_appeared;
 
 extern int dift_start(void);
 
+
 extern void    dift_rec_enqueue( uint64_t data_in );
 extern uint8_t dift_rec_case_nb(uint8_t, uint8_t, uint8_t, uint8_t);
 
-extern void dift_contaminate_memory_or(uint64_t, uint64_t, CONTAMINATION_RECORD);
-extern void dift_contaminate_memory_and(uint64_t, uint64_t, CONTAMINATION_RECORD);
-extern void dift_contaminate_disk_or(uint64_t, uint64_t, CONTAMINATION_RECORD);
-extern void dift_contaminate_disk_and(uint64_t, uint64_t, CONTAMINATION_RECORD);
+extern int dift_is_tag_valid( const CONTAMINATION_RECORD );
+
+extern int dift_contaminate_memory_or(uint64_t, uint64_t, CONTAMINATION_RECORD);
+extern int dift_contaminate_memory_and(uint64_t, uint64_t, CONTAMINATION_RECORD);
+extern int dift_contaminate_disk_or(uint64_t, uint64_t, CONTAMINATION_RECORD);
+extern int dift_contaminate_disk_and(uint64_t, uint64_t, CONTAMINATION_RECORD);
+
 
 ///
 /// Get the contamination status of a phsical memory byte.
@@ -376,7 +391,7 @@ void record_queue_flush(size_t cnt);
 extern void clear_memory(uint64_t, uint64_t);
 
 
-/// DIFT context
+// DIFT context
 extern dift_context dc[];
 #endif
 

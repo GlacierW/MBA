@@ -309,7 +309,7 @@ static void pc_init1(MachineState *machine,
     }
 
 #if defined(CONFIG_DIFT)
-    if( dift_start() ) {
+    if( dift_start() != DIFT_SUCCESS ) {
         fprintf( stderr, "error starting DIFT thread\n" );
         exit( 1 );
     }

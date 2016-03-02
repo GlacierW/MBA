@@ -2047,7 +2047,7 @@ static void coroutine_fn bdrv_co_do_rw(void *opaque)
 #if defined(CONFIG_DIFT)
     DMAAIOCB* dbs = acb->common.opaque;
 
-    dift_record rec;
+    dift_record rec = DIFT_REC_EMPTY;
 
     dma_addr_t addr_mem;
     uint64_t   addr_sec;
