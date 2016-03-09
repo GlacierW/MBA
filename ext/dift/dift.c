@@ -90,6 +90,7 @@ uint8_t* rt_qemu_st             = pre_generated_routine + 3072;
 
 uint64_t last_mem_read_addr;
 uint64_t last_mem_write_addr;
+bool     last_blk_io_dma = false;
 
 volatile uint64_t* enqptr __attribute__((aligned(4096)));
 volatile uint64_t  head, prev_head;
@@ -883,8 +884,11 @@ static void* analysis_mainloop( void* arg ) {
     int cntr = 0;
     int dist;
     int idleness = 0;
-    while(1) {
+
+    while( 1 ) {
+
         if( (cntr++ & 0xfffff) == 0 ) {
+
             dist = head - dc->tail;
             if(dist < 0)
                 dist += Q_CHUNKS_SIZE;
@@ -894,11 +898,13 @@ static void* analysis_mainloop( void* arg ) {
                 idleness++;
             else
                 idleness = 0;
+
             if( idleness > 12 )
                 sleepness = 1;
         }
 
         data = rec_dequeue( dc );
+
         if( unlikely(data == (REC_END_SYMBOL | REC_SYNC)) ) {
             // A SYNC indicates that:
             // 1. It is preceded by a BEFORE_BLOCK_BEGIN, so all IF-codes had been processed.

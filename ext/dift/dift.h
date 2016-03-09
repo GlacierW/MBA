@@ -21,6 +21,8 @@
 #ifndef __DIFT_H__
 #define __DIFT_H__
 
+#include <stdbool.h>
+
 // Config 
 #define CONFIG_SIZE_OF_QUEUE    (16 * 1024 * 1024)
 #define CONFIG_MAX_TB_ESTI      500000
@@ -69,6 +71,7 @@
 ///
 /// Note that if the color log is enabled, a tainted operand will be shown in red or green otherwise.
 ///
+
 #define DIFT_DEBUG_CONDITION
 
 #define DIFT_DEBUG_OP_ASSIGN   "<-"
@@ -328,6 +331,8 @@ extern volatile uint64_t head, prev_head;
 
 extern uint64_t last_mem_read_addr;
 extern uint64_t last_mem_write_addr;
+extern bool     last_blk_io_dma;
+
 extern volatile uint64_t clean_source;
 extern volatile uint64_t null_sink;
 
