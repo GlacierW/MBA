@@ -2045,7 +2045,7 @@ static void coroutine_fn bdrv_co_do_rw(void *opaque)
     BlockDriverState *bs = acb->common.bs;
 
 #if defined(CONFIG_DIFT)
-    DMAAIOCB* dbs = acb->common.opaque;
+    DMAAIOCB* dbs = (last_blk_io_dma) ? acb->common.opaque : NULL;
 
     dift_record rec = DIFT_REC_EMPTY;
 
@@ -2065,24 +2065,29 @@ static void coroutine_fn bdrv_co_do_rw(void *opaque)
     }
 
 #if defined(CONFIG_DIFT)
-    if( acb->req.error >= 0 ) {
+    if( acb->req.error >= 0 && dbs != NULL ) {
 
         rec.case_nb = (acb->is_write)? HD_MEM : MEM_HD;
-
         addr_sec = acb->req.sector * BDRV_SECTOR_SIZE;
         for( idx = 0; idx < dbs->sg_cur_index; ++idx ) {
             
             addr_mem = dbs->sg->sg[idx].base;
             len      = dbs->sg->sg[idx].len;
-            
-            dift_rec_enqueue( *(uint64_t*)&rec );
-            dift_rec_enqueue( addr_mem );
-            dift_rec_enqueue( addr_sec );
-            dift_rec_enqueue( len );
+
+            // to prevent guest booting phase crash
+            if( addr_mem != 0 ) {
+                dift_rec_enqueue( *(uint64_t*)&rec );
+                dift_rec_enqueue( addr_mem );
+                dift_rec_enqueue( addr_sec );
+                dift_rec_enqueue( len );
+            }
             
             addr_sec += len;
         }
     }
+
+    // reset the DMA check flag
+    last_blk_io_dma = false;
 #endif
 
     bdrv_co_complete(acb);
