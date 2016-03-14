@@ -84,7 +84,6 @@
 #if defined(CONFIG_DIFT)
 #include "ext/dift/dift-commands.h"
 #endif
-void do_get_physic_address(struct Monitor *mon, const struct QDict *qdict);
 
 
 //#define DEBUG
@@ -2957,13 +2956,6 @@ static mon_cmd_t mon_cmds[] = {
 #if defined(CONFIG_DIFT)
 #include "ext/dift/dift-commands-spec.h"
 #endif
-{
-        .name = "get_physic_address",
-        .args_type  = "cr3:l,addr:l",
-        .params     = "cr3 addr",
-        .help       = "get the physic address of a given virtual address in memory space(cr3)",
-        .mhandler.cmd = do_get_physic_address,
-},
     { NULL, NULL, },
 };
 
