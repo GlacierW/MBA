@@ -347,7 +347,16 @@ extern uint8_t* rt_enqueue_one_rec;
 extern uint8_t* rt_enqueue_raddr;
 extern uint8_t* rt_enqueue_waddr;
 
+/// FIXME(misterlihao@gmail.com): This should be removed.
 extern void dift_enqueue(uint32_t);
+
+/// Inform dift system and then block(spinning) until
+/// dift system declares to accept more IFcodes.
+/// Current Called before translating every code blocks.
+///
+/// no parameter
+///
+/// no return value
 extern void dift_sync(void);
 
 ///
@@ -365,34 +374,96 @@ extern uint32_t dift_code_loc;
 extern uint32_t dift_code_off;
 extern int label_or_helper_appeared;
 
+/// Initializes dift function.
+/// Currently called in pc_init1() (in Pc_piix.c)
+/// 
+/// No parameter
+/// 
+/// Returns 1 if create dift thread successfully,0 otherwise.
 extern int dift_start(void);
 
-
+/// Pushes a "struct dift_record", or additional information(like addr) into the queue.
+/// 
+/// \param data_in  struct dift_record data_in, which is going to be enqueued
+/// 
+/// No return value
 extern void    dift_rec_enqueue( uint64_t data_in );
-extern uint8_t dift_rec_case_nb(uint8_t, uint8_t, uint8_t, uint8_t);
+
+/// Get the case number corresponding to specified arguments.
+/// The case numbers are also the indices of array "dispatch",
+/// which stores addresses for the IFcode handlers.
+/// The case number is correspond to the field .case_nb of struct dift_record.
+/// 
+/// \param dst_type	destination type 
+/// \param src_type	source type
+/// \param ot		operand type(8,16,32,etc)
+/// \param effect   effect type
+///
+/// No return value
+extern uint8_t dift_rec_case_nb(uint8_t dst_type, uint8_t src_type, uint8_t ot, uint8_t effect);
 
 extern int dift_is_tag_valid( const CONTAMINATION_RECORD );
 
-extern int dift_contaminate_memory_or(uint64_t, uint64_t, CONTAMINATION_RECORD);
-extern int dift_contaminate_memory_and(uint64_t, uint64_t, CONTAMINATION_RECORD);
-extern int dift_contaminate_disk_or(uint64_t, uint64_t, CONTAMINATION_RECORD);
-extern int dift_contaminate_disk_and(uint64_t, uint64_t, CONTAMINATION_RECORD);
+/// Set the contaminate record to the result of or operation with tag.
+/// 
+/// \param addr     The starting memory address to be set
+/// \param len      The length(in bytes) to be set
+/// \param tag      The contaminate value
+/// 
+/// Returns DIFT_SUCCESS while success, DIFT_ERR_FAIL otherwise.
+extern int dift_contaminate_memory_or(uint64_t addr, uint64_t len, CONTAMINATION_RECORD tag);
 
+/// Set the contaminate record to the result of and operation with tag.
+/// 
+/// \param addr     The starting memory address to be set
+/// \param len      The length(in bytes) to be set
+/// \param tag      The contaminate value
+/// 
+/// Returns DIFT_SUCCESS while success, DIFT_ERR_FAIL otherwise.
+extern int dift_contaminate_memory_and(uint64_t addr, uint64_t len, CONTAMINATION_RECORD tag);
 
-///
+/// Set the contaminate record to the result of or operation with tag.
+/// 
+/// \param addr     The starting disk address to be set
+/// \param len      The length(in bytes) to be set
+/// \param tag      The contaminate value
+/// 
+/// Returns DIFT_SUCCESS while success, DIFT_ERR_FAIL otherwise.
+extern int dift_contaminate_disk_or(uint64_t addr, uint64_t len, CONTAMINATION_RECORD tag);
+
+/// Set the contaminate record to the result of and operation with tag.
+/// 
+/// \param addr     The starting disk address to be set
+/// \param len      The length(in bytes) to be set
+/// \param tag      The contaminate value
+/// 
+/// Returns DIFT_SUCCESS while success, DIFT_ERR_FAIL otherwise.
+extern int dift_contaminate_disk_and(uint64_t addr, uint64_t len, CONTAMINATION_RECORD tag);
+
 /// Get the contamination status of a phsical memory byte.
 /// The most significant bit is used for marking whether a code block contains tainted code.
-///
+/// 
+/// \param offset   The address of the byte in memory to be checked
+/// 
+/// Returns CONTAMINATION_RECORD type.
 extern CONTAMINATION_RECORD dift_get_memory_dirty(uint64_t offset);
+
+/// Get the contamination status of a disk byte.
+/// The most significant bit is used for marking whether a code block contains tainted code.
+/// 
+/// \param hdaddr   The address of the byte in disk to be checked
+/// 
+/// Returns CONTAMINATION_RECORD type.
 extern CONTAMINATION_RECORD dift_get_disk_dirty(uint64_t hdaddr);
 
-///
 /// Flush the record queue if needed.
 ///
 /// \param cnt   Number of sets of records that have already been enqueued. Each set of records
 ///              may be enqueued by several enqueue() call.
-///
+/// FIXME(misterlihao): Definition not found.
 void record_queue_flush(size_t cnt);
+
+/// FIXME(misterlihao): Definition not found.
 extern void clear_memory(uint64_t, uint64_t);
 
 
