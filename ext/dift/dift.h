@@ -347,9 +347,6 @@ extern uint8_t* rt_enqueue_one_rec;
 extern uint8_t* rt_enqueue_raddr;
 extern uint8_t* rt_enqueue_waddr;
 
-/// FIXME(misterlihao@gmail.com): This should be removed.
-extern void dift_enqueue(uint32_t);
-
 /// Inform dift system and then block(spinning) until
 /// dift system declares to accept more IFcodes.
 /// Current Called before translating every code blocks.
