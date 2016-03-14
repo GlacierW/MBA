@@ -134,6 +134,7 @@ obj-$(CONFIG_KVM) += kvm-all.o
 obj-y += memory.o savevm.o cputlb.o
 obj-y += memory_mapping.o
 obj-y += dump.o
+
 LIBS := $(libs_softmmu) $(LIBS)
 
 # xen support
@@ -174,6 +175,9 @@ target-obj-y := $(target-obj-y-save)
 all-obj-y += $(common-obj-y)
 all-obj-y += $(target-obj-y)
 all-obj-$(CONFIG_SOFTMMU) += $(block-obj-y)
+
+# MBA
+all-obj-y += ../ext/dift/dift-commands.o
 
 $(QEMU_PROG_BUILD): config-devices.mak
 
