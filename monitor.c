@@ -81,6 +81,11 @@
 #endif
 #include "hw/lm32/lm32_pic.h"
 
+#if defined(CONFIG_DIFT)
+#include "ext/dift/dift-commands.h"
+#endif
+
+
 //#define DEBUG
 //#define DEBUG_COMPLETION
 
@@ -1017,6 +1022,11 @@ static CPUArchState *mon_get_cpu(void)
     }
     cpu_synchronize_state(cur_mon->mon_cpu);
     return cur_mon->mon_cpu->env_ptr;
+}
+
+void *mba_mon_get_cpu(void)
+{
+    return mon_get_cpu();
 }
 
 int monitor_get_cpu_index(void)
@@ -2943,6 +2953,9 @@ static mon_cmd_t info_cmds[] = {
 /* mon_cmds and info_cmds would be sorted at runtime */
 static mon_cmd_t mon_cmds[] = {
 #include "hmp-commands.h"
+#if defined(CONFIG_DIFT)
+#include "ext/dift/dift-commands-spec.h"
+#endif
     { NULL, NULL, },
 };
 
