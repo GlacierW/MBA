@@ -177,7 +177,9 @@ all-obj-y += $(target-obj-y)
 all-obj-$(CONFIG_SOFTMMU) += $(block-obj-y)
 
 # MBA
+ifdef  CONFIG_DIFT
 all-obj-y += ../ext/dift/dift-commands.o
+endif
 
 $(QEMU_PROG_BUILD): config-devices.mak
 

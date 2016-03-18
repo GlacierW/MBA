@@ -1,5 +1,5 @@
-#ifndef __MBA_COMMAND_H_
-#define __MBA_COMMAND_H_
+#ifndef __DIFT_COMMANDS_H__
+#define __DIFT_COMMANDS_H__
 
 struct Monitor;
 struct QDict;
