@@ -1024,11 +1024,6 @@ static CPUArchState *mon_get_cpu(void)
     return cur_mon->mon_cpu->env_ptr;
 }
 
-void *mba_mon_get_cpu(void)
-{
-    return mon_get_cpu();
-}
-
 int monitor_get_cpu_index(void)
 {
     CPUState *cpu = ENV_GET_CPU(mon_get_cpu());
@@ -5498,3 +5493,18 @@ void qmp_rtc_reset_reinjection(Error **errp)
     error_set(errp, QERR_FEATURE_DISABLED, "rtc-reset-reinjection");
 }
 #endif
+
+///
+/// MBA wrapper
+///
+/// To avoid modifying the vanilla QEMU monitor code,
+/// the following MBA wrapper APIs (mba_xxx) are exported to invoke
+/// the certain static functions of monitor.c for general use.
+/// 
+/// However, if possible, the wrapper should be avoided too. 
+/// Otherwise, the static decalration of monitor.c may become meaningless.
+///
+void *mba_mon_get_cpu(void)
+{
+    return mon_get_cpu();
+}
