@@ -60,3 +60,35 @@ void do_get_physic_address(struct Monitor *mon, const struct QDict *qdict)
     hwaddr phys_addr = phys_page + (target_addr & ~TARGET_PAGE_MASK);
     monitor_printf(mon, "physic address = %p\n", (void*)phys_addr);
 }
+
+void do_enable_dift(struct Monitor *mon, const struct QDict *qdict )
+{
+    CPUArchState* env;
+
+    if( dift_is_enabled() )
+        return;
+    
+    env = (CPUArchState*)mba_mon_get_cpu();
+    tb_flush( env );
+    dift_enable();
+}
+
+void do_disable_dift(struct Monitor *mon, const struct QDict *qdict)
+{
+    CPUArchState* env;
+
+    if( !dift_is_enabled() )
+        return;
+    
+    env = (CPUArchState*)mba_mon_get_cpu();
+    tb_flush( env );
+    dift_disable();
+}
+
+void do_dift_status(struct Monitor* mon, const struct QDict *qdict)
+{
+    if( dift_is_enabled() )
+        monitor_printf( mon, "DIFT enabled\n" );
+    else
+        monitor_printf( mon, "DIFT disabled\n" );
+}

@@ -315,6 +315,12 @@ struct dift_context {
 #endif  
 };
 
+
+/// 
+/// The following variables are declared as global variables for DIFT implementation
+/// It is STRONGLY recommanded that you should AVOID accessing them directly.
+/// Instead, DIFT-related features should be used via the exported "dift_xxx" APIs
+///
 typedef struct dift_context dift_context;
 typedef struct dift_record  dift_record;
 
@@ -341,6 +347,14 @@ extern volatile int nic_tx_taintcheck;
 
 extern volatile uint32_t dift_thread_ok_signal;
 
+extern CONTAMINATION_RECORD hd_dirty_tbl[];
+extern uint64_t dift_code_buffer[];
+extern uint32_t dift_code_top;
+extern uint32_t dift_code_cntr;
+extern uint32_t dift_code_loc;
+extern uint32_t dift_code_off;
+extern int label_or_helper_appeared;
+
 extern uint8_t* rt_get_next_enqptr;
 extern uint8_t* rt_finish_curr_block;
 extern uint8_t* rt_enqueue_one_rec;
@@ -363,13 +377,6 @@ extern void dift_sync(void);
 extern FILE* dift_logfile;
 extern int   dift_log( const char*, ... );
 
-extern CONTAMINATION_RECORD hd_dirty_tbl[];
-extern uint64_t dift_code_buffer[];
-extern uint32_t dift_code_top;
-extern uint32_t dift_code_cntr;
-extern uint32_t dift_code_loc;
-extern uint32_t dift_code_off;
-extern int label_or_helper_appeared;
 
 /// Initializes dift function.
 /// Currently called in pc_init1() (in Pc_piix.c)
@@ -384,7 +391,28 @@ extern int dift_start(void);
 /// \param data_in  struct dift_record data_in, which is going to be enqueued
 /// 
 /// No return value
-extern void    dift_rec_enqueue( uint64_t data_in );
+extern void dift_rec_enqueue( uint64_t data_in );
+
+/// Enable DIFT taint propagation
+///
+/// no parameter
+///
+/// no return value
+extern void dift_enable(void);
+
+/// Disable DIFT taint propagation
+///
+/// no parameter
+/// 
+/// no return value
+extern void dift_disable(void);
+
+/// Retrieve the DIFT status (enabled or disabled)
+/// 
+/// no parameter
+///
+/// Return true if DIFT is enabled, false otherwise
+extern bool dift_is_enabled(void);
 
 /// Get the case number corresponding to specified arguments.
 /// The case numbers are also the indices of array "dispatch",
@@ -398,8 +426,6 @@ extern void    dift_rec_enqueue( uint64_t data_in );
 ///
 /// No return value
 extern uint8_t dift_rec_case_nb(uint8_t dst_type, uint8_t src_type, uint8_t ot, uint8_t effect);
-
-extern int dift_is_tag_valid( const CONTAMINATION_RECORD );
 
 /// Set the contaminate record to the result of or operation with tag.
 /// 

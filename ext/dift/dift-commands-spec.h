@@ -19,3 +19,25 @@
         .help       = "get the physic address of a given virtual address in memory space(cr3)",
         .mhandler.cmd = do_get_physic_address,
 },
+{
+        .name = "enable_dift",
+        .args_type  = "",
+        .params     = "",
+        .help       = "enable DIFT taint analysis",
+        .mhandler.cmd = do_enable_dift,
+},
+{
+        .name = "disable_dift",
+        .args_type  = "",
+        .params     = "",
+        .help       = "disable DIFT taint analysis",
+        .mhandler.cmd = do_disable_dift,
+},
+{
+        .name = "dift_status",
+        .args_type  = "",
+        .params     = "",
+        .help       = "show DIFT status (enabled/disabled)",
+        .mhandler.cmd = do_dift_status,
+},
+
