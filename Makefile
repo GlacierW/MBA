@@ -227,7 +227,24 @@ block-obj-y += libdift.a
 endif
 
 #########################
-
+## Modified by Glacier ##
+ifdef  CONFIG_TSK
+#XXX(misterlihao@gmail.com):will not remake even if these libraries have been modified.
+#XXX(misterlihao@gmail.com):make clean will only delete .a file.
+ext/tsk/libqcow/libqcow/.libs/libqcow.a:
+	cd ext/tsk/libqcow &&\
+	./synclibs.sh &&\
+	./autogen.sh &&\
+	./configure --enable-static &&\
+	$(MAKE)
+ext/tsk/tsk/.libs/libtsk.a:  ext/tsk/libqcow/libqcow/.libs/libqcow.a
+	cd ext/tsk &&\
+	./bootstrap &&\
+	./configure --disable-java --with-libqcow=`pwd`/libqcow --enable-static &&\
+	$(MAKE)
+block-obj-y += ext/tsk/tsk/.libs/libtsk.a
+endif
+#########################
 block-modules = $(foreach o,$(block-obj-m),"$(basename $(subst /,-,$o))",) NULL
 util/module.o-cflags = -D'CONFIG_BLOCK_MODULES=$(block-modules)'
 

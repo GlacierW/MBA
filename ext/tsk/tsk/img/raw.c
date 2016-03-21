@@ -787,7 +787,7 @@ qemu_imgstat(TSK_IMG_INFO * img_info, FILE * hFile)
 }
 
 void
-qemu_close(TSK_IMG_INFO * img_info)
+__qemu_close(TSK_IMG_INFO * img_info)
 {
 }
 
@@ -811,7 +811,7 @@ qemu_image_open(void *opaque, unsigned int a_ssize)
     img_info->itype = QEMU_IMG;
 
     img_info->read = qemu_read;
-    img_info->close = qemu_close;
+    img_info->close = __qemu_close;
     img_info->imgstat = qemu_imgstat;
 
     img_info->sector_size = 512;

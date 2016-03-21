@@ -112,4 +112,3 @@ qga-vss-dll-obj-y = qga/
 ######################################################################
 # MBA Extension
 common-obj-y += ext/dift/dift.o
-common-obj-y += ext/dift/dift-commands.o
