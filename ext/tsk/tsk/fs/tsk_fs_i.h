@@ -102,7 +102,7 @@ extern "C" {
         TSK_FS_ATTR * a_fs_attr, TSK_FS_ATTR_RUN * a_data_run);
 
     /* FS_DATALIST */
-    extern TSK_FS_ATTRLIST *tsk_fs_attrlist_alloc();
+    extern TSK_FS_ATTRLIST *tsk_fs_attrlist_alloc(void);
     extern void tsk_fs_attrlist_free(TSK_FS_ATTRLIST *);
     extern uint8_t tsk_fs_attrlist_add(TSK_FS_ATTRLIST *, TSK_FS_ATTR *);
     extern TSK_FS_ATTR *tsk_fs_attrlist_getnew(TSK_FS_ATTRLIST *,
@@ -120,7 +120,7 @@ extern "C" {
         a_fs_attrlist);
 
     /* FS_DATA_RUN */
-    extern TSK_FS_ATTR_RUN *tsk_fs_attr_run_alloc();
+    extern TSK_FS_ATTR_RUN *tsk_fs_attr_run_alloc(void);
     extern void tsk_fs_attr_run_free(TSK_FS_ATTR_RUN *);
 
     /* FS_META */

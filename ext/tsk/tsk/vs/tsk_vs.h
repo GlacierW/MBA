@@ -120,7 +120,7 @@ extern "C" {
     extern TSK_VS_TYPE_ENUM tsk_vs_type_toid_utf8(const char *);
     extern const char *tsk_vs_type_toname(TSK_VS_TYPE_ENUM);
     extern const char *tsk_vs_type_todesc(TSK_VS_TYPE_ENUM);
-    extern TSK_VS_TYPE_ENUM tsk_vs_type_supported();
+    extern TSK_VS_TYPE_ENUM tsk_vs_type_supported(void);
     extern void tsk_vs_type_print(FILE *);
 
     // open a volume system

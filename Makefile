@@ -235,14 +235,14 @@ ext/tsk/libqcow/libqcow/.libs/libqcow.a:
 	cd ext/tsk/libqcow &&\
 	./synclibs.sh &&\
 	./autogen.sh &&\
-	./configure --enable-static &&\
+	./configure --enable-static CFLAGS="-fPIC" &&\
 	$(MAKE)
 ext/tsk/tsk/.libs/libtsk.a:  ext/tsk/libqcow/libqcow/.libs/libqcow.a
 	cd ext/tsk &&\
 	./bootstrap &&\
 	./configure --disable-java --with-libqcow=`pwd`/libqcow --enable-static &&\
 	$(MAKE)
-block-obj-y += ext/tsk/tsk/.libs/libtsk.a
+#block-obj-y += ext/tsk/tsk/.libs/libtsk.a
 endif
 #########################
 block-modules = $(foreach o,$(block-obj-m),"$(basename $(subst /,-,$o))",) NULL

@@ -175,6 +175,17 @@ all-obj-y += $(common-obj-y)
 all-obj-y += $(target-obj-y)
 all-obj-$(CONFIG_SOFTMMU) += $(block-obj-y)
 
+# MBA
+ifdef  CONFIG_DIFT
+all-obj-y += ../ext/dift/dift-commands.o
+endif
+
+ifdef  CONFIG_TSK
+all-obj-y += ../ext/tsk/tsk-commands.o
+../ext/tsk/tsk-commands.o-cflags := -DHAVE_CONFIG_H
+endif
+
+
 $(QEMU_PROG_BUILD): config-devices.mak
 
 # build either PROG or PROGW
