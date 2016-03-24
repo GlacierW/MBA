@@ -1,7 +1,7 @@
 {
         .name = "get_filename_by_haddr",
         .args_type  = "dev:s,addr:l",
-        .params     = "addr dev",
+        .params     = "dev addr",
         .help       = "Get the filename by image byte offset",
         .mhandler.cmd = do_get_filename_by_haddr,
 },

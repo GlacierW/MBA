@@ -395,6 +395,9 @@ static void gen_dift_reg_reg( DisasContext* s, uint16_t dreg, uint16_t sreg, uin
 
     dift_record rec = DIFT_REC_EMPTY;
 
+    if( !dift_is_enabled() )
+        return;
+
     qemu_log( "gen_dift_reg_reg => dreg: %d, sreg: %d, ot: %d\n", dreg, sreg, ot );
 
     rec.case_nb = dift_rec_case_nb( OPT_REG, OPT_REG, ot & 0x03, effect );
@@ -419,6 +422,9 @@ static void gen_dift_reg_reg( DisasContext* s, uint16_t dreg, uint16_t sreg, uin
 static void gen_dift_reg_mem( DisasContext* s, uint16_t dst_reg_name, uint8_t effect, uint8_t ot, uint8_t hl_switch ) {
 
     dift_record rec = DIFT_REC_EMPTY;
+
+    if( !dift_is_enabled() )
+        return;
 
     qemu_log( "gen_dift_reg_mem => dreg: %d, ot: %d\n", dst_reg_name, ot );
 
@@ -446,6 +452,9 @@ static void gen_dift_mem_reg( DisasContext* s, uint16_t src_reg_name, uint8_t ef
 
     dift_record rec = DIFT_REC_EMPTY;
 
+    if( !dift_is_enabled() )
+        return;
+
     qemu_log( "gen_dift_mem_reg => sreg: %d, ot: %d\n", src_reg_name, ot );
 
     rec.case_nb = dift_rec_case_nb( OPT_MEM, OPT_REG, ot & 0x03, effect );
@@ -471,6 +480,9 @@ static void gen_dift_mem_reg( DisasContext* s, uint16_t src_reg_name, uint8_t ef
 static void gen_dift_mem_mem( DisasContext* s, uint8_t effect, uint8_t ot ) {
 
     dift_record rec = DIFT_REC_EMPTY;
+ 
+    if( !dift_is_enabled() )
+        return;
 
     qemu_log( "gen_dift_mem_mem => ot: %d\n", ot );
 
@@ -483,6 +495,9 @@ static void gen_dift_mem_mem( DisasContext* s, uint8_t effect, uint8_t ot ) {
 static void gen_dift_reg_im( DisasContext* s, uint16_t dst_reg_name, uint8_t ot, uint8_t hl_switch ) {
 
     dift_record rec = DIFT_REC_EMPTY;
+
+    if( !dift_is_enabled() )
+        return;
 
     qemu_log( "gen_dift_reg_im => dreg: %d, ot: %d\n", dst_reg_name, ot );
 
@@ -499,6 +514,9 @@ static void gen_dift_reg_im( DisasContext* s, uint16_t dst_reg_name, uint8_t ot,
 static void gen_dift_mem_im( DisasContext* s, uint8_t ot ) {
 
     dift_record rec = DIFT_REC_EMPTY;
+
+    if( !dift_is_enabled() )
+        return;
 
     qemu_log( "gen_dift_mem_im => ot: %d\n", ot );
 
@@ -565,6 +583,9 @@ static void gen_dift_op( DisasContext* s, uint8_t effect, int ot ) {
 static void gen_dift_inside_reg( DisasContext* s, uint16_t reg, uint8_t dst_byte, uint8_t src_byte, uint8_t effect ) {
 
     dift_record rec = DIFT_REC_EMPTY;
+
+    if( !dift_is_enabled() )
+        return;
 
     qemu_log( "gen_dift_inside_reg => reg: %d, dbyte:%d, sbyte:%d\n", reg, dst_byte, src_byte );
 

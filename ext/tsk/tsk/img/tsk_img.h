@@ -127,7 +127,7 @@ extern "C" {
     extern TSK_IMG_TYPE_ENUM tsk_img_type_toid(const TSK_TCHAR *);
     extern const char *tsk_img_type_toname(TSK_IMG_TYPE_ENUM);
     extern const char *tsk_img_type_todesc(TSK_IMG_TYPE_ENUM);
-    extern TSK_IMG_TYPE_ENUM tsk_img_type_supported();
+    extern TSK_IMG_TYPE_ENUM tsk_img_type_supported(void);
     extern void tsk_img_type_print(FILE *);
 
 #ifdef __cplusplus

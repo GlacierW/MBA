@@ -79,7 +79,6 @@ FILE* dift_logfile = NULL;
 
 // Emulator part
 uint8_t pre_generated_routine[4096] __attribute__((aligned(4096)));
-
 uint8_t* rt_get_next_enqptr     = pre_generated_routine;
 uint8_t* rt_finish_curr_block   = pre_generated_routine + 512;
 uint8_t* rt_enqueue_one_rec     = pre_generated_routine + 1024;
@@ -248,10 +247,12 @@ uint64_t*         q_chunks_ptr[Q_CHUNKS_SIZE];
 volatile uint64_t q_chunks_flag[Q_CHUNKS_SIZE];
 volatile uint32_t dift_thread_ok_signal = 0;
 
-int sleepness = 0;
-
 // DIFT Context
 dift_context dc[1] __attribute__((aligned(4096)));
+
+// DIFT private variable
+static int  sleepness = 0;
+static bool dift_enabled = false;
 static pthread_t dift_thread;
 
 const char* REG_NAME[] = {
@@ -1159,4 +1160,16 @@ CONTAMINATION_RECORD dift_get_memory_dirty( uint64_t addr ) {
 
 CONTAMINATION_RECORD dift_get_disk_dirty( uint64_t haddr ) {
     return get_hd_dirty( dc, haddr );
+}
+
+void dift_enable( void ) {
+    dift_enabled = true;
+}
+
+void dift_disable( void ) {
+    dift_enabled = false;
+}
+
+bool dift_is_enabled( void ) {
+    return dift_enabled;
 }

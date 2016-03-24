@@ -2075,7 +2075,7 @@ static void coroutine_fn bdrv_co_do_rw(void *opaque)
             len      = dbs->sg->sg[idx].len;
 
             // to prevent guest booting phase crash
-            if( addr_mem != 0 ) {
+            if( dift_is_enabled() && addr_mem != 0 ) {
                 dift_rec_enqueue( *(uint64_t*)&rec );
                 dift_rec_enqueue( addr_mem );
                 dift_rec_enqueue( addr_sec );

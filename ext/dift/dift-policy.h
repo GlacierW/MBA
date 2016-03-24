@@ -2173,8 +2173,10 @@ rt_rec_block_begin:
     dc->tb_tc_ptr = DEQ_FROM_CODE();
 DIFT_DEBUG_CONDITION
 {
-    dift_log( "----------------\n" );
-    dift_log( "TB: %p [%016lx]\n", dc->tb_tc_ptr, dc->tb_rip );
+    if( dift_is_enabled() ) {
+        dift_log( "----------------\n" );
+        dift_log( "TB: %p [%016lx]\n", dc->tb_tc_ptr, dc->tb_rip );
+    }
 }
 #endif
     THREADED_DISPATCH();

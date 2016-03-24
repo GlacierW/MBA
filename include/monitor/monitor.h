@@ -43,6 +43,12 @@ void monitor_flush(Monitor *mon);
 int monitor_set_cpu(int cpu_index);
 int monitor_get_cpu_index(void);
 
+/* MBA extension--- */
+/// Returns CPUArchState (not determined here) pointer.
+void *mba_mon_get_cpu(void);
+/* ---MBA extension */
+
+
 typedef void (MonitorCompletion)(void *opaque, QObject *ret_data);
 
 void monitor_set_error(Monitor *mon, QError *qerror);

@@ -71,9 +71,9 @@ extern "C" {
 
     /* The core function here is to retrieve the per-thread error structure. Other functions to follow
      * are for convenience of performing common operations. */
-    extern TSK_ERROR_INFO *tsk_error_get_info();
+    extern TSK_ERROR_INFO *tsk_error_get_info(void);
 
-    extern uint32_t tsk_error_get_errno();
+    extern uint32_t tsk_error_get_errno(void);
     extern void tsk_error_set_errno(uint32_t t_errno);
 
 #ifdef __GNUC__
@@ -82,11 +82,11 @@ extern "C" {
 #define TSK_ERROR_FORMAT_ATTRIBUTE(n,m)
 #endif
 
-    extern char *tsk_error_get_errstr();
+    extern char *tsk_error_get_errstr(void);
     extern void tsk_error_set_errstr(char const *format,
         ...) TSK_ERROR_FORMAT_ATTRIBUTE(1, 2);
     extern void tsk_error_vset_errstr(char const *format, va_list args);
-    extern char *tsk_error_get_errstr2();
+    extern char *tsk_error_get_errstr2(void);
     extern void tsk_error_set_errstr2(char const *format,
         ...) TSK_ERROR_FORMAT_ATTRIBUTE(1, 2);
     extern void tsk_error_vset_errstr2(char const *format, va_list args);
@@ -94,10 +94,10 @@ extern "C" {
         ...) TSK_ERROR_FORMAT_ATTRIBUTE(1, 2);
 
     /** Return a human-readable form of tsk_error_get_errno **/
-    extern const char *tsk_error_get();
+    extern const char *tsk_error_get(void);
 
     extern void tsk_error_print(FILE *);
-    extern void tsk_error_reset();
+    extern void tsk_error_reset(void);
 
 
 #ifdef TSK_MULTITHREAD_LIB
@@ -170,7 +170,7 @@ extern "C" {
     extern void tsk_stack_pop(TSK_STACK * stack);
     extern uint8_t tsk_stack_find(TSK_STACK * stack, uint64_t key);
     extern void tsk_stack_free(TSK_STACK * stack);
-    extern TSK_STACK *tsk_stack_create();
+    extern TSK_STACK *tsk_stack_create(void);
 
 
     // print internal UTF-8 strings to local platform Unicode format
@@ -275,7 +275,7 @@ extern "C" {
 
 
     extern void tsk_version_print(FILE *);
-    extern const char *tsk_version_get_str();
+    extern const char *tsk_version_get_str(void);
 
 
 /*********** RETURN VALUES ************/

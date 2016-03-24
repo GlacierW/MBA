@@ -1557,7 +1557,7 @@ static void tcg_out_qemu_ld(TCGContext *s, const TCGArg *args, bool is64)
                      label_ptr, offsetof(CPUTLBEntry, addr_read));
 
 #if defined(CONFIG_DIFT)
-    // [&last_mem_read_addr] = TCG_REG_L1  (TCG_REG_L0 is now available), comments in Intel syntax
+    // make [&last_mem_read_addr] = TCG_REG_L1  (TCG_REG_L0 is now available). comments in Intel syntax
     tcg_out8(s, 0x48);
     tcg_out8(s, 0xb8 + TCG_REG_L0 );
     tcg_out64(s, (uint64_t)&last_mem_read_addr);    // mov TCG_REG_L0, &last_mem_read_addr
@@ -1701,7 +1701,7 @@ static void tcg_out_qemu_st(TCGContext *s, const TCGArg *args, bool is64)
                      label_ptr, offsetof(CPUTLBEntry, addr_write));
  
 #if defined(CONFIG_DIFT)
-    // [&last_mem_write_addr] = TCG_REG_L1  (TCG_REG_L0 is now available), comments in Intel syntax
+    // make [&last_mem_write_addr] = TCG_REG_L1  (TCG_REG_L0 is now available). comments in Intel syntax
     tcg_out8(s, 0x48);
     tcg_out8(s, 0xb8 + TCG_REG_L0 );
     tcg_out64(s, (uint64_t)&last_mem_write_addr);   // mov TCG_REG_L0, &last_mem_write_addr
@@ -1751,29 +1751,41 @@ static void tcg_out_qemu_dift_enq_i64( TCGContext* s, const TCGArg* args ) {
 
     tcg_out8(s, 0x48);
     tcg_out8(s, 0xba);
-    tcg_out64(s, (uint64_t)args[0]); // mov rdx, args[0]
+    tcg_out64(s, (uint64_t)args[0]);                // mov rdx, args[0]
 
-    tcg_out8(s, 0xe8);
-    tcg_out32(s, (uint32_t)(rt_enqueue_one_rec - (s->code_ptr + 4))); // call rt_enqueue_one_rec
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0xb8);
+    tcg_out64(s, (uint64_t)(rt_enqueue_one_rec));   // mov rax, rt_enqueue_one_rec
+
+    tcg_out8(s, 0xff);
+    tcg_out8(s, 0xd0);                              // call rax
 }
 
 static void tcg_out_qemu_dift_enq_raddr( TCGContext* s ) {
 
-    tcg_out8(s, 0xe8);
-    tcg_out32(s, (uint32_t)(rt_enqueue_raddr - (s->code_ptr + 4))); // call rt_enqueue_raddr
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0xb8);
+    tcg_out64(s, (uint64_t)(rt_enqueue_raddr)); // mov rax, rt_enqueue_raddr
+
+    tcg_out8(s, 0xff);
+    tcg_out8(s, 0xd0);                          // call rax
 }
 
 static void tcg_out_qemu_dift_enq_waddr( TCGContext* s ) {
-    
-    tcg_out8(s, 0xe8);
-    tcg_out32(s, (uint32_t)(rt_enqueue_waddr - (s->code_ptr + 4))); // call rt_enqueue_waddr
+ 
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0xb8);
+    tcg_out64(s, (uint64_t)(rt_enqueue_waddr)); // mov rax, rt_enqueue_waddr
+
+    tcg_out8(s, 0xff);
+    tcg_out8(s, 0xd0);                          // call rax
 }
 
 static void tcg_out_qemu_dift_inc_diftcodes( TCGContext* s, const TCGArg* args ) {
 
     tcg_out8(s, 0x48);
     tcg_out8(s, 0xb8);
-    tcg_out64(s, (uint64_t)args[0]); // mov rax, args[0]
+    tcg_out64(s, (uint64_t)args[0]);         // mov rax, args[0]
 
     tcg_out8(s, 0x48);
     tcg_out8(s, 0xa3);
@@ -1784,11 +1796,15 @@ static void tcg_out_qemu_dift_tb_begin( TCGContext* s, const TCGArg* args ) {
 
     tcg_out8(s, 0x48);
     tcg_out8(s, 0xba);
-    tcg_out64(s, REC_END_SYMBOL | REC_BEFORE_BLOCK_BEGIN);              // mov rdx, REC_BEFORE_BLOCK_BEGIN
+    tcg_out64(s, REC_END_SYMBOL | REC_BEFORE_BLOCK_BEGIN);  // mov rdx, REC_BEFORE_BLOCK_BEGIN
 
-    tcg_out8(s, 0xe8);
-    tcg_out32(s, (uint32_t)(rt_enqueue_one_rec - (s->code_ptr + 4)));   // call rt_enqueue_one_rec
-    
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0xb8);
+    tcg_out64(s, (uint64_t)(rt_enqueue_one_rec));           // mov rax, rt_enqueue_one_rec
+
+    tcg_out8(s, 0xff);
+    tcg_out8(s, 0xd0);                                      // call rax
+
     tcg_out8(s, 0xa1);
     tcg_out64(s, (uint64_t)&dift_code_loc);     // mov eax, [&dift_code_loc]
 
@@ -1819,10 +1835,14 @@ static void tcg_out_qemu_dift_tb_begin( TCGContext* s, const TCGArg* args ) {
     tcg_out8(s, 0x48);
     tcg_out8(s, 0x09);
     tcg_out8(s, 0xc2);                          // or rdx, rax
-    
-    tcg_out8(s, 0xe8);
-    tcg_out32(s, (uint32_t)(rt_enqueue_one_rec - (s->code_ptr + 4)));   // call rt_enqueue_one_rec
+ 
+    tcg_out8(s, 0x48);
+    tcg_out8(s, 0xb8);
+    tcg_out64(s, (uint64_t)(rt_enqueue_one_rec));   // mov rax, rt_enqueue_one_rec
 
+    tcg_out8(s, 0xff);
+    tcg_out8(s, 0xd0);                              // call rax
+   
     tcg_out8(s, 0xb8); 
     tcg_out32(s, (uint32_t)(args[0] / CONFIG_IF_CODES_PER_TB));         // mov eax, (args[0]/CONFIG_IF_CODES_PER_TB)
 
