@@ -1,0 +1,58 @@
+.Dd January 19, 2014
+.Dt qcowinfo
+.Os libqcow
+.Sh NAME
+.Nm qcowinfo
+.Nd determines information about a QEMU Copy-On-Write (QCOW) image file
+.Sh SYNOPSIS
+.Nm qcowinfo
+.Op Fl hvV
+.Va Ar source
+.Sh DESCRIPTION
+.Nm qcowinfo
+is a utility to determine information about a QEMU Copy-On-Write (QCOW) image file
+.Pp
+.Nm qcowinfo
+is part of the
+.Nm libqcow
+package.
+.Nm libqcow
+is a library to access the QEMU Copy-On-Write (QCOW) image format
+.Pp
+.Ar source
+is the source file.
+.Pp
+The options are as follows:
+.Bl -tag -width Ds
+.It Fl h
+shows this help
+.It Fl v
+verbose output to stderr
+.It Fl V
+print version
+.El
+.Sh ENVIRONMENT
+None
+.Sh FILES
+None
+.Sh EXAMPLES
+.Bd -literal
+# qcowinfo file.qcow
+qcowinfo 20101231
+
+QEMU Copy-On-Write (QCOW) image information:
+        Format:		2
+.Dl        ...
+
+.Ed
+.Sh DIAGNOSTICS
+Errors, verbose and debug output are printed to stderr when verbose output \-v is enabled.
+Verbose and debug output are only printed when enabled at compilation.
+.Sh BUGS
+Please report bugs of any kind to <joachim.metz@gmail.com> or on the project website:
+https://github.com/libyal/libqcow/
+.Sh AUTHOR
+These man pages were written by Joachim Metz.
+.Sh COPYRIGHT
+Copyright (C) 2010-2016, Joachim Metz <joachim.metz@gmail.com>.
+.Sh SEE ALSO

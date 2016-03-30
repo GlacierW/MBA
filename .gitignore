@@ -50,7 +50,6 @@
 /qmp-commands.txt
 /vscclient
 /fsdev/virtfs-proxy-helper
-*.[1-9]
 *.a
 *.aux
 *.cp

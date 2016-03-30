@@ -183,7 +183,7 @@ endif
 
 ifdef  CONFIG_TSK
 all-obj-y += ../ext/tsk/tsk-commands.o
-../ext/tsk/tsk-commands.o-cflags := -DHAVE_CONFIG_H
+../ext/tsk/tsk-commands.o-cflags := -DHAVE_CONFIG_H -I$(SRC_PATH)/ext/tsk/sleuthkit 
 endif
 
 

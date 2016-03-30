@@ -1,3 +1,24 @@
+/*
+ *  mba sleuth kit extension implementation
+ *
+ *  Copyright (c)   2012 Chiwei Wang
+ *                  2016 Chiawei Wang
+ *                  2016 Chongkuan Chen
+ *                  2016 Hao Li
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ */
 #include <stdint.h>
 
 #include "tsk.h"
@@ -19,7 +40,32 @@ typedef struct{
     uint64_t found_fs_offset;
 } find_fs_struct;
 
-static UT_icd ut_tsk_daddr_t_icd = {sizeof(TSK_DADDR_T), NULL, NULL,NULL};
+static UT_icd ut_tsk_daddr_tuple_icd = {sizeof(TSK_DADDR_T)*2, NULL, NULL,NULL};
+
+typedef struct {
+    TSK_INUM_T inode;
+    uint8_t flags;
+    uint8_t found;
+    UT_array *filenames;
+} MBA_FFIND_DATA;
+
+typedef struct{
+    const char *full_path;
+    int file_found_in_partiton;
+    int file_found;
+    UT_array *offsets_in_filesystem;
+    UT_array *offsets_in_disk;
+}find_file_data;
+
+typedef struct {
+    TSK_DADDR_T block;          /* the block to find */
+    TSK_FS_IFIND_FLAG_ENUM flags;
+    uint8_t found;
+
+    TSK_INUM_T curinode;        /* the inode being analyzed */
+    uint32_t curtype;           /* the type currently being analyzed: NTFS */
+    uint16_t curid;
+} MBA_IFIND_DATA_DATA;;
 
 
 /*
@@ -37,10 +83,13 @@ log_attr_offsets_in_filesystem(TSK_FS_FILE * fs_file, TSK_OFF_T a_off,
         void *ptr){
 
     if (is_run_on_disk(flags)){
-        find_file_data *data  = (find_file_data*)ptr;
-        TSK_DADDR_T    offset = addr * fs_file->fs_info->block_size;
+        find_file_data                    *data = (find_file_data*)ptr;
+        TSK_DADDR_T    offset_start_and_last[2] = {
+            addr * fs_file->fs_info->block_size, 
+            (addr+1) * fs_file->fs_info->block_size - 1
+        };
 
-        utarray_push_back(data->offsets_in_filesystem, &offset);
+        utarray_push_back(data->offsets_in_filesystem, &offset_start_and_last);
         data->file_found_in_partiton = 1;
     }
     return TSK_WALK_CONT;
@@ -92,7 +141,7 @@ static TSK_WALK_RET_ENUM find_file_in_partiton(
         return TSK_WALK_CONT;
     
     data->file_found_in_partiton = 0;
-    utarray_new(data->offsets_in_filesystem, &ut_tsk_daddr_t_icd);
+    utarray_new(data->offsets_in_filesystem, &ut_tsk_daddr_tuple_icd);
     log_file_offsets_in_filesystem(data, file);
 
     if (data->file_found_in_partiton) {
@@ -101,8 +150,11 @@ static TSK_WALK_RET_ENUM find_file_in_partiton(
                 p != NULL;
                 p=(TSK_DADDR_T*)utarray_next(data->offsets_in_filesystem, p)) {
 
-            TSK_DADDR_T offset = *p + part->start*vs->img_info->sector_size;
-            utarray_push_back(data->offsets_in_disk, &offset);
+            TSK_DADDR_T   offset_start_and_last[2] = {
+                p[0] + part->start*vs->img_info->sector_size,
+                p[1] + part->start*vs->img_info->sector_size
+            };
+            utarray_push_back(data->offsets_in_disk, &offset_start_and_last);
         }
         data->file_found = 1;
     }
@@ -188,11 +240,15 @@ ifind_data_act(TSK_FS_FILE * fs_file, void *ptr)
         return TSK_WALK_CONT;
 }
 
-/* 
- * Find the inode that has allocated block blk
- * Return 1 on error, 0 if no error */
-MBA_IFIND_DATA_DATA*
-mba_tsk_fs_ifind_data(TSK_FS_INFO * fs, TSK_FS_IFIND_FLAG_ENUM lclflags,
+// Find the inode that has allocated the specified block
+// 
+// \param fs        filesystem info structure defined in sleuthkit
+// \param lclflags  traverse options defined in sleuthkit
+// \param blk       the target block
+// 
+// Return 0 if error, otherwise a pointer
+static MBA_IFIND_DATA_DATA*
+fs_ifind_data(TSK_FS_INFO * fs, TSK_FS_IFIND_FLAG_ENUM lclflags,
     TSK_DADDR_T blk)
 {
     MBA_IFIND_DATA_DATA* data;
@@ -236,13 +292,6 @@ mba_tsk_fs_ifind_data(TSK_FS_INFO * fs, TSK_FS_IFIND_FLAG_ENUM lclflags,
     return data;
 }
 
-/***************************************************************
-*  Find the path base on inode
-*/
-
-/** \internal
-* Structure to store data for callbacks.
-*/
 
 static TSK_WALK_RET_ENUM
 find_file_act(TSK_FS_FILE * fs_file, const char *a_path, void *ptr)
@@ -265,12 +314,6 @@ find_file_act(TSK_FS_FILE * fs_file, const char *a_path, void *ptr)
         snprintf(filename, path_len-1, "/%s%s", a_path, fs_file->name->name);
         utarray_push_back(data->filenames, &filename);
 
-        //if (fs_file->name->flags & TSK_FS_NAME_FLAG_UNALLOC)
-        //    tsk_printf("* ");
-
-
-        //tsk_printf("/%s%s\n", a_path, fs_file->name->name);
-
         if (!(data->flags & TSK_FS_FFIND_ALL)) {
             return TSK_WALK_STOP;
         }
@@ -278,9 +321,21 @@ find_file_act(TSK_FS_FILE * fs_file, const char *a_path, void *ptr)
     return TSK_WALK_CONT;
 }
 
-/* Return 0 on success and 1 on error */
-MBA_FFIND_DATA*
-mba_tsk_fs_ffind(TSK_FS_INFO * fs, TSK_FS_FFIND_FLAG_ENUM lclflags,
+// XXX(misterlihao@gmail.com): had better fix the comment
+// find file of the given inode
+// 
+// \param fs         filesystem info structure defined in sleuthkit
+// \param lclflags   traverse options defined in sleuthkit
+// \param a_inode    the inode of the file
+// \param type       filesystem type number
+// \param type_used  don't know what it is, just give a 0(XXX)
+// \param id         the id of file attribute that the inode refers
+// \param id_used    don't know what it is, just give a 0(XXX)
+// \param flags      traverse options difned in sleuthkit
+// 
+// Return 0 if error, otherwise a pointer
+static MBA_FFIND_DATA*
+fs_ffind(TSK_FS_INFO * fs, TSK_FS_FFIND_FLAG_ENUM lclflags,
     TSK_INUM_T a_inode,
     TSK_FS_ATTR_TYPE_ENUM type, uint8_t type_used,
     uint16_t id, uint8_t id_used, TSK_FS_DIR_WALK_FLAG_ENUM flags)
@@ -363,9 +418,6 @@ mba_tsk_fs_ffind(TSK_FS_INFO * fs, TSK_FS_FFIND_FLAG_ENUM lclflags,
 }
 
 
-
-
-//
 static TSK_WALK_RET_ENUM part_act(TSK_VS_INFO * vs, const TSK_VS_PART_INFO * part, void *found_fs_struct)
 {
 
@@ -383,7 +435,7 @@ static TSK_WALK_RET_ENUM part_act(TSK_VS_INFO * vs, const TSK_VS_PART_INFO * par
 }
 
 //return the offset to the file system which contain our target_addr
-TSK_DADDR_T search_partition(TSK_VS_INFO *vs, uint64_t target_addr)
+static TSK_DADDR_T search_partition(TSK_VS_INFO *vs, uint64_t target_addr)
 {
     int flags = TSK_VS_PART_FLAG_ALL;
     TSK_DADDR_T ret = 0;
@@ -491,7 +543,7 @@ UT_array* tsk_get_filename_by_haddr(const char* imgname, uint64_t haddr_img_offs
     printf("block count in current filesystem %"PRIuINUM"\n", fs->block_count);
     printf("block offset to current filesystem %"PRIuINUM"\n", part_block_offset);
 //find the inode of this block
-    ifind_data = mba_tsk_fs_ifind_data(fs, (TSK_FS_IFIND_FLAG_ENUM) 0, part_block_offset);
+    ifind_data = fs_ifind_data(fs, (TSK_FS_IFIND_FLAG_ENUM) 0, part_block_offset);
     if(ifind_data == NULL)
     {
         return NULL; 
@@ -506,7 +558,7 @@ UT_array* tsk_get_filename_by_haddr(const char* imgname, uint64_t haddr_img_offs
 
     //Find the inode's filename
     //Note: Do Not Know what to fill in variable type_used and id_used
-    ffind_data =  mba_tsk_fs_ffind(fs, 0, ifind_data->curinode, ifind_data->curtype ,
+    ffind_data =  fs_ffind(fs, 0, ifind_data->curinode, ifind_data->curtype ,
             type_used, ifind_data->curid , id_used,
             (TSK_FS_DIR_WALK_FLAG_RECURSE | TSK_FS_DIR_WALK_FLAG_ALLOC | TSK_FS_DIR_WALK_FLAG_UNALLOC));
 
@@ -553,7 +605,7 @@ UT_array* tsk_find_haddr_by_filename(const char* img_path, const char* file_path
 
     data.file_found = 0;
     data.full_path  = file_path;
-    utarray_new(data.offsets_in_disk, &ut_tsk_daddr_t_icd);
+    utarray_new(data.offsets_in_disk, &ut_tsk_daddr_tuple_icd);
     tsk_vs_part_walk(
             vs,                 // the volume system 
             0,                             // start from first partiton 
@@ -564,21 +616,12 @@ UT_array* tsk_find_haddr_by_filename(const char* img_path, const char* file_path
             );
 
     if (data.file_found) {
-        //int cnt = 0;
-        //TSK_DADDR_T *p; 
-        //for (p=(TSK_DADDR_T*)utarray_front(data.offsets_in_disk);
-        //        p != NULL;
-        //        p=(TSK_DADDR_T*)utarray_next(data.offsets_in_disk, p)) {
-        //
-        //    printf("%d - %lu\n", cnt++, *p);
-        //}
         ret = data.offsets_in_disk;
     }
     else {
         printf("file block not found\n");
         return NULL;
     }
-    //utarray_free(data.offsets_in_disk);
 
     tsk_vs_close(vs);
     tsk_img_close(img);
@@ -586,21 +629,3 @@ UT_array* tsk_find_haddr_by_filename(const char* img_path, const char* file_path
 
     return ret;
 }
-/*
-int main(int argc, char* argv[])
-{
-    uint64_t  haddr_img_offset = atoll(argv[2]);
-    char *name= argv[1];
-    char **p;
-
-    UT_array* filenames = tsk_get_filename_by_haddr(name, haddr_img_offset);
-
-    p = NULL;
-    while ( (p=(char**)utarray_next(filenames,p))) {
-         printf(" %s\n",*p);
-    }
-
-
-
-    return 0;
-}*/
