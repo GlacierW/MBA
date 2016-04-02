@@ -471,6 +471,12 @@ static TSK_DADDR_T search_partition(TSK_VS_INFO *vs, uint64_t target_addr)
 Public API for disk forensic
 */
 
+// Find the filename of the specified hardward byte offset
+// 
+// \param imgname           path of target image
+// \param haddr_img_offset  the target hardware byte address
+// 
+// Return NULL if error, otherwise a UT_array of filename 
 UT_array* tsk_get_filename_by_haddr(const char* imgname, uint64_t haddr_img_offset)
 {
     TSK_IMG_INFO *img;
@@ -577,6 +583,12 @@ UT_array* tsk_get_filename_by_haddr(const char* imgname, uint64_t haddr_img_offs
     return ret;
 }
 
+// Find all the hardware address corresponding to target file
+// 
+// \param img_path          path of target image
+// \param file_path         the target filename
+// 
+// Return NULL if error, otherwise a UT_array of (start, end) tuple will returned, where start and end are the hardware byte addrsesses
 UT_array* tsk_find_haddr_by_filename(const char* img_path, const char* file_path)
 {
 
