@@ -39,6 +39,34 @@ void do_show_memory_taint_map(struct Monitor *mon, const struct QDict *qdict)
     }
 }
 
+void do_disk_contaminate(Monitor *mon, const QDict *qdict)
+{
+    uint64_t target_addr = qdict_get_int(qdict, "addr");
+    uint64_t target_range = qdict_get_int(qdict, "range");
+    uint64_t contaminate_tag = qdict_get_int(qdict, "contaminate");
+
+    monitor_printf(mon, "Start tainting( addr %ld range %ld contaminate %ld)\n", target_addr, target_range, contaminate_tag);
+    dift_contaminate_disk_or(target_addr, target_range, contaminate_tag & 0xff);
+    monitor_printf(mon, "Taint finish\n");
+}
+
+void do_show_disk_taint_map(struct Monitor *mon, const struct QDict *qdict)
+{
+    uint64_t target_addr = qdict_get_int(qdict, "addr");
+    uint64_t target_length = qdict_get_int(qdict, "len");
+    int i;
+
+    monitor_printf(mon, "Taint addr %ld length %ld\n", target_addr, target_length);
+
+    for(i = 0 ; i < target_length ; i++) {
+        monitor_printf( mon, "%02x, ",
+                 dift_get_disk_dirty(target_addr + i));
+        if((i & 0xf) == 0xf)
+            monitor_printf(mon, "\n");
+    }
+}
+
+
 void do_get_physic_address(struct Monitor *mon, const struct QDict *qdict)
 {
     uint64_t target_cr3		= qdict_get_int(qdict, "cr3");

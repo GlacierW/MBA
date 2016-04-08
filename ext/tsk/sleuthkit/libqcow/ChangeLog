@@ -1,0 +1,305 @@
+TODO
+* add snapshot support
+  - backing filename
+  - in-image snapshots
+* pyqcow
+  - add function to set the keys
+* add write support ?
+
+File format:
+* reference count support
+
+Tools:
+* qcowmount - dokan version
+  - have it run in background (using CreateProcess)?
+  - what about unmount?
+  - fix volume size hints
+  - create compatible dokan lib
+
+Tests:
+* add concurrent open close test
+* add concurrent seek test ?
+* add password for encrypted QCOW images
+
+20160126
+* worked on tests
+
+20160124
+* worked on fallback inflate implementation
+* worked on tests
+
+20160123
+* worked on fallback inflate implementation
+
+20160119
+* worked on fallback inflate implementation
+
+20160118
+* worked on fallback inflate implementation
+
+20160117
+* worked on fallback inflate implementation
+
+20160111
+* Changes to Python bindings
+
+20160109
+* fixes for rpmbuild
+
+20160108
+* 2016 update
+
+20151223
+* Changes to Python bindings
+
+20151219
+* updated dependencies
+
+20150905
+* updated dependencies
+
+20150723
+* worked on tests
+
+20150105
+* 2015 update
+
+20141229
+* updated dpkg files
+* updated dependencies
+* updated .gitignore
+
+20141226
+* changes for updated dependencies
+
+20141221
+* worked on Python 3 support
+* worked on tests
+
+20141205
+* worked on test scripts
+
+20141201
+* worked on multi-threading support
+* code clean up
+* worked on version 3 support
+
+20141129
+* code clean up
+
+20141112
+* code clean up
+
+20141104
+* worked on multi-threading support
+* removed deprecated functions:
+  - libqcow_file_read_random
+  - pyqcow file.read_random
+
+20141029
+* bug fix in Python-bindings
+
+20141027
+* changes for deployment
+
+20141021
+* changes for deployment
+
+20141001
+* worked on stand-alone libcstring support
+
+20140920
+* changes for project site move
+
+20140801
+* bug fix in Python-bindings
+
+20140729
+* updated dependencies
+
+20140625
+* code clean up
+
+20140330
+* code clean up
+
+20140328
+* worked on Python bindings
+
+20140317
+* worked on Python bindings
+* worked on setup.py
+
+20140315
+* updated libfdata
+
+20140131
+* worked on Python bindings
+
+20140119
+* 2014 update
+* updated dependencies
+
+20131211
+* worked on Python bindings
+
+20131209
+* worked on Python bindings
+  - bug fix for read count behavior change
+
+20131204
+* fix for zlib versions that export inflateInit2_ instead of inflateInit2
+* fix for handling last compressed cluster block
+
+20131203
+* worked on Python bindings
+
+20131201
+* worked on Python bindings
+  - subtle bug fix where python file-like object returns an int object
+    instead of long object
+  - improved error reporting
+* updated libcerror
+
+20131020
+* updated libcstring
+
+20131013
+* updated dependencies
+
+20130922
+* updated msvscpp files
+* removed unused libfvalue
+
+20130916
+* worked on libcthreads build support
+
+20130831
+* updated dependencies
+* bug fixes in libqcow and pyqcow
+* added libqcow_io_handle_clear
+* worked on tests
+
+20130512
+* updated dependencies
+* worked on Python bindings
+* worked on tests
+
+20130501
+* worked on compressed images
+* updated msvscpp files
+* changed libqcow_file_get_size to libqcow_file_get_media_size
+* qcowmount:
+  - worked on snapshot support
+  - worked on dokan support
+* QCOW 2 added support for image with last cluster block smaller
+  than cluster block size
+
+20130430
+* worked on QCOW 1 support
+
+20130428
+* worked on encrypted images
+* worked on tests
+* worked on QCOW 1 support
+* worked on snapshots
+* worked on compressed images
+
+20130427
+* updated dependencies
+* worked on tests
+
+20130422
+* updated dependencies
+* added python bindings
+* added PackageMaker files
+* added libqcow_file_get_size
+
+20130330
+* updated dependencies
+* code clean up
+
+20130310
+* 2013 update
+
+20120929
+* updated msvscpp files
+
+20120924
+* qcowmount added -X option
+
+20120922
+* code clean up
+
+20120917
+* fix in dpkg files
+
+20120915
+* code clean up
+
+20120913
+* applied updates
+* changes for libcdata update
+
+20120821
+* applied updates
+
+20120630
+* applied updates
+
+20120522
+* fix in dpkg files
+
+20120517
+* updated msvscpp files
+
+20120516
+* applied updates
+* added qcowmount destroy
+
+20120225
+* 2012 update
+* preparations for handling encrypted and/or compressed cluster blocks
+
+20111012
+* update for Cygwin static executable support
+* update for libfuse detection
+
+20111009
+* updated configure.ac and m4 files
+* updated common, libuna, libbfio, libfvalue, libcaes
+* implemented info handle
+* worked on qcowmount
+* updated msvscpp files
+* changes to pc and spec file
+
+20110918
+* updated configure, array type, list type
+* updated libcstring, libsystem, libuna, libbfio, libfdata, libfvalue
+* added libcaes
+
+20110304
+* updated common, libcstring, libsystem, libuna, libbfio, libfdata, libfvalue
+* update for mingw compilation
+* added msvscpp files
+* qcowinfo: included libintl for Cygwin
+
+20110111
+* updated libsystem
+
+20110110
+* updated libcstring, libuna, libbfio, libfvalue
+* worked on read_buffer
+* added seek and read tests
+
+20110109
+* updated configure.ac
+* synced local libraries
+* worked on read_buffer
+
+20110102
+* worked on level 1 table support
+
+20101231
+* initial version
+

@@ -13,6 +13,20 @@
         .mhandler.cmd = do_show_memory_taint_map,
 },
 {
+        .name = "contaminate_disk",
+        .args_type  = "addr:l,range:l,contaminate:l",
+        .params     = "addr range contaminate",
+        .help       = "contaminate a byte in disk",
+        .mhandler.cmd = do_disk_contaminate,
+},
+{
+        .name = "show_disk_taint_map",
+        .args_type  = "addr:l,len:l",
+        .params     = "addr len",
+        .help       = "Show disk taint map",
+        .mhandler.cmd = do_show_disk_taint_map,
+},
+{
         .name = "get_physic_address",
         .args_type  = "cr3:l,addr:l",
         .params     = "cr3 addr",

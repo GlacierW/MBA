@@ -181,6 +181,12 @@ ifdef  CONFIG_DIFT
 all-obj-y += ../ext/dift/dift-commands.o
 endif
 
+ifdef  CONFIG_TSK
+all-obj-y += ../ext/tsk/tsk-commands.o
+../ext/tsk/tsk-commands.o-cflags := -DHAVE_CONFIG_H -I$(SRC_PATH)/ext/tsk/sleuthkit 
+endif
+
+
 $(QEMU_PROG_BUILD): config-devices.mak
 
 # build either PROG or PROGW

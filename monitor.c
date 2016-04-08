@@ -85,6 +85,9 @@
 #include "ext/dift/dift-commands.h"
 #endif
 
+#if defined(CONFIG_TSK)
+#include "ext/tsk/tsk-commands.h"
+#endif
 
 //#define DEBUG
 //#define DEBUG_COMPLETION
@@ -2950,6 +2953,10 @@ static mon_cmd_t mon_cmds[] = {
 #include "hmp-commands.h"
 #if defined(CONFIG_DIFT)
 #include "ext/dift/dift-commands-spec.h"
+#endif
+
+#if defined(CONFIG_TSK)
+#include "ext/tsk/tsk-commands-spec.h"
 #endif
     { NULL, NULL, },
 };

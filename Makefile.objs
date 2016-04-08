@@ -112,3 +112,13 @@ qga-vss-dll-obj-y = qga/
 ######################################################################
 # MBA Extension
 common-obj-y += ext/dift/dift.o
+
+#Sleuthkit Extension
+#QEMU_CFLAGS+= -I $(SRC_PATH)/ext/tsk
+ifdef  CONFIG_TSK
+common-obj-y += ext/tsk/sleuthkit/tsk/.libs/libtsk.a
+common-obj-y += ext/tsk/sleuthkit/libqcow/libqcow/.libs/libqcow.a
+common-obj-y += ext/tsk/tsk.o
+
+ext/tsk/tsk.o-cflags := -I$(SRC_PATH)/ext/tsk -I$(SRC_PATH)/ext/tsk/sleuthkit -DHAVE_CONFIG_H
+endif

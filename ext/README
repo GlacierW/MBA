@@ -2,3 +2,4 @@ In this directory placed the QEMU extension created by DSNSLab
 Note that each directory must containt the source and the test/ directory for the unit testing
 
     1. De-coupled Information Flow Tracking system (DIFT) for taint analysis
+    2. The Sleuth Kit and mba extension (TSK) for disk forensics

@@ -341,6 +341,9 @@ tcmalloc="no"
 dift="no"
 dift_debug="no"
 #########################
+## Modified by misterlihao ##
+tsk="no"
+#########################
 
 # parse CC options first
 for opt do
@@ -1149,6 +1152,10 @@ for opt do
   --enable-debug-dift) dift_debug="yes"
   ;;
   #########################
+  ## Modified by misterlihao ##
+  --enable-tsk) tsk="yes"
+  ;;
+  #########################
   *)
       echo "ERROR: unknown option $opt"
       echo "Try '$0 --help' for more information"
@@ -1426,6 +1433,7 @@ Advanced options (experts only):
   --enable-tcmalloc        enable tcmalloc support
   --enable-dift            enable dynamic information flow tracking
   --enable-debug-dift      enable debug mode of dynamic information flow tracking
+  --enable-tsk             enable sleuth kit disk forensics sopport
 
 NOTE: The object files are built at the place where configure is launched
 EOF
@@ -4492,6 +4500,9 @@ echo "tcmalloc support  $tcmalloc"
 echo "dift support      $dift"
 echo "dift debug support $dift_debug"
 #########################
+## Modified by misterlihao ##
+echo "tsk support      $tsk"
+#########################
 
 if test "$sdl_too_old" = "yes"; then
 echo "-> Your SDL version is too old - please upgrade to have SDL support"
@@ -5374,6 +5385,12 @@ fi
 if test "$dift_debug" = "yes"; then
   echo "CONFIG_DIFT_DEBUG=y" >> $config_host_mak
   echo "CONFIG_DIFT_DEBUG=y" >> $config_target_mak
+fi
+#########################
+## Modified by misterlihao ##
+if test "$tsk" = "yes"; then
+  echo "CONFIG_TSK=y" >> $config_host_mak
+  echo "CONFIG_TSK=y" >> $config_target_mak
 fi
 #########################
 
