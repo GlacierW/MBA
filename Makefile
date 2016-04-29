@@ -225,6 +225,10 @@ ifdef  CONFIG_DIFT
 libdift.a: ext/dift/dift.o
 block-obj-y += libdift.a
 endif
+ifdef  CONFIG_AGENT
+libagent.a: ext/agent/agent.o
+block-obj-y += libagent.a
+endif
 
 #########################
 ## Modified by misterlihao ##

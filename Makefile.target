@@ -180,6 +180,9 @@ all-obj-$(CONFIG_SOFTMMU) += $(block-obj-y)
 ifdef  CONFIG_DIFT
 all-obj-y += ../ext/dift/dift-commands.o
 endif
+ifdef  CONFIG_AGENT
+all-obj-y += ../ext/agent/agent-commands.o
+endif
 
 ifdef  CONFIG_TSK
 all-obj-y += ../ext/tsk/tsk-commands.o
