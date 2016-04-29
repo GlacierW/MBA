@@ -340,6 +340,8 @@ tcmalloc="no"
 ## Modified by Glacier ##
 dift="no"
 dift_debug="no"
+
+agent="no"
 #########################
 ## Modified by misterlihao ##
 tsk="no"
@@ -1151,6 +1153,8 @@ for opt do
   ;;
   --enable-debug-dift) dift_debug="yes"
   ;;
+  --enable-agent) agent="yes"
+  ;;
   #########################
   ## Modified by misterlihao ##
   --enable-tsk) tsk="yes"
@@ -1433,6 +1437,7 @@ Advanced options (experts only):
   --enable-tcmalloc        enable tcmalloc support
   --enable-dift            enable dynamic information flow tracking
   --enable-debug-dift      enable debug mode of dynamic information flow tracking
+  --enable-agent	   enable Windows agent
   --enable-tsk             enable sleuth kit disk forensics sopport
 
 NOTE: The object files are built at the place where configure is launched
@@ -4499,6 +4504,7 @@ echo "tcmalloc support  $tcmalloc"
 ## Modified by Glacier ##
 echo "dift support      $dift"
 echo "dift debug support $dift_debug"
+echo "agent support	$agent"
 #########################
 ## Modified by misterlihao ##
 echo "tsk support      $tsk"
@@ -5386,6 +5392,12 @@ if test "$dift_debug" = "yes"; then
   echo "CONFIG_DIFT_DEBUG=y" >> $config_host_mak
   echo "CONFIG_DIFT_DEBUG=y" >> $config_target_mak
 fi
+
+if test "$agent" = "yes"; then
+  echo "CONFIG_AGENT=y" >> $config_host_mak
+  echo "CONFIG_AGENT=y" >> $config_target_mak
+fi
+
 #########################
 ## Modified by misterlihao ##
 if test "$tsk" = "yes"; then
