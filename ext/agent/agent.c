@@ -35,7 +35,7 @@ void* agent_thread_main(void *monitor)
                 }
                 else if ( agent_action == 4 )
                 {
-                        monitor_printf(mon, "get invk cmd %s\n", agent_despath);
+                        monitor_printf(mon, "get invo cmd %s\n", agent_despath);
                 }
 		else if ( agent_action == 5 )
 		{

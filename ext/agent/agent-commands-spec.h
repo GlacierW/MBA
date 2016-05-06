@@ -20,11 +20,11 @@
         .mhandler.cmd = do_win_exec,
 },
 {
-	.name	      = "w_invk",
+	.name	      = "w_invo",
         .args_type    = "despath:s",
         .params       = "cmd despath",
         .help         = "Invk commands from QEMU to Windows agent. Need full path of target file in Windows.",
-        .mhandler.cmd = do_win_invk,
+        .mhandler.cmd = do_win_invo,
 },
 {
 	.name  	      = "w_init",

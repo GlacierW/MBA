@@ -52,7 +52,7 @@ void do_win_exec(Monitor *mon, const QDict *qdict)
 
 	agent_action = 3;
 }
-void do_win_invk(Monitor *mon, const QDict *qdict)
+void do_win_invo(Monitor *mon, const QDict *qdict)
 {
 	char *despath = (char *)qdict_get_str(qdict, "despath");
 	unsigned int file_size = 0;
