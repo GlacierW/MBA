@@ -71,7 +71,6 @@
 ///
 /// Note that if the color log is enabled, a tainted operand will be shown in red or green otherwise.
 ///
-
 #define DIFT_DEBUG_CONDITION
 
 #define DIFT_DEBUG_OP_ASSIGN   "<-"
@@ -110,17 +109,33 @@
 #define EFFECT_ONE_TO_ONE   (1 << 3)
 #define EFFECT_MIX          (1 << 4)
 #define EFFECT_INSIDE_REG   (1 << 5)
-#define EFFECT_LOG_END      (1 << 6)
 
-#define OPT_REG  0
-#define OPT_MEM  1
-#define OPT_IM   2
-#define OPT_HD   3
+/// Since XMM has too many EFFECTs, a bit may be used to 
+/// represent two effects if it is a binary condition.
+#define XMM_EFFECT_ASSIGN       (0 << 0)
+#define XMM_EFFECT_APPEND       (1 << 0)
+#define XMM_EFFECT_ONE_TO_ONE   (0 << 1)
+#define XMM_EFFECT_MIX          (1 << 1)
+#define XMM_EFFECT_LOW          (0 << 2)
+#define XMM_EFFECT_HIGH         (1 << 2)
+#define XMM_EFFECT_H2L          (1 << 3)
+#define XMM_EFFECT_L2H          (1 << 4)
+#define XMM_EFFECT_DUP          (1 << 5)
+#define XMM_EFFECT_CLEAR        (1 << 6)
 
-#define R_RIP               16
-#define R_SEG_REG_BASE      17
-#define R_DIFT_TMP          23
-#define R_NONE              24
+#define XMM_MO_32     0
+#define XMM_MO_64     1
+#define XMM_MO_128    2
+
+#define OPT_REG     0
+#define OPT_MEM     1
+#define OPT_IM      2
+#define OPT_XMM     3
+
+#define R_RIP           16
+#define R_SEG_REG_BASE  17
+#define R_DIFT_TMP      23
+#define R_NONE          24
 
 // Type Definition
 #define CONTAMINATION_RECORD uint8_t
@@ -225,19 +240,50 @@ enum {
     MEM_IM_CLEAR_MO32,
 
     MEM_IM_CLEAR_MO64,
+    XMM_XMM_OO_ASSIGN_MO32,
+    XMM_XMM_OO_ASSIGN_MO64,
+    XMM_XMM_OO_ASSIGN_MO64LH,
+    XMM_XMM_OO_ASSIGN_MO64HL,
+
+    // 60
+    XMM_XMM_OO_ASSIGN_MO128,
+    XMM_REG_OO_ASSIGN_MO32,
+    XMM_REG_OO_ASSIGN_MO64,
+    REG_XMM_OO_ASSIGN_MO32,
+    REG_XMM_OO_ASSIGN_MO64,
+
+    XMM_MEM_OO_ASSIGN_MO32,
+    XMM_MEM_OO_ASSIGN_MO64,
+    XMM_MEM_OO_ASSIGN_MO64H,
+    XMM_MEM_OO_ASSIGN_MO128,
+    MEM_XMM_OO_ASSIGN_MO32,
+
+    // 70
+    MEM_XMM_OO_ASSIGN_MO64,
+    MEM_XMM_OO_ASSIGN_MO64H,
+    MEM_XMM_OO_ASSIGN_MO128,
+    XMM_XMM_OO_ASSIGN_DUP_MO32L,
+    XMM_XMM_OO_ASSIGN_DUP_MO32H,
+
+    XMM_XMM_OO_ASSIGN_DUP_MO64,
+    XMM_MEM_OO_ASSIGN_DUP_MO32L,
+    XMM_MEM_OO_ASSIGN_DUP_MO32H,
+    XMM_MEM_OO_ASSIGN_DUP_MO64,
+    XMM_IM_CLEAR,
+
+    // 80
     MEM_HD,
     HD_MEM,
     REC_CONTAMINATE_MEM_OR,
     REC_CONTAMINATE_MEM_AND,
-
-    // 60
     REC_CONTAMINATE_HD_OR,
+
     REC_CONTAMINATE_HD_AND,
     REC_CLEAR_MEM,
     REC_BEFORE_BLOCK_BEGIN,
     REC_BLOCK_BEGIN,
-
     REC_SYNC,
+
     REC_END
 };
 
@@ -306,6 +352,7 @@ struct dift_context {
     uint64_t* deqptr;
     uint32_t  tail, prev_tail;
     CONTAMINATION_RECORD reg_dirty_tbl[24][8];
+    CONTAMINATION_RECORD xmm_dirty_tbl[16][16];
     CONTAMINATION_RECORD *mem_dirty_tbl;
     CONTAMINATION_RECORD **hd_l1_dirty_tbl;
 
