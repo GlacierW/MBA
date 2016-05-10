@@ -369,8 +369,10 @@ static void gen_dift_enqueue_i64( DisasContext* s, uint64_t arg ) {
 
         dift_code_buffer[ s->tb->dift_code_loc + s->tb->dift_code_idx ] = arg;
         s->tb->dift_code_idx++;
-        
+      
+#if defined(CONFIG_DIFT_DEBUG)
         qemu_log( "DIFT code cache enqueue: 0x%016lx\n", arg );
+#endif
 
         if( s->tb->dift_code_idx == CONFIG_IF_CODES_PER_TB - 1 ) {
             gen_dift_sync_i64( s );
@@ -379,7 +381,9 @@ static void gen_dift_enqueue_i64( DisasContext* s, uint64_t arg ) {
     }
     else {
         tcg_gen_op1i( INDEX_op_qemu_dift_enq_i64, arg );
+#if defined(CONFIG_DIFT_DEBUG)        
         qemu_log( "DIFT normal enqueue: 0x%016lx\n", arg );
+#endif
     }
 }
 
@@ -398,25 +402,23 @@ static void gen_dift_reg_reg( DisasContext* s, uint16_t dreg, uint16_t sreg, uin
     if( !dift_is_enabled() )
         return;
 
+#if defined(CONFIG_DIFT_DEBUG)
     qemu_log( "gen_dift_reg_reg => dreg: %d, sreg: %d, ot: %d\n", dreg, sreg, ot );
+#endif
 
     rec.case_nb = dift_rec_case_nb( OPT_REG, OPT_REG, ot & 0x03, effect );
-    if( ot == MO_8 )
-    {
-        rec.v1.r2r_byte.sreg         = sreg;
-        rec.v1.r2r_byte.dreg         = dreg;
-        rec.v1.r2r_byte.sreg_byte    = sreg_byte;
-        rec.v1.r2r_byte.dreg_byte    = dreg_byte;
+    if( ot == MO_8 ) {
+        rec.v1.r2r_byte.sreg      = sreg;
+        rec.v1.r2r_byte.dreg      = dreg;
+        rec.v1.r2r_byte.sreg_byte = sreg_byte;
+        rec.v1.r2r_byte.dreg_byte = dreg_byte;
+    }
+    else {
+        rec.v1.r2r.sreg = sreg;
+        rec.v1.r2r.dreg = dreg;
+    }
 
-        // Enqueue this piece
-        gen_dift_enqueue_i64( s, *(uint64_t*)&rec );
-    }
-    else
-    {
-        rec.v1.r2r.sreg             = sreg;
-        rec.v1.r2r.dreg             = dreg;
-        gen_dift_enqueue_i64( s, *(uint64_t*)&rec );
-    }
+    gen_dift_enqueue_i64( s, *(uint64_t*)&rec );
 }
 
 static void gen_dift_reg_mem( DisasContext* s, uint16_t dst_reg_name, uint8_t effect, uint8_t ot, uint8_t hl_switch ) {
@@ -426,20 +428,22 @@ static void gen_dift_reg_mem( DisasContext* s, uint16_t dst_reg_name, uint8_t ef
     if( !dift_is_enabled() )
         return;
 
+#if defined(CONFIG_DIFT_DEBUG)
     qemu_log( "gen_dift_reg_mem => dreg: %d, ot: %d\n", dst_reg_name, ot );
+#endif
 
     rec.case_nb = dift_rec_case_nb( OPT_REG, OPT_MEM, ot & 0x03, effect );
     if( ot == MO_8 ) {
         rec.v1.r2m_m2r_byte.hl  = hl_switch;
         rec.v1.r2m_m2r_byte.reg = dst_reg_name;
 #if defined(CONFIG_INDIRECT_TAINT)
-        rec.v1.r2m_m2r_byte.reg_base = s->reg_base;
+        rec.v1.r2m_m2r_byte.reg_base  = s->reg_base;
         rec.v1.r2m_m2r_byte.reg_index = s->reg_index;
 #endif
     } else {
         rec.v1.r2m_m2r.reg = dst_reg_name;
 #if defined(CONFIG_INDIRECT_TAINT)
-        rec.v1.r2m_m2r.reg_base = s->reg_base;
+        rec.v1.r2m_m2r.reg_base  = s->reg_base;
         rec.v1.r2m_m2r.reg_index = s->reg_index;
 #endif
     }
@@ -455,7 +459,9 @@ static void gen_dift_mem_reg( DisasContext* s, uint16_t src_reg_name, uint8_t ef
     if( !dift_is_enabled() )
         return;
 
+#if defined(CONFIG_DIFT_DEBUG)
     qemu_log( "gen_dift_mem_reg => sreg: %d, ot: %d\n", src_reg_name, ot );
+#endif
 
     rec.case_nb = dift_rec_case_nb( OPT_MEM, OPT_REG, ot & 0x03, effect );
     if( ot == MO_8 ) {
@@ -484,7 +490,9 @@ static void gen_dift_mem_mem( DisasContext* s, uint8_t effect, uint8_t ot ) {
     if( !dift_is_enabled() )
         return;
 
+#if defined(CONFIG_DIFT_DEBUG)
     qemu_log( "gen_dift_mem_mem => ot: %d\n", ot );
+#endif
 
     rec.case_nb = dift_rec_case_nb( OPT_MEM, OPT_MEM, ot & 0x03, effect );
     gen_dift_enqueue_i64(s, *(uint64_t*)&rec);
@@ -499,7 +507,9 @@ static void gen_dift_reg_im( DisasContext* s, uint16_t dst_reg_name, uint8_t ot,
     if( !dift_is_enabled() )
         return;
 
+#if defined(CONFIG_DIFT_DEBUG)
     qemu_log( "gen_dift_reg_im => dreg: %d, ot: %d\n", dst_reg_name, ot );
+#endif
 
     rec.case_nb = dift_rec_case_nb( OPT_REG, OPT_IM, ot & 0x03, EFFECT_CLEAR );
     if( ot == MO_8 ) {
@@ -518,11 +528,127 @@ static void gen_dift_mem_im( DisasContext* s, uint8_t ot ) {
     if( !dift_is_enabled() )
         return;
 
+#if defined(CONFIG_DIFT_DEBUG)
     qemu_log( "gen_dift_mem_im => ot: %d\n", ot );
+#endif
 
     rec.case_nb = dift_rec_case_nb( OPT_MEM, OPT_IM, ot & 0x03, EFFECT_CLEAR );
     gen_dift_enqueue_i64( s, *(uint64_t*)&rec );
     gen_dift_enqueue_addr( s, WADDR );
+}
+
+// SSE
+static void gen_dift_xmm_xmm( DisasContext* s, uint8_t xmm_dreg, uint8_t xmm_sreg, uint8_t xmm_ot, uint8_t effect ) {
+
+    dift_record rec = DIFT_REC_EMPTY;
+
+    if( !dift_is_enabled() )
+        return;
+
+#if defined(CONFIG_DIFT_DEBUG)
+    qemu_log( "gen_dift_xmm_xmm => xmm_dreg: %d, xmm_sreg: %d, xmm_ot: %d\n", xmm_dreg, xmm_sreg, xmm_ot );
+#endif
+
+    rec.case_nb = dift_rec_case_nb( OPT_XMM, OPT_XMM, xmm_ot & 0x03, effect );
+    rec.v1.r2r.dreg = xmm_dreg;
+    rec.v1.r2r.sreg = xmm_sreg;
+
+    gen_dift_enqueue_i64( s, *(uint64_t*)&rec );
+}
+
+static void gen_dift_xmm_mem( DisasContext* s, uint8_t xmm_dreg, uint8_t xmm_ot, uint8_t effect ) {
+
+    dift_record rec = DIFT_REC_EMPTY;
+
+    if( !dift_is_enabled() )
+        return;
+
+#if defined(CONFIG_DIFT_DEBUG)
+    qemu_log( "gen_dift_xmm_mem => xmm_dreg: %d, xmm_ot: %d\n", xmm_dreg, xmm_ot );
+#endif
+
+    rec.case_nb = dift_rec_case_nb( OPT_XMM, OPT_MEM, xmm_ot & 0x03, effect );
+    rec.v1.r2m_m2r.reg = xmm_dreg;
+#if defined(CONFIG_INDIRECT_TAINT)
+    rec.v1.r2m_m2r.reg_base = s->reg_base;
+    rec.v1.r2m_m2r.reg_index = s->reg_index;
+#endif
+
+    gen_dift_enqueue_i64( s, *(uint64_t*)&rec );
+    gen_dift_enqueue_addr( s, RADDR );
+}
+
+static void gen_dift_mem_xmm( DisasContext* s, uint8_t xmm_sreg, uint8_t xmm_ot, uint8_t effect ) {
+
+    dift_record rec = DIFT_REC_EMPTY;
+
+    if( !dift_is_enabled() )
+        return;
+
+#if defined(CONFIG_DIFT_DEBUG)
+    qemu_log( "gen_dift_mem_xmm => xmm_sreg: %d, xmm_ot: %d\n", xmm_sreg, xmm_ot );
+#endif
+
+    rec.case_nb = dift_rec_case_nb( OPT_MEM, OPT_XMM, xmm_ot & 0x03, effect );
+    rec.v1.r2m_m2r.reg = xmm_sreg;
+#if defined(CONFIG_INDIRECT_TAINT)
+    rec.v1.r2m_m2r.reg_base = s->reg_base;
+    rec.v1.r2m_m2r.reg_index = s->reg_index;
+#endif
+
+    gen_dift_enqueue_i64( s, *(uint64_t*)&rec );
+    gen_dift_enqueue_addr( s, WADDR );
+
+}
+
+static void gen_dift_xmm_reg( DisasContext* s, uint8_t xmm_dreg, uint8_t sreg, uint8_t xmm_ot, uint8_t effect ) {
+
+    dift_record rec = DIFT_REC_EMPTY;
+
+    if( !dift_is_enabled() )
+        return;
+
+#if defined(CONFIG_DIFT_DEBUG)
+    qemu_log( "gen_dift_xmm_reg => xmm_dreg: %d, sreg: %d, xmm_ot: %d\n", xmm_dreg, sreg, xmm_ot );
+#endif
+
+    rec.case_nb = dift_rec_case_nb( OPT_XMM, OPT_REG, xmm_ot & 0x03, effect );
+    rec.v1.r2r.sreg = sreg;
+    rec.v1.r2r.dreg = xmm_dreg;
+    gen_dift_enqueue_i64( s, *(uint64_t*)&rec );
+}
+
+static void gen_dift_reg_xmm( DisasContext* s, uint8_t dreg, uint8_t xmm_sreg, uint8_t xmm_ot, uint8_t effect ) {
+    
+    dift_record rec = DIFT_REC_EMPTY;
+
+    if( !dift_is_enabled() )
+        return;
+
+#if defined(CONFIG_DIFT_DEBUG)
+    qemu_log( "gen_dift_reg_xmm => dreg: %d, xmm_sreg: %d, xmm_ot: %d\n", dreg, xmm_sreg, xmm_ot );
+#endif
+
+    rec.case_nb = dift_rec_case_nb( OPT_REG, OPT_XMM, xmm_ot & 0x03, effect );
+    rec.v1.r2r.sreg = xmm_sreg;
+    rec.v1.r2r.dreg = dreg;
+    gen_dift_enqueue_i64( s, *(uint64_t*)&rec );
+}
+
+static void gen_dift_xmm_im( DisasContext* s, uint8_t xmm_dreg, uint8_t xmm_ot ) {
+
+    dift_record rec = DIFT_REC_EMPTY;
+
+    if( !dift_is_enabled() )
+        return;
+
+#if defined(CONFIG_DIFT_DEBUG)
+    qemu_log( "gen_dift_xmm_im => xmm_dregm: %d, xmm_ot: %d\n", xmm_dreg, xmm_ot );
+#endif
+
+    rec.case_nb = dift_rec_case_nb( OPT_XMM, OPT_IM, xmm_ot & 0x03, XMM_EFFECT_CLEAR );
+    rec.v1.r2m_m2r.reg = xmm_dreg;
+    gen_dift_enqueue_i64( s, *(uint64_t*)&rec );
 }
 
 static void gen_dift_op( DisasContext* s, uint8_t effect, int ot ) {
@@ -587,7 +713,9 @@ static void gen_dift_inside_reg( DisasContext* s, uint16_t reg, uint8_t dst_byte
     if( !dift_is_enabled() )
         return;
 
+#if defined(CONFIG_DIFT_DEBUG)
     qemu_log( "gen_dift_inside_reg => reg: %d, dbyte:%d, sbyte:%d\n", reg, dst_byte, src_byte );
+#endif
 
     rec.case_nb = dift_rec_case_nb( OPT_REG, OPT_REG, MO_8, effect | EFFECT_INSIDE_REG );
     rec.v1.inside_r.reg     = reg;
@@ -600,7 +728,9 @@ static void gen_dift_block_begin( DisasContext* s ) {
 
     uint64_t rec = REC_BLOCK_BEGIN;
 
+#if defined(CONFIG_DIFT_DEBUG)
     qemu_log( "gen_dift_block_begin, tb->dift_code_loc = %08x\n", s->tb->dift_code_loc / CONFIG_IF_CODES_PER_TB );
+#endif
 
     tcg_gen_op1i( INDEX_op_qemu_dift_tb_begin, s->tb->dift_code_loc );
     gen_dift_enqueue_i64( s, rec );
@@ -3472,12 +3602,20 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
                 goto illegal_op;
             gen_lea_modrm(env, s, modrm);
             gen_sto_env_A0(s, offsetof(CPUX86State, xmm_regs[reg]));
+#if defined(CONFIG_DIFT)
+            gen_dift_mem_xmm( s, reg, XMM_MO_128, XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+            gen_dift_sync_i64( s );
+#endif
             break;
         case 0x3f0: /* lddqu */
             if (mod == 3)
                 goto illegal_op;
             gen_lea_modrm(env, s, modrm);
             gen_ldo_env_A0(s, offsetof(CPUX86State, xmm_regs[reg]));
+#if defined(CONFIG_DIFT)
+            gen_dift_xmm_mem( s, reg, XMM_MO_128, XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+            gen_dift_sync_i64( s );
+#endif
             break;
         case 0x22b: /* movntss */
         case 0x32b: /* movntsd */
@@ -3487,10 +3625,18 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
             if (b1 & 1) {
                 gen_stq_env_A0(s, offsetof(CPUX86State,
                                            xmm_regs[reg].XMM_Q(0)));
+#if defined(CONFIG_DIFT)
+                gen_dift_mem_xmm( s, reg, XMM_MO_64, XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+                gen_dift_sync_i64( s );
+#endif
             } else {
                 tcg_gen_ld32u_tl(cpu_T[0], cpu_env, offsetof(CPUX86State,
                     xmm_regs[reg].XMM_L(0)));
                 gen_op_st_v(s, MO_32, cpu_T[0], cpu_A0);
+#if defined(CONFIG_DIFT)
+                gen_dift_mem_xmm( s, reg, XMM_MO_32, XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+                gen_dift_sync_i64( s );
+#endif
             }
             break;
         case 0x6e: /* movd mm, ea */
@@ -3524,6 +3670,19 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
                 tcg_gen_trunc_tl_i32(cpu_tmp2_i32, cpu_T[0]);
                 gen_helper_movl_mm_T0_xmm(cpu_ptr0, cpu_tmp2_i32);
             }
+#if defined(CONFIG_DIFT)
+            if( s->gen_ldst_modrm_op_type == OPT_REG ) {
+                gen_dift_xmm_reg( s, reg, s->gen_ldst_modrm_op_reg, 
+                        (s->dflag == MO_64)? XMM_MO_64 : XMM_MO_32,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+            }
+            else {
+                gen_dift_xmm_mem( s, reg, 
+                        (s->dflag == MO_64)? XMM_MO_64 : XMM_MO_32,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+            }
+            gen_dift_sync_i64( s );
+#endif
             break;
         case 0x6f: /* movq mm, ea */
             if (mod != 3) {
@@ -3546,10 +3705,18 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
             if (mod != 3) {
                 gen_lea_modrm(env, s, modrm);
                 gen_ldo_env_A0(s, offsetof(CPUX86State, xmm_regs[reg]));
+#if defined(CONFIG_DIFT)
+                gen_dift_xmm_mem( s, reg, XMM_MO_128, XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+                gen_dift_sync_i64( s );
+#endif
             } else {
                 rm = (modrm & 7) | REX_B(s);
                 gen_op_movo(offsetof(CPUX86State,xmm_regs[reg]),
                             offsetof(CPUX86State,xmm_regs[rm]));
+#if defined(CONFIG_DIFT)
+                gen_dift_xmm_xmm( s, reg, rm, XMM_MO_128, XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+                gen_dift_sync_i64( s );
+#endif
             }
             break;
         case 0x210: /* movss xmm, ea */
@@ -3561,10 +3728,23 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
                 tcg_gen_st32_tl(cpu_T[0], cpu_env, offsetof(CPUX86State,xmm_regs[reg].XMM_L(1)));
                 tcg_gen_st32_tl(cpu_T[0], cpu_env, offsetof(CPUX86State,xmm_regs[reg].XMM_L(2)));
                 tcg_gen_st32_tl(cpu_T[0], cpu_env, offsetof(CPUX86State,xmm_regs[reg].XMM_L(3)));
+#if defined(CONFIG_DIFT)
+                gen_dift_xmm_im( s, reg, XMM_MO_128 );
+                gen_dift_xmm_mem( s, reg, 
+                        XMM_MO_32,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+                gen_dift_sync_i64( s );
+#endif
             } else {
                 rm = (modrm & 7) | REX_B(s);
                 gen_op_movl(offsetof(CPUX86State,xmm_regs[reg].XMM_L(0)),
                             offsetof(CPUX86State,xmm_regs[rm].XMM_L(0)));
+#if defined(CONFIG_DIFT)
+                gen_dift_xmm_xmm( s, reg, rm, 
+                        XMM_MO_32,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+                gen_dift_sync_i64( s );
+#endif
             }
             break;
         case 0x310: /* movsd xmm, ea */
@@ -3575,10 +3755,23 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
                 tcg_gen_movi_tl(cpu_T[0], 0);
                 tcg_gen_st32_tl(cpu_T[0], cpu_env, offsetof(CPUX86State,xmm_regs[reg].XMM_L(2)));
                 tcg_gen_st32_tl(cpu_T[0], cpu_env, offsetof(CPUX86State,xmm_regs[reg].XMM_L(3)));
+#if defined(CONFIG_DIFT)
+                gen_dift_xmm_im( s, reg, XMM_MO_128 );
+                gen_dift_xmm_mem( s, reg, 
+                        XMM_MO_64,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+                gen_dift_sync_i64( s );
+#endif
             } else {
                 rm = (modrm & 7) | REX_B(s);
                 gen_op_movq(offsetof(CPUX86State,xmm_regs[reg].XMM_Q(0)),
                             offsetof(CPUX86State,xmm_regs[rm].XMM_Q(0)));
+#if defined(CONFIG_DIFT)
+                gen_dift_xmm_xmm( s, reg, rm, 
+                        XMM_MO_64, 
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+                gen_dift_sync_i64( s );
+#endif
             }
             break;
         case 0x012: /* movlps */
@@ -3587,11 +3780,23 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
                 gen_lea_modrm(env, s, modrm);
                 gen_ldq_env_A0(s, offsetof(CPUX86State,
                                            xmm_regs[reg].XMM_Q(0)));
+#if defined(CONFIG_DIFT)
+                gen_dift_xmm_mem( s, reg,
+                        XMM_MO_64,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+                gen_dift_sync_i64( s );
+#endif
             } else {
                 /* movhlps */
                 rm = (modrm & 7) | REX_B(s);
                 gen_op_movq(offsetof(CPUX86State,xmm_regs[reg].XMM_Q(0)),
                             offsetof(CPUX86State,xmm_regs[rm].XMM_Q(1)));
+#if defined(CONFIG_DIFT)
+                gen_dift_xmm_xmm( s, reg, rm,
+                        XMM_MO_64,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_H2L );
+                gen_dift_sync_i64( s );
+#endif
             }
             break;
         case 0x212: /* movsldup */
@@ -3609,6 +3814,19 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
                         offsetof(CPUX86State,xmm_regs[reg].XMM_L(0)));
             gen_op_movl(offsetof(CPUX86State,xmm_regs[reg].XMM_L(3)),
                         offsetof(CPUX86State,xmm_regs[reg].XMM_L(2)));
+#if defined(CONFIG_DIFT)
+            if( mod != 3 ) {
+                gen_dift_xmm_mem( s, reg,
+                        XMM_MO_32,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW | XMM_EFFECT_DUP );
+            }
+            else {
+                gen_dift_xmm_xmm( s, reg, rm,
+                        XMM_MO_32,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW | XMM_EFFECT_DUP );
+            }
+            gen_dift_sync_i64( s );
+#endif
             break;
         case 0x312: /* movddup */
             if (mod != 3) {
@@ -3622,6 +3840,19 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
             }
             gen_op_movq(offsetof(CPUX86State,xmm_regs[reg].XMM_Q(1)),
                         offsetof(CPUX86State,xmm_regs[reg].XMM_Q(0)));
+#if defined(CONFIG_DIFT)
+            if( mod != 3 ) {
+                gen_dift_xmm_mem( s, reg,
+                        XMM_MO_64,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW | XMM_EFFECT_DUP );
+            }
+            else {
+                gen_dift_xmm_xmm( s, reg, rm,
+                        XMM_MO_64,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW | XMM_EFFECT_DUP );
+            }
+            gen_dift_sync_i64( s );
+#endif
             break;
         case 0x016: /* movhps */
         case 0x116: /* movhpd */
@@ -3629,11 +3860,23 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
                 gen_lea_modrm(env, s, modrm);
                 gen_ldq_env_A0(s, offsetof(CPUX86State,
                                            xmm_regs[reg].XMM_Q(1)));
+#if defined(CONFIG_DIFT)
+                gen_dift_xmm_mem( s, reg,
+                        XMM_MO_64,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_HIGH );
+                gen_dift_sync_i64( s );
+#endif
             } else {
                 /* movlhps */
                 rm = (modrm & 7) | REX_B(s);
                 gen_op_movq(offsetof(CPUX86State,xmm_regs[reg].XMM_Q(1)),
                             offsetof(CPUX86State,xmm_regs[rm].XMM_Q(0)));
+#if defined(CONFIG_DIFT)
+                gen_dift_xmm_xmm( s, reg, rm,
+                        XMM_MO_64,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_L2H );
+                gen_dift_sync_i64( s );
+#endif
             }
             break;
         case 0x216: /* movshdup */
@@ -3651,6 +3894,20 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
                         offsetof(CPUX86State,xmm_regs[reg].XMM_L(1)));
             gen_op_movl(offsetof(CPUX86State,xmm_regs[reg].XMM_L(2)),
                         offsetof(CPUX86State,xmm_regs[reg].XMM_L(3)));
+#if defined(CONFIG_DIFT)
+            if( mod != 3 ) {
+                gen_dift_xmm_mem( s, reg, 
+                        XMM_MO_32,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_HIGH | XMM_EFFECT_DUP );
+            }
+            else {
+                gen_dift_xmm_xmm( s, reg, rm,
+                        XMM_MO_32,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_HIGH | XMM_EFFECT_DUP );
+
+            }
+            gen_dift_sync_i64( s );
+#endif
             break;
         case 0x178:
         case 0x378:
@@ -3700,18 +3957,46 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
                                  offsetof(CPUX86State,xmm_regs[reg].XMM_L(0)));
                 gen_ldst_modrm(env, s, modrm, MO_32, OR_TMP0, 1);
             }
+#if defined(CONFIG_DIFT)
+            if( s->gen_ldst_modrm_op_type == OPT_REG ) {
+                gen_dift_reg_xmm( s, s->gen_ldst_modrm_op_reg, reg,
+                        (s->dflag == MO_64)? XMM_MO_64 : XMM_MO_32,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+            }
+            else {
+                gen_dift_mem_xmm( s, reg,
+                        (s->dflag == MO_64)? XMM_MO_64 : XMM_MO_32,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+            }
+            gen_dift_sync_i64( s );
+#endif
             break;
         case 0x27e: /* movq xmm, ea */
             if (mod != 3) {
                 gen_lea_modrm(env, s, modrm);
                 gen_ldq_env_A0(s, offsetof(CPUX86State,
                                            xmm_regs[reg].XMM_Q(0)));
+
             } else {
                 rm = (modrm & 7) | REX_B(s);
                 gen_op_movq(offsetof(CPUX86State,xmm_regs[reg].XMM_Q(0)),
                             offsetof(CPUX86State,xmm_regs[rm].XMM_Q(0)));
             }
             gen_op_movq_env_0(offsetof(CPUX86State,xmm_regs[reg].XMM_Q(1)));
+#if defined(CONFIG_DIFT)
+            gen_dift_xmm_im( s, reg, XMM_MO_128 );
+            if( mod != 3 ) {
+                gen_dift_xmm_mem( s, reg,
+                        XMM_MO_64,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+            }
+            else {
+                gen_dift_xmm_xmm( s, reg, rm,
+                        XMM_MO_64,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+            }
+            gen_dift_sync_i64( s );
+#endif
             break;
         case 0x7f: /* movq ea, mm */
             if (mod != 3) {
@@ -3732,10 +4017,22 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
             if (mod != 3) {
                 gen_lea_modrm(env, s, modrm);
                 gen_sto_env_A0(s, offsetof(CPUX86State, xmm_regs[reg]));
+#if defined(CONFIG_DIFT)
+                gen_dift_mem_xmm( s, reg,
+                        XMM_MO_128,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+                gen_dift_sync_i64( s );
+#endif
             } else {
                 rm = (modrm & 7) | REX_B(s);
                 gen_op_movo(offsetof(CPUX86State,xmm_regs[rm]),
                             offsetof(CPUX86State,xmm_regs[reg]));
+#if defined(CONFIG_DIFT)
+                gen_dift_xmm_xmm( s, rm, reg, 
+                        XMM_MO_128,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+                gen_dift_sync_i64( s );
+#endif
             }
             break;
         case 0x211: /* movss ea, xmm */
@@ -3743,10 +4040,22 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
                 gen_lea_modrm(env, s, modrm);
                 tcg_gen_ld32u_tl(cpu_T[0], cpu_env, offsetof(CPUX86State,xmm_regs[reg].XMM_L(0)));
                 gen_op_st_v(s, MO_32, cpu_T[0], cpu_A0);
+#if defined(CONFIG_DIFT)
+                gen_dift_mem_xmm( s, reg,
+                        XMM_MO_32,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+                gen_dift_sync_i64( s );
+#endif
             } else {
                 rm = (modrm & 7) | REX_B(s);
                 gen_op_movl(offsetof(CPUX86State,xmm_regs[rm].XMM_L(0)),
                             offsetof(CPUX86State,xmm_regs[reg].XMM_L(0)));
+#if defined(CONFIG_DIFT)
+                gen_dift_xmm_xmm( s, rm, reg,
+                        XMM_MO_32,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+                gen_dift_sync_i64( s );
+#endif
             }
             break;
         case 0x311: /* movsd ea, xmm */
@@ -3754,10 +4063,22 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
                 gen_lea_modrm(env, s, modrm);
                 gen_stq_env_A0(s, offsetof(CPUX86State,
                                            xmm_regs[reg].XMM_Q(0)));
+#if defined(CONFIG_DIFT)
+                gen_dift_mem_xmm( s, reg,
+                        XMM_MO_64,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+                gen_dift_sync_i64( s );
+#endif
             } else {
                 rm = (modrm & 7) | REX_B(s);
                 gen_op_movq(offsetof(CPUX86State,xmm_regs[rm].XMM_Q(0)),
                             offsetof(CPUX86State,xmm_regs[reg].XMM_Q(0)));
+#if defined(CONFIG_DIFT)
+                gen_dift_xmm_xmm( s, rm, reg,
+                        XMM_MO_64,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+                gen_dift_sync_i64( s );
+#endif
             }
             break;
         case 0x013: /* movlps */
@@ -3766,6 +4087,12 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
                 gen_lea_modrm(env, s, modrm);
                 gen_stq_env_A0(s, offsetof(CPUX86State,
                                            xmm_regs[reg].XMM_Q(0)));
+#if defined(CONFIG_DIFT)
+                gen_dift_mem_xmm( s, reg,
+                        XMM_MO_64,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+                gen_dift_sync_i64( s );
+#endif
             } else {
                 goto illegal_op;
             }
@@ -3776,6 +4103,12 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
                 gen_lea_modrm(env, s, modrm);
                 gen_stq_env_A0(s, offsetof(CPUX86State,
                                            xmm_regs[reg].XMM_Q(1)));
+#if defined(CONFIG_DIFT)
+                gen_dift_mem_xmm( s, reg,
+                        XMM_MO_64,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_HIGH );
+                gen_dift_sync_i64( s );
+#endif
             } else {
                 goto illegal_op;
             }
@@ -3982,11 +4315,24 @@ static void gen_sse(CPUX86State *env, DisasContext *s, int b,
                 gen_lea_modrm(env, s, modrm);
                 gen_stq_env_A0(s, offsetof(CPUX86State,
                                            xmm_regs[reg].XMM_Q(0)));
+#if defined(CONFIG_DIFT)
+                gen_dift_mem_xmm( s, reg,
+                        XMM_MO_64,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+                gen_dift_sync_i64( s );
+#endif
             } else {
                 rm = (modrm & 7) | REX_B(s);
                 gen_op_movq(offsetof(CPUX86State,xmm_regs[rm].XMM_Q(0)),
                             offsetof(CPUX86State,xmm_regs[reg].XMM_Q(0)));
                 gen_op_movq_env_0(offsetof(CPUX86State,xmm_regs[rm].XMM_Q(1)));
+#if defined(CONFIG_DIFT)
+                gen_dift_xmm_im( s, rm, XMM_MO_128 );
+                gen_dift_xmm_xmm( s, rm, reg,
+                        XMM_MO_64,
+                        XMM_EFFECT_ASSIGN | XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_LOW );
+                gen_dift_sync_i64( s );
+#endif
             }
             break;
         case 0x2d6: /* movq2dq */
@@ -6394,7 +6740,6 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         s->addseg = val;
         gen_op_mov_reg_v(ot, reg, cpu_A0);
 #if defined(CONFIG_DIFT) && defined(CONFIG_INDIRECT_TAINT)
-
         if( s->reg_base != R_NONE && reg != s->reg_base )
             gen_dift_reg_reg( s, reg, s->reg_base, EFFECT_APPEND | EFFECT_ONE_TO_ONE, ot, 0, 0 );
 

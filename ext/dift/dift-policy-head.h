@@ -28,7 +28,7 @@
     CONTAMINATION_RECORD t = 0;
 
 #if defined(CONFIG_DIFT_DEBUG)
-    uint64_t dt, st;
+    uint64_t dt[2], st[2];
 #endif
 
     static void* dispatch[128];
@@ -105,6 +105,39 @@
         dispatch[MEM_IM_CLEAR_MO16] = &&rt_mem_im_clear_mo16;
         dispatch[MEM_IM_CLEAR_MO32] = &&rt_mem_im_clear_mo32;
         dispatch[MEM_IM_CLEAR_MO64] = &&rt_mem_im_clear_mo64;
+
+        // SSE
+        dispatch[XMM_XMM_OO_ASSIGN_MO32] = &&rt_xmm_xmm_oo_assign_mo32;
+        dispatch[XMM_XMM_OO_ASSIGN_MO64] = &&rt_xmm_xmm_oo_assign_mo64;
+        dispatch[XMM_XMM_OO_ASSIGN_MO64LH] = &&rt_xmm_xmm_oo_assign_mo64lh;
+        dispatch[XMM_XMM_OO_ASSIGN_MO64HL] = &&rt_xmm_xmm_oo_assign_mo64hl;
+        dispatch[XMM_XMM_OO_ASSIGN_MO128] = &&rt_xmm_xmm_oo_assign_mo128;
+
+        dispatch[XMM_REG_OO_ASSIGN_MO32] = &&rt_xmm_reg_oo_assign_mo32;
+        dispatch[XMM_REG_OO_ASSIGN_MO64] = &&rt_xmm_reg_oo_assign_mo64;
+
+        dispatch[REG_XMM_OO_ASSIGN_MO32] = &&rt_reg_xmm_oo_assign_mo32;
+        dispatch[REG_XMM_OO_ASSIGN_MO64] = &&rt_reg_xmm_oo_assign_mo64;
+
+        dispatch[XMM_MEM_OO_ASSIGN_MO32] = &&rt_xmm_mem_oo_assign_mo32;
+        dispatch[XMM_MEM_OO_ASSIGN_MO64] = &&rt_xmm_mem_oo_assign_mo64;
+        dispatch[XMM_MEM_OO_ASSIGN_MO64H] = &&rt_xmm_mem_oo_assign_mo64h;
+        dispatch[XMM_MEM_OO_ASSIGN_MO128] = &&rt_xmm_mem_oo_assign_mo128;
+
+        dispatch[MEM_XMM_OO_ASSIGN_MO32] = &&rt_mem_xmm_oo_assign_mo32;
+        dispatch[MEM_XMM_OO_ASSIGN_MO64] = &&rt_mem_xmm_oo_assign_mo64;
+        dispatch[MEM_XMM_OO_ASSIGN_MO64H] = &&rt_mem_xmm_oo_assign_mo64h;
+        dispatch[MEM_XMM_OO_ASSIGN_MO128] = &&rt_mem_xmm_oo_assign_mo128;
+
+        dispatch[XMM_XMM_OO_ASSIGN_DUP_MO32L] = &&rt_xmm_xmm_oo_assign_dup_mo32l;
+        dispatch[XMM_XMM_OO_ASSIGN_DUP_MO32H] = &&rt_xmm_xmm_oo_assign_dup_mo32h;
+        dispatch[XMM_XMM_OO_ASSIGN_DUP_MO64] = &&rt_xmm_xmm_oo_assign_dup_mo64;
+
+        dispatch[XMM_MEM_OO_ASSIGN_DUP_MO32L] = &&rt_xmm_mem_oo_assign_dup_mo32l;
+        dispatch[XMM_MEM_OO_ASSIGN_DUP_MO32H] = &&rt_xmm_mem_oo_assign_dup_mo32h;
+        dispatch[XMM_MEM_OO_ASSIGN_DUP_MO64] = &&rt_xmm_mem_oo_assign_dup_mo64;
+
+        dispatch[XMM_IM_CLEAR] = &&rt_xmm_im_clear;
 
         dispatch[MEM_HD] = &&rt_mem_hd;
         dispatch[HD_MEM] = &&rt_hd_mem;

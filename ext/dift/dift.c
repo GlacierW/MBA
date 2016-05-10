@@ -104,8 +104,8 @@ uint8_t case_mapping[1 << (sizeof(uint16_t) * 8)];
 uint16_t case_list[] ={
 
     // encoding:
-    // ((0xc0 | SRC_TYPE | DST_TYPE | OP_SIZE) << 8) | EFFECT)
-    // The sequence should match the ENUM in dift.h
+    // ((0xc0 | SRC_TYPE << 4 | DST_TYPE << 2 | OP_SIZE) << 8) | EFFECT)
+    // NOTE!!! The sequence should match the ENUM in dift.h
     ((0xc0 | OPT_REG << 4 | OPT_REG << 2 | MO_8) << 8) |
                         EFFECT_INSIDE_REG | EFFECT_ASSIGN,  // 0
     ((0xc0 | OPT_REG << 4 | OPT_REG << 2 | MO_8) << 8) |
@@ -228,7 +228,60 @@ uint16_t case_list[] ={
                         EFFECT_CLEAR,                       // 54
 
     ((0xc0 | OPT_IM << 4 | OPT_MEM << 2 | MO_64) << 8) |
-                        EFFECT_CLEAR,                       // 55
+                        EFFECT_CLEAR,                               // 55
+    ((0xc0 | OPT_XMM << 4 | OPT_XMM << 2 | XMM_MO_32) << 8) |
+        XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_ASSIGN | XMM_EFFECT_LOW, // 56  SSE
+    ((0xc0 | OPT_XMM << 4 | OPT_XMM << 2 | XMM_MO_64) << 8) |
+        XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_ASSIGN | XMM_EFFECT_LOW, // 57
+    ((0xc0 | OPT_XMM << 4 | OPT_XMM << 2 | XMM_MO_64) << 8) |
+        XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_ASSIGN | XMM_EFFECT_L2H, // 58
+    ((0xc0 | OPT_XMM << 4 | OPT_XMM << 2 | XMM_MO_64) << 8) |
+        XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_ASSIGN | XMM_EFFECT_H2L, // 59
+
+
+    ((0xc0 | OPT_XMM << 4 | OPT_XMM << 2 | XMM_MO_128) << 8) |
+        XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_ASSIGN | XMM_EFFECT_LOW, // 60
+    ((0xc0 | OPT_REG << 4 | OPT_XMM << 2 | XMM_MO_32) << 8) |
+        XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_ASSIGN | XMM_EFFECT_LOW, // 61
+    ((0xc0 | OPT_REG << 4 | OPT_XMM << 2 | XMM_MO_64) << 8) |
+        XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_ASSIGN | XMM_EFFECT_LOW, // 62
+    ((0xc0 | OPT_XMM << 4 | OPT_REG << 2 | XMM_MO_32) << 8) |
+        XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_ASSIGN | XMM_EFFECT_LOW, // 63
+    ((0xc0 | OPT_XMM << 4 | OPT_REG << 2 | XMM_MO_64) << 8) |
+        XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_ASSIGN | XMM_EFFECT_LOW, // 64
+
+    ((0xc0 | OPT_MEM << 4 | OPT_XMM << 2 | XMM_MO_32) << 8) |
+        XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_ASSIGN | XMM_EFFECT_LOW, // 65
+    ((0xc0 | OPT_MEM << 4 | OPT_XMM << 2 | XMM_MO_64) << 8) |
+        XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_ASSIGN | XMM_EFFECT_LOW, // 66
+    ((0xc0 | OPT_MEM << 4 | OPT_XMM << 2 | XMM_MO_64) << 8) |
+        XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_ASSIGN | XMM_EFFECT_HIGH,// 67   
+    ((0xc0 | OPT_MEM << 4 | OPT_XMM << 2 | XMM_MO_128) << 8) |
+        XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_ASSIGN | XMM_EFFECT_LOW, // 68
+    ((0xc0 | OPT_XMM << 4 | OPT_MEM << 2 | XMM_MO_32) << 8) |
+        XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_ASSIGN | XMM_EFFECT_LOW, // 69
+
+    ((0xc0 | OPT_XMM << 4 | OPT_MEM << 2 | XMM_MO_64) << 8) |
+        XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_ASSIGN | XMM_EFFECT_LOW,                  // 70
+    ((0xc0 | OPT_XMM << 4 | OPT_MEM << 2 | XMM_MO_64) << 8) |
+        XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_ASSIGN | XMM_EFFECT_HIGH,                 // 71
+    ((0xc0 | OPT_XMM << 4 | OPT_MEM << 2 | XMM_MO_128) << 8) |
+        XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_ASSIGN | XMM_EFFECT_LOW,                  // 72
+    ((0xc0 | OPT_XMM << 4 | OPT_XMM << 2 | XMM_MO_32) << 8) |
+        XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_ASSIGN | XMM_EFFECT_LOW | XMM_EFFECT_DUP, // 73
+    ((0xc0 | OPT_XMM << 4 | OPT_XMM << 2 | XMM_MO_32) << 8) |
+        XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_ASSIGN | XMM_EFFECT_HIGH | XMM_EFFECT_DUP,// 74
+
+    ((0xc0 | OPT_XMM << 4 | OPT_XMM << 2 | XMM_MO_64) << 8) |
+        XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_ASSIGN | XMM_EFFECT_LOW | XMM_EFFECT_DUP, // 75
+    ((0xc0 | OPT_MEM << 4 | OPT_XMM << 2 | XMM_MO_32) << 8) |
+        XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_ASSIGN | XMM_EFFECT_LOW | XMM_EFFECT_DUP, // 76
+    ((0xc0 | OPT_MEM << 4 | OPT_XMM << 2 | XMM_MO_32) << 8) |
+        XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_ASSIGN | XMM_EFFECT_HIGH | XMM_EFFECT_DUP,// 77
+    ((0xc0 | OPT_MEM << 4 | OPT_XMM << 2 | XMM_MO_64) << 8) |
+        XMM_EFFECT_ONE_TO_ONE | XMM_EFFECT_ASSIGN | XMM_EFFECT_LOW | XMM_EFFECT_DUP, // 78
+    ((0xc0 | OPT_IM << 4 | OPT_XMM << 2 | XMM_MO_128) << 8) |
+        XMM_EFFECT_CLEAR,                                                            // 79
 };
 
 uint32_t dift_code_top =  1;  // Loc 0 is reserved for the workaround in add_file_taint
@@ -260,6 +313,11 @@ const char* REG_NAME[] = {
     "R8",  "R9",  "R10", "R11", "R12", "R13", "R14", "R15",
     "RIP", "ES",  "CS",  "SS",  "DS",  "FS",  "GS",  "TMP",
     "NONE"
+};
+
+const char* XMM_NAME[] = {
+    "XMM0", "XMM1", "XMM2", "XMM3", "XMM4", "XMM5", "XMM6", "XMM7",
+    "XMM8", "XMM9", "XMM10", "XMM11", "XMM12", "XMM13", "XMM14", "XMM15"
 };
 
 // Pre-generate routine for DIFT TCG usage
