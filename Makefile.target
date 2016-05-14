@@ -182,6 +182,7 @@ all-obj-y += ../ext/dift/dift-commands.o
 endif
 ifdef  CONFIG_AGENT
 all-obj-y += ../ext/agent/agent-commands.o
+all-obj-y += ../ext/agent/agent.o
 endif
 
 ifdef  CONFIG_TSK
