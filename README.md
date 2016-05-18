@@ -1,5 +1,5 @@
 
-Malware Behavior Analyzer, MBA
+Malware Behavior Analyzer, MBA [![Build Status](https://travis-ci.org/misterlihao/MBA.svg?branch=temp-demo-travis-ci)](https://travis-ci.org/misterlihao/MBA)
 
 MBA is a QEMU-based, sandbox system dedicated to malware analysis for Windows x64
 Currently, MBA supports the following features:
