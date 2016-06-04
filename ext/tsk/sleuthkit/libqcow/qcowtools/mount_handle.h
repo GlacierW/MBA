@@ -68,7 +68,7 @@ struct mount_handle
 	 */
 	size_t password_length;
 
-	/* The nofication output stream
+	/* The notification output stream
 	 */
 	FILE *notify_stream;
 };

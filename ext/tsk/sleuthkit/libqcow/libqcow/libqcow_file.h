@@ -171,7 +171,7 @@ int libqcow_file_close(
      libqcow_file_t *file,
      libcerror_error_t **error );
 
-int libqcow_file_open_read(
+int libqcow_internal_file_open_read(
      libqcow_internal_file_t *internal_file,
      libbfio_handle_t *file_io_handle,
      libcerror_error_t **error );
@@ -268,5 +268,5 @@ int libqcow_file_set_utf16_password(
 }
 #endif
 
-#endif
+#endif /* !defined( _LIBQCOW_INTERNAL_FILE_H ) */
 

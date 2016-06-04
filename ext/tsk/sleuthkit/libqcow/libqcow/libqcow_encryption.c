@@ -253,7 +253,7 @@ int libqcow_encryption_set_keys(
 
 		return( -1 );
 	}
-	if( libcaes_crypt_set_key(
+	if( libcaes_context_set_key(
 	     context->decryption_context,
 	     LIBCAES_CRYPT_MODE_DECRYPT,
 	     key,
@@ -269,7 +269,7 @@ int libqcow_encryption_set_keys(
 
 		return( -1 );
 	}
-	if( libcaes_crypt_set_key(
+	if( libcaes_context_set_key(
 	     context->encryption_context,
 	     LIBCAES_CRYPT_MODE_ENCRYPT,
 	     key,
