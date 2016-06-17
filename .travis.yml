@@ -12,7 +12,7 @@ env:
     - CORE_PKGS="libusb-1.0-0-dev libiscsi-dev librados-dev libncurses5-dev"
     - NET_PKGS="libseccomp-dev libgnutls-dev libssh2-1-dev  libspice-server-dev libspice-protocol-dev libnss3-dev"
     - GUI_PKGS="libgtk-3-dev libvte-2.90-dev libsdl1.2-dev libpng12-dev libpixman-1-dev"
-    - EXTRA_PKGS=""
+    - EXTRA_PKGS="autopoint"
 git:
   submodules: false
 before_install:
@@ -40,5 +40,8 @@ matrix: # define more builds here
   include:
     # enable dift, and corresponding unit tests
     - env: EXTRA_CONFIG="--enable-dift"
+           TEST_CMD="make --directory=ext/dift/test && ext/dift/test/gtest_dift"
+      compiler: gcc
+    - env: EXTRA_CONFIG="--enable-dift --enable-tsk --enable-memfrs"
            TEST_CMD="make --directory=ext/dift/test && ext/dift/test/gtest_dift"
       compiler: gcc

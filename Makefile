@@ -232,6 +232,7 @@ endif
 ifdef CONFIG_MEMFRS
 json-c/.libs/libjson-c.a:
 	cd json-c &&\
+	sh autogen.sh &&\
 	./configure --enable-static CFLAGS="-fPIC" &&\
         $(MAKE)
 endif
