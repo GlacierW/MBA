@@ -340,6 +340,7 @@ tcmalloc="no"
 ## Modified by Glacier ##
 dift="no"
 dift_debug="no"
+memfrs="no"
 #########################
 ## Modified by misterlihao ##
 tsk="no"
@@ -1151,6 +1152,8 @@ for opt do
   ;;
   --enable-debug-dift) dift_debug="yes"
   ;;
+  --enable-memfrs) memfrs="yes"
+  ;;
   #########################
   ## Modified by misterlihao ##
   --enable-tsk) tsk="yes"
@@ -1434,6 +1437,7 @@ Advanced options (experts only):
   --enable-dift            enable dynamic information flow tracking
   --enable-debug-dift      enable debug mode of dynamic information flow tracking
   --enable-tsk             enable sleuth kit disk forensics sopport
+  --enable-memfrs          enable Virtual Machine Memory Introspection for Windows
 
 NOTE: The object files are built at the place where configure is launched
 EOF
@@ -4499,6 +4503,7 @@ echo "tcmalloc support  $tcmalloc"
 ## Modified by Glacier ##
 echo "dift support      $dift"
 echo "dift debug support $dift_debug"
+echo "Windows VMI support $memfrs"
 #########################
 ## Modified by misterlihao ##
 echo "tsk support      $tsk"
@@ -5385,6 +5390,11 @@ fi
 if test "$dift_debug" = "yes"; then
   echo "CONFIG_DIFT_DEBUG=y" >> $config_host_mak
   echo "CONFIG_DIFT_DEBUG=y" >> $config_target_mak
+fi
+
+if test "$memfrs" = "yes"; then
+  echo "CONFIG_MEMFRS=y" >> $config_host_mak
+  echo "CONFIG_MEMFRS=y" >> $config_target_mak
 fi
 #########################
 ## Modified by misterlihao ##

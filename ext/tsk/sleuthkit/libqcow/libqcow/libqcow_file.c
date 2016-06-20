@@ -264,7 +264,8 @@ int libqcow_file_signal_abort(
      libqcow_file_t *file,
      libcerror_error_t **error )
 {
-	static char *function = "libqcow_file_signal_abort";
+	libqcow_internal_file_t *internal_file = NULL;
+	static char *function                  = "libqcow_file_signal_abort";
 
 	if( file == NULL )
 	{
@@ -277,7 +278,9 @@ int libqcow_file_signal_abort(
 
 		return( -1 );
 	}
-	( (libqcow_internal_file_t *) file )->abort = 1;
+	internal_file = (libqcow_internal_file_t *) file;
+
+	internal_file->abort = 1;
 
 	return( 1 );
 }
@@ -630,6 +633,7 @@ int libqcow_file_open_file_io_handle(
 	int bfio_access_flags                  = 0;
 	int file_io_handle_is_open             = 0;
 	int file_io_handle_opened_in_library   = 0;
+	int result                             = 0;
 
 	if( file == NULL )
 	{
@@ -726,20 +730,6 @@ int libqcow_file_open_file_io_handle(
 		}
 		file_io_handle_opened_in_library = 1;
 	}
-	if( libqcow_file_open_read(
-	     internal_file,
-	     file_io_handle,
-	     error ) != 1 )
-	{
-		libcerror_error_set(
-		 error,
-		 LIBCERROR_ERROR_DOMAIN_IO,
-		 LIBCERROR_IO_ERROR_READ_FAILED,
-		 "%s: unable to read from file handle.",
-		 function );
-
-		goto on_error;
-	}
 #if defined( HAVE_LIBQCOW_MULTI_THREAD_SUPPORT )
 	if( libcthreads_read_write_lock_grab_for_write(
 	     internal_file->read_write_lock,
@@ -755,9 +745,25 @@ int libqcow_file_open_file_io_handle(
 		return( -1 );
 	}
 #endif
-	internal_file->file_io_handle                   = file_io_handle;
-	internal_file->file_io_handle_opened_in_library = file_io_handle_opened_in_library;
+	result = libqcow_internal_file_open_read(
+	          internal_file,
+	          file_io_handle,
+	          error );
 
+	if( result != 1 )
+	{
+		libcerror_error_set(
+		 error,
+		 LIBCERROR_ERROR_DOMAIN_IO,
+		 LIBCERROR_IO_ERROR_READ_FAILED,
+		 "%s: unable to read from file handle.",
+		 function );
+	}
+	else
+	{
+		internal_file->file_io_handle                   = file_io_handle;
+		internal_file->file_io_handle_opened_in_library = file_io_handle_opened_in_library;
+	}
 #if defined( HAVE_LIBQCOW_MULTI_THREAD_SUPPORT )
 	if( libcthreads_read_write_lock_release_for_write(
 	     internal_file->read_write_lock,
@@ -773,7 +779,7 @@ int libqcow_file_open_file_io_handle(
 		return( -1 );
 	}
 #endif
-	return( 1 );
+	return( result );
 
 on_error:
 	if( file_io_handle_opened_in_library != 0 )
@@ -1017,12 +1023,12 @@ int libqcow_file_close(
 /* Opens a file for reading
  * Returns 1 if successful or -1 on error
  */
-int libqcow_file_open_read(
+int libqcow_internal_file_open_read(
      libqcow_internal_file_t *internal_file,
      libbfio_handle_t *file_io_handle,
      libcerror_error_t **error )
 {
-	static char *function = "libqcow_file_open_read";
+	static char *function = "libqcow_internal_file_open_read";
 	int entry_index       = 0;
 
 	if( internal_file == NULL )
@@ -1113,21 +1119,6 @@ int libqcow_file_open_read(
 
 		return( -1 );
 	}
-#if defined( HAVE_LIBQCOW_MULTI_THREAD_SUPPORT )
-	if( libcthreads_read_write_lock_grab_for_write(
-	     internal_file->read_write_lock,
-	     error ) != 1 )
-	{
-		libcerror_error_set(
-		 error,
-		 LIBCERROR_ERROR_DOMAIN_RUNTIME,
-		 LIBCERROR_RUNTIME_ERROR_SET_FAILED,
-		 "%s: unable to grab read/write lock for writing.",
-		 function );
-
-		return( -1 );
-	}
-#endif
 	if( libbfio_handle_get_size(
 	     file_io_handle,
 	     &( internal_file->size ),
@@ -1375,21 +1366,6 @@ int libqcow_file_open_read(
 
 		goto on_error;
 	}
-#if defined( HAVE_LIBQCOW_MULTI_THREAD_SUPPORT )
-	if( libcthreads_read_write_lock_release_for_write(
-	     internal_file->read_write_lock,
-	     error ) != 1 )
-	{
-		libcerror_error_set(
-		 error,
-		 LIBCERROR_ERROR_DOMAIN_RUNTIME,
-		 LIBCERROR_RUNTIME_ERROR_SET_FAILED,
-		 "%s: unable to release read/write lock for writing.",
-		 function );
-
-		return( -1 );
-	}
-#endif
 	return( 1 );
 
 on_error:
@@ -1423,11 +1399,6 @@ on_error:
 		 &( internal_file->level1_table ),
 		 NULL );
 	}
-#if defined( HAVE_LIBQCOW_MULTI_THREAD_SUPPORT )
-	libcthreads_read_write_lock_release_for_write(
-	 internal_file->read_write_lock,
-	 NULL );
-#endif
 	return( -1 );
 }
 
@@ -2703,17 +2674,6 @@ int libqcow_file_get_offset(
 	}
 	internal_file = (libqcow_internal_file_t *) file;
 
-	if( internal_file->io_handle == NULL )
-	{
-		libcerror_error_set(
-		 error,
-		 LIBCERROR_ERROR_DOMAIN_RUNTIME,
-		 LIBCERROR_RUNTIME_ERROR_VALUE_MISSING,
-		 "%s: invalid file - missing IO handle.",
-		 function );
-
-		return( -1 );
-	}
 	if( internal_file->file_io_handle == NULL )
 	{
 		libcerror_error_set(
@@ -2797,17 +2757,6 @@ int libqcow_file_set_keys(
 	}
 	internal_file = (libqcow_internal_file_t *) file;
 
-	if( internal_file->io_handle == NULL )
-	{
-		libcerror_error_set(
-		 error,
-		 LIBCERROR_ERROR_DOMAIN_RUNTIME,
-		 LIBCERROR_RUNTIME_ERROR_VALUE_MISSING,
-		 "%s: invalid file - missing IO handle.",
-		 function );
-
-		return( -1 );
-	}
 	if( internal_file->file_io_handle != NULL )
 	{
 		libcerror_error_set(
@@ -2929,17 +2878,6 @@ int libqcow_file_set_utf8_password(
 	}
 	internal_file = (libqcow_internal_file_t *) file;
 
-	if( internal_file->io_handle == NULL )
-	{
-		libcerror_error_set(
-		 error,
-		 LIBCERROR_ERROR_DOMAIN_RUNTIME,
-		 LIBCERROR_RUNTIME_ERROR_VALUE_MISSING,
-		 "%s: invalid file - missing IO handle.",
-		 function );
-
-		return( -1 );
-	}
 	if( internal_file->file_io_handle != NULL )
 	{
 		libcerror_error_set(
@@ -3056,17 +2994,6 @@ int libqcow_file_set_utf16_password(
 	}
 	internal_file = (libqcow_internal_file_t *) file;
 
-	if( internal_file->io_handle == NULL )
-	{
-		libcerror_error_set(
-		 error,
-		 LIBCERROR_ERROR_DOMAIN_RUNTIME,
-		 LIBCERROR_RUNTIME_ERROR_VALUE_MISSING,
-		 "%s: invalid file - missing IO handle.",
-		 function );
-
-		return( -1 );
-	}
 	if( internal_file->file_io_handle != NULL )
 	{
 		libcerror_error_set(
