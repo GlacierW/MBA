@@ -20,13 +20,6 @@
 	.help         = "Check Windows agent's status.",
 	.mhandler.cmd = do_win_status,
 },
-{
-	.name	      = "w_logf",
-	.args_type    = "despath:s",
-	.params       = "despath",
-	.help         = "Get log's file",
-	.mhandler.cmd = do_win_logf,
-},
 */
 {
     .name         = "w_impo",
@@ -43,11 +36,16 @@
     .mhandler.cmd = do_win_expo,
 },
 {
+	.name	      = "w_logf",
+	.args_type    = "dstpath:s",
+	.params       = "fullpath_logfile",
+	.help         = "Export the agent log file from the guest to the host. The fullpath of the destination file is required.",
+	.mhandler.cmd = do_win_logf,
+},
+{
 	.name  	      = "w_init",
 	.args_type    = "",
 	.params       = "",
 	.help	      = "Create an agent thread to communicate with Windows in-VM agent server.",
 	.mhandler.cmd = do_win_init,
 },
-
-

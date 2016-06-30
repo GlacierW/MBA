@@ -538,6 +538,88 @@ expo_fail:
     return AGENT_RET_EFAIL;
 }
 
+/// Export the agent server log to host
+/// Return none
+static MBA_AGENT_RETURN export_agent_log( void ) {
+
+    char cmd_emit[SZ_MAX_COMMAND];
+
+    uint64_t fsize;
+
+    char  fbuf[SZ_MAX_FILECHUNK];
+    char* fptr;
+
+    int fd = -1;
+
+    int n_rbytes;
+    int n_wbytes;
+
+    const char* dst_path = ac->act.dst_path;
+
+    // construct the final command for agent server
+    bzero( cmd_emit, SZ_MAX_COMMAND );
+    snprintf( cmd_emit, SZ_MAX_COMMAND, "logf" );
+
+    // emit command
+    n_wbytes = as_write( ac->sock, cmd_emit, SZ_MAX_COMMAND );
+    if( n_wbytes != SZ_MAX_COMMAND ) {
+        agent_printf( "Failed to emit command '%s'\n", cmd_emit );
+        goto logf_fail;
+    }
+
+    // receive log file size
+    n_rbytes = as_read( ac->sock, &fsize, sizeof(uint64_t) );
+    if( n_rbytes != sizeof(uint64_t) ) {
+        agent_printf( "Failed to receive log file size\n" );
+        goto logf_fail;
+    }
+
+    // open destination file to store the log
+    fd = open( dst_path, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
+    if( fd == -1 ) {
+        agent_printf( "Failed to open '%s' for agent log export\n", dst_path );
+        goto logf_fail;
+    }
+
+    // receive & store file content
+    while( fsize ) {
+
+        // measure the maximum bytes should be read
+        n_rbytes = (fsize < SZ_MAX_FILECHUNK) ? fsize : SZ_MAX_FILECHUNK;
+
+        // receive file content from agent server
+        n_rbytes = as_read( ac->sock, fbuf, n_rbytes );
+        if( n_rbytes <= 0 ) {
+            agent_printf( "Failed to receive file content\n" );
+            goto logf_fail;
+        }
+
+        fsize -= n_rbytes;
+
+        // store to local file
+        fptr = fbuf;
+        while( n_rbytes ) {
+            n_wbytes = write( fd, fptr, n_rbytes );
+            if( n_wbytes == -1 ) {
+                agent_printf( "Failed to store file content\n" );
+                goto logf_fail;
+            }
+
+            n_rbytes -= n_wbytes;
+            fptr     += n_wbytes;
+        }
+    }
+
+    close( fd );
+    return AGENT_RET_SUCCESS;
+
+logf_fail:
+    if( fd != -1 )
+        close( fd );
+    return AGENT_RET_EFAIL;
+}
+
+
 /// Receive agent server ack message
 /// Return none
 static void show_server_ack( void ) {
@@ -618,9 +700,12 @@ static void* agent_client_mainloop( void* null_arg ) {
                 ret = export_guest_file();
                 break;
 
+            case AGENT_ACT_LOGF:
+                ret = export_agent_log();
+                break;
+
             case AGENT_ACT_EXEC:
             case AGENT_ACT_INVO:
-            case AGENT_ACT_LOGF:
             default:
                 agent_printf( "Unkown agent action type: %d\n", ac->act.type );
                 break;
@@ -716,6 +801,32 @@ MBA_AGENT_RETURN agent_export( const char* dst_path, const char* src_path ) {
 
     return AGENT_RET_SUCCESS;
 } 
+
+MBA_AGENT_RETURN agent_logfile( const char* dst_path ) {
+
+    if( !agent_is_ready() )
+        return AGENT_RET_EINIT;
+
+    // get thread lock to setup LOG File cat action
+    if( pthread_mutex_trylock( &ac->thread.mtx ) == EBUSY )
+        return AGENT_RET_EBUSY;
+
+    // setup log file action
+    set_agent_action( AGENT_ACT_LOGF );
+
+    bzero( ac->act.dst_path, SZ_MAX_FILEPATH );
+    strncpy( ac->act.dst_path, dst_path, SZ_MAX_FILEPATH );
+
+    // wake up agent thread
+    if( pthread_cond_signal(&ac->thread.cond) != 0 )
+        return AGENT_RET_EFAIL;
+
+    // release lock
+    if( pthread_mutex_unlock(&ac->thread.mtx) != 0 )
+        return AGENT_RET_EFAIL;
+
+    return AGENT_RET_SUCCESS;
+}
 
 MBA_AGENT_RETURN agent_init( Monitor *mon, uint16_t server_fwd_port ) {
 

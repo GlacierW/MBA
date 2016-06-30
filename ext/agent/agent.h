@@ -97,6 +97,16 @@ extern MBA_AGENT_RETURN agent_import( const char* dst_path, const char* src_path
 ///        AGENT_RET_EFAIL, general failure
 extern MBA_AGENT_RETURN agent_export( const char* dst_path, const char* src_path );
 
+/// Command the agent thread to perform 'logfile' action
+/// 
+///     \param dst_path     the fullpath of the destination of host to store the agent log
+///
+/// Return AGENT_RET_SUCCESS, no error occured
+///        AGENT_RET_EBUSY, the agent thread is still busy dealing the previous command
+///        AGENT_RET_EINIT, the agent thread is not initialized yet
+///        AGENT_RET_EFAIL, general failure
+extern MBA_AGENT_RETURN agent_logfile( const char* dst_path );
+
 /// Initialize agent context & spawn the agent thread
 /// This API should be called before any other 'agent_xxx' can be used
 /// 
