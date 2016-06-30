@@ -1,19 +1,5 @@
 /*
 {
-        .name         = "w_impo",
-        .args_type    = "srcpath:s,despath:s",
-        .params       = "srcpath despath",
-        .help         = "Impo commands from QEMU to Windows agent. Need the size in bytes of target flie, full path of target file and full destination path in Windows.",
-        .mhandler.cmd = do_win_impo,
-},
-{
-	.name         = "w_expo",
-        .args_type    = "srcpath:s,despath:s",
-        .params       = "srcpath despath",
-        .help         = "Expo commands from QEMU to Windows agent. Need the size in bytes of target flie, full destination path and full path of target file in Windows.",
-        .mhandler.cmd = do_win_expo,
-},
-{
 	.name         = "w_exec",
         .args_type    = "despath:s",
         .params       = "despath",
@@ -43,10 +29,25 @@
 },
 */
 {
+    .name         = "w_impo",
+    .args_type    = "srcpath:s,dstpath:s",
+    .params       = "fullpath_host_srcfile fullpath_guest_dstfile",
+    .help         = "Import a host file into the guest. Fullpath of both the source file and the destination file are required.",
+    .mhandler.cmd = do_win_impo,
+},
+{
+    .name         = "w_expo",
+    .args_type    = "srcpath:s,dstpath:s",
+    .params       = "fullpath_guest_srcfile fullpath_host_dstfile",
+    .help         = "Export a guest file to the host. Fullpath of both the source file and the destination file are required.",
+    .mhandler.cmd = do_win_expo,
+},
+{
 	.name  	      = "w_init",
 	.args_type    = "",
 	.params       = "",
-	.help	      = "Create a thread to communicate with Windows agent.",
+	.help	      = "Create an agent thread to communicate with Windows in-VM agent server.",
 	.mhandler.cmd = do_win_init,
 },
+
 
