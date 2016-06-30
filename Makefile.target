@@ -185,6 +185,12 @@ all-obj-y += ../ext/agent/agent-commands.o
 all-obj-y += ../ext/agent/agent.o
 endif
 
+ifdef CONFIG_MEMFRS
+all-obj-y += ../ext/memfrs/memfrs-commands.o
+all-obj-y += ../ext/memfrs/memfrs.o
+../ext/memfrs/memfrs.o-cflags := -D__STDC_VERSION__=199901 -I../json-c/
+endif
+
 ifdef  CONFIG_TSK
 all-obj-y += ../ext/tsk/tsk-commands.o
 ../ext/tsk/tsk-commands.o-cflags := -DHAVE_CONFIG_H -I$(SRC_PATH)/ext/tsk/sleuthkit 

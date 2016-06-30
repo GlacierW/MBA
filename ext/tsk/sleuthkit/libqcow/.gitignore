@@ -1,10 +1,13 @@
 # Files to ignore by git
 #
-# Version: 20151228
+# Version: 20160507
 
 # Generic auto-generated build files
 *~
 *.a
+*.gcda
+*.gcno
+*.gcov
 *.la
 *.lai
 *.lib
@@ -121,6 +124,8 @@ stamp-h[1-9]
 /qcowtools/qcowinfo
 /qcowtools/qcowmount
 /tests/input
+/tests/qcow_test_file_get_values
+/tests/qcow_test_get_version
 /tests/qcow_test_open_close
 /tests/qcow_test_read
 /tests/qcow_test_seek

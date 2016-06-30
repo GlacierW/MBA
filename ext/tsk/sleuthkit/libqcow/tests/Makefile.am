@@ -18,38 +18,56 @@ AM_CPPFLAGS = \
 
 if HAVE_PYTHON_TESTS
 TESTS_PYQCOW = \
-	test_pyqcow_open_close.sh \
-	test_pyqcow_seek.sh \
-	test_pyqcow_read.sh
+	test_python_functions.sh
 endif
 
 TESTS = \
-	test_open_close.sh \
-	test_seek.sh \
-	test_read.sh \
+	test_api_functions.sh \
 	test_qcowinfo.sh \
 	$(TESTS_PYQCOW)
 
 check_SCRIPTS = \
+	pyqcow_test_get_version.py \
 	pyqcow_test_open_close.py \
 	pyqcow_test_read.py \
 	pyqcow_test_seek.py \
-	test_open_close.sh \
-	test_pyqcow_open_close.sh \
-	test_pyqcow_read.sh \
-	test_pyqcow_seek.sh \
+	test_api_functions.sh \
+	test_python_functions.sh \
 	test_qcowinfo.sh \
-	test_read.sh \
-	test_runner.sh \
-	test_seek.sh
+	test_runner.sh
 
 EXTRA_DIST = \
 	$(check_SCRIPTS)
 
 check_PROGRAMS = \
+	qcow_test_file_get_values \
+	qcow_test_get_version \
 	qcow_test_open_close \
 	qcow_test_read \
 	qcow_test_seek
+
+qcow_test_file_get_values_SOURCES = \
+	qcow_test_file_get_values.c \
+	qcow_test_libcerror.h \
+	qcow_test_libcstring.h \
+	qcow_test_libqcow.h \
+	qcow_test_unused.h
+
+qcow_test_file_get_values_LDADD = \
+	@LIBCSYSTEM_LIBADD@ \
+	../libqcow/libqcow.la \
+	@LIBCERROR_LIBADD@ \
+	@LIBCSTRING_LIBADD@
+
+qcow_test_get_version_SOURCES = \
+	qcow_test_get_version.c \
+	qcow_test_libcstring.h \
+	qcow_test_libqcow.h \
+	qcow_test_unused.h
+
+qcow_test_get_version_LDADD = \
+	../libqcow/libqcow.la \
+	@LIBCSTRING_LIBADD@
 
 qcow_test_open_close_SOURCES = \
 	qcow_test_libcerror.h \
