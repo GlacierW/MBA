@@ -1,16 +1,45 @@
-#include <pthread.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+#include <stdbool.h>
+#include <pthread.h>
 #include <monitor/monitor.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
+
 #include <arpa/inet.h>
-#include <netdb.h>
 #include "agent.h"
 
+struct agent_context {
+    
+    // member for QEMU - agent communication
+    struct {
+        pthread_t       tid;
+        pthread_mutex_t mtx;
+        pthread_cond_t  cond;
+    } thread;
+
+    // member for agent action
+    struct {
+        MBA_AGENT_ACTION type;
+        char dst_path[SZ_MAX_FILEPATH];
+        char src_path[SZ_MAX_FILEPATH];
+    } act;
+
+    int      sock;
+    uint16_t fwd_port;
+
+    bool ready;
+
+    Monitor* mon;
+};
+typedef struct agent_context agent_context;
+
+agent_context ac[1];
+
+/*
 #define MAX_REDIR_PORT 55535
 #define GUEST_PORT 8888
 #define REDIR_PORT_LENGHT 10
@@ -40,7 +69,8 @@ unsigned int agent_thread;
 uint16_t port;
 int sockfd, numbytes;
 struct sockaddr_in servaddr;
-
+*/
+/*
 char* getRandomRedirPort(void) {
     srand(time(NULL));
     int r = (rand() % MAX_REDIR_PORT) + 10001, rNum = 0, temp = r;
@@ -267,43 +297,148 @@ void logf_cmd(Monitor* mon) {
     agent_action = AGENT_IDLE;
     close(sockfd);
 } // logf_cmd()
-void* agent_thread_main(void *monitor)
-{
-	Monitor* mon = (Monitor* )monitor;
-    while(true) {
-        if ( agent_action == MBA_CMD_IMPO ) {
-            import_cmd(mon);                    
-        } // if
-        else if ( agent_action == MBA_CMD_EXPO ) {
-            export_cmd(mon);  
-        } // else if
-        else if ( agent_action == MBA_CMD_EXEC ) {
-            execute_cmd(mon);
-        } // else if
-        else if ( agent_action == MBA_CMD_INVO ) {
-            invoke_cmd(mon);
-        } // else if
-        else if ( agent_action == MBA_CMD_STAT ) {
-            status_cmd(mon);
-        } // else if
-        else if ( agent_action == MBA_CMD_LOGF ) {
-            status_cmd(mon);
-        } // else if
-		sleep(1);
-    } // while
+*/
+
+/// Private function
+/// These function should not be called directly, especially in the QEMU emulation thread.
+/// Otherwise, the emulation thread blocks when performing network I/O with the guest.
+/// But the guest has no chance to response the network I/O since the blocked emulation.
+static inline void set_agent_action( MBA_AGENT_ACTION act_type ) {
+    ac->act.type = act_type;
 }
 
-void create_agent_thread(Monitor *mon)
-{
-    if ( agent_thread == THREAD_IDLE ) {
-        agent_srcpath = calloc( MAX_COMMAND_SIZE, sizeof(char) );
-        agent_despath = calloc( MAX_COMMAND_SIZE, sizeof(char) );    
-        agent_action = AGENT_IDLE, agent_thread = THREAD_BUSY;
-        pthread_t agent_thread;	
-        pthread_create(&agent_thread, NULL, agent_thread_main,(void *)mon);
-        monitor_printf(mon, "Agent Thread Starting.\n");
-    } // if
-    else {
-        monitor_printf(mon, "Agent Thread had started.\n(qemu) ");
+/// Connect agent server via localhost redirected port
+/// Return socket descriptor on success, -1 otherwise
+static int connect_agent_server( void ) {
+
+    int    sock;
+    struct sockaddr_in server_addr;
+
+    bzero( &server_addr, sizeof(server_addr) );
+
+    server_addr.sin_family = AF_INET;
+    server_addr.sin_port   = htons(ac->fwd_port);
+
+    sock = socket( AF_INET,SOCK_STREAM, 0 );
+    if( sock == -1 )
+        return -1;
+
+    inet_pton( AF_INET, "127.0.0.1", &server_addr.sin_addr );
+    if( connect(sock, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1 )
+        return -1;
+
+    return sock;
+}
+
+/// The main loop of the agent thread.
+/// Serving as the dispatcher to the action handler
+/// Return none
+static void* agent_client_mainloop( void* null_arg ) {
+    
+    MBA_AGENT_RETURN ret;
+
+    // connect to agent server
+    ac->sock = connect_agent_server();
+    if( ac->sock == -1 ) {
+        agent_printf( "Failed to connect to agent server\n" );
+        return NULL;
     }
+
+    // agent is ready to go 
+    ac->ready = true;
+    set_agent_action( AGENT_ACT_IDLE );
+
+    while( true ) {
+
+        pthread_mutex_lock( &ac->thread.mtx );
+
+        // hold until an agent command is issued
+        while( ac->act.type == AGENT_ACT_IDLE )
+            pthread_cond_wait( &ac->thread.cond, &ac->thread.mtx );
+
+        // dispatcher
+        ret = AGENT_RET_EFAIL;
+        switch( ac->act.type ) {
+            case AGENT_ACT_IMPO:
+            case AGENT_ACT_EXPO:
+            case AGENT_ACT_EXEC:
+            case AGENT_ACT_INVO:
+            case AGENT_ACT_LOGF:
+            default:
+                agent_printf( "Unkown agent action type: %d\n", ac->act.type );
+                break;
+        }
+
+        if( ret == AGENT_RET_SUCCESS ) {
+            // TODO: show server ack message
+            //show_server_ack();
+        }
+        else
+            agent_printf( "Previous command failed. Error code: %d\n", ret );
+    
+        // reset action
+        set_agent_action( AGENT_ACT_IDLE );
+    
+        pthread_mutex_unlock( &ac->thread.mtx );
+    } 
+}
+
+
+/// Public API
+/// Each API should be named with the 'agent_' prefix.
+/// Note that an agent thread (via agent_init()) should exists to co-work with
+inline bool agent_is_ready( void ) {
+    return ac->ready;
+}
+
+void agent_printf( const char* fmt, ... ) {
+
+    va_list args;
+
+    if( ac->mon == NULL )
+        return;
+    
+    va_start( args, fmt );
+    monitor_vprintf( ac->mon, fmt, args );
+    va_end( args );
+}
+
+MBA_AGENT_RETURN agent_init( Monitor *mon, uint16_t server_fwd_port ) {
+
+    if( ac->act.type == AGENT_ACT_INIT )
+        return AGENT_RET_EBUSY;
+
+    if( agent_is_ready() )
+        return AGENT_RET_SUCCESS;
+
+    // reset agent context
+    bzero( ac, sizeof(agent_context) );
+
+    // setup monitor for agent aessage output to QEMU monitor
+    ac->mon = mon;
+
+    // connect to in-VM agent server via the forwarding port
+    ac->fwd_port = server_fwd_port;
+
+    // initialize thread sync var
+    if( pthread_mutex_init(&ac->thread.mtx, NULL) != 0 )
+        goto init_fail;
+
+    if( pthread_cond_init(&ac->thread.cond, NULL) != 0 )
+        goto init_fail;
+
+    // now we are in initializing action
+    set_agent_action( AGENT_ACT_INIT );
+
+    // spawn agent thread, the agent is ready until the thread connects the in-VM agent server
+    if( pthread_create( &ac->thread.tid, NULL, agent_client_mainloop, NULL ) != 0 ) 
+        goto init_fail;
+
+    return AGENT_RET_SUCCESS;
+
+init_fail:
+    pthread_mutex_destroy( &ac->thread.mtx );
+    pthread_cond_destroy( &ac->thread.cond );
+
+    return AGENT_RET_EFAIL;
 }

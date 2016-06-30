@@ -104,10 +104,6 @@ int main(int argc, char **argv)
 
 #include "disas/disas.h"
 
-#ifdef  CONFIG_AGENT
-#include "ext/agent/agent.h"
-#endif
-
 #include "slirp/libslirp.h"
 
 #include "trace.h"
@@ -2744,9 +2740,6 @@ int main(int argc, char **argv, char **envp)
 {
     int i;
     int snapshot, linux_boot;
-#ifdef  CONFIG_AGENT
-    redir_Port = getRandomRedirPort();
-#endif
     const char *initrd_filename;
     const char *kernel_filename, *kernel_cmdline;
     const char *boot_order = NULL;
@@ -2843,9 +2836,6 @@ int main(int argc, char **argv, char **envp)
 
     autostart = 1;
 
-    #ifdef  CONFIG_AGENT
-        net_slirp_redir(redir_Port); 
-    #endif
     /* first pass of option parsing */
     optind = 1;
     while (optind < argc) {

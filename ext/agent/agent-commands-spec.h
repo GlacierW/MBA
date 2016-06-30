@@ -1,3 +1,4 @@
+/*
 {
         .name         = "w_impo",
         .args_type    = "srcpath:s,despath:s",
@@ -27,13 +28,6 @@
         .mhandler.cmd = do_win_invo,
 },
 {
-	.name  	      = "w_init",
-	.args_type    = "",
-	.params       = "",
-	.help	      = "Create a thread to communicate with Windows agent.",
-	.mhandler.cmd = do_win_init,
-},
-{
 	.name	      = "w_stat",
 	.args_type    = "",
 	.params       = "",
@@ -47,3 +41,12 @@
 	.help         = "Get log's file",
 	.mhandler.cmd = do_win_logf,
 },
+*/
+{
+	.name  	      = "w_init",
+	.args_type    = "",
+	.params       = "",
+	.help	      = "Create a thread to communicate with Windows agent.",
+	.mhandler.cmd = do_win_init,
+},
+
