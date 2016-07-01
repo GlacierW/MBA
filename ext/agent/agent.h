@@ -3,6 +3,8 @@
 
 #define AGENT_GUEST_PORT 8888
 
+#define AGENT_EXEC_PROMPT "(agent-exec) "
+
 #define SZ_MAX_COMMAND   256
 #define SZ_MAX_FILEPATH  256
 #define SZ_MAX_FILECHUNK 8192 // 8KB per I/O chunk
@@ -63,17 +65,31 @@ extern char* redir_Port;
 /// Return true if ready, false otherwise
 extern bool agent_is_ready( void );
 
+/// Check if agent is currently performing the 'execute' action
+///
+///     no param
+///
+/// Return true if ready, false otherwise
+extern bool agent_is_exec( void );
+
 /// Print out the agent extension message
 /// If a monitor of QEMU is assigned at the initialization
 /// the output will be delivered to the monitor. Otherwise,
 /// all of the output will be omitted
-/// 
 ///
 ///     \param fmt  format string
 ///     \param ...  
 ///
 /// Return none
 extern void agent_printf( const char* fmt, ... );
+
+/// An callback function for the 'execute' action
+/// Note that this function should be not called directly.
+///
+///     \param cmd  command line received in QEMU console
+///
+/// Return none
+extern void agent_handle_exec_command( const char* cmd );
 
 /// Command the agent thread to perform 'import' action
 /// 
@@ -96,6 +112,26 @@ extern MBA_AGENT_RETURN agent_import( const char* dst_path, const char* src_path
 ///        AGENT_RET_EINIT, the agent thread is not initialized yet
 ///        AGENT_RET_EFAIL, general failure
 extern MBA_AGENT_RETURN agent_export( const char* dst_path, const char* src_path );
+
+/// Command the agent thread to perform 'execute' action
+/// 
+///     \param cmdline     the command line to be executed in the guest
+///
+/// Return AGENT_RET_SUCCESS, no error occured
+///        AGENT_RET_EBUSY, the agent thread is still busy dealing the previous command
+///        AGENT_RET_EINIT, the agent thread is not initialized yet
+///        AGENT_RET_EFAIL, general failure
+extern MBA_AGENT_RETURN agent_execute( const char* dst_path );
+
+/// Command the agent thread to perform 'invoke' action
+/// 
+///     \param cmdline      the command line to be executed in the guest
+///
+/// Return AGENT_RET_SUCCESS, no error occured
+///        AGENT_RET_EBUSY, the agent thread is still busy dealing the previous command
+///        AGENT_RET_EINIT, the agent thread is not initialized yet
+///        AGENT_RET_EFAIL, general failure
+extern MBA_AGENT_RETURN agent_invoke( const char* cmdline );
 
 /// Command the agent thread to perform 'logfile' action
 /// 

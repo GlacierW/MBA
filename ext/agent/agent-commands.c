@@ -5,42 +5,6 @@
 #include "agent-commands.h"
 #include "agent.h"
 
-/*
-
-void do_win_exec(Monitor *mon, const QDict *qdict)
-{
-    if ( agent_thread == 1 ) {
-	    char *despath = (char *)qdict_get_str(qdict, "despath");
-        strcpy(agent_despath, despath);
-        agent_action = 3;
-    } // if
-    else {
-        monitor_printf(mon, "Please enter w_init to start thread\n");
-    } // else
-}
-void do_win_invo(Monitor *mon, const QDict *qdict)
-{
-    if ( agent_thread == 1 ) {
-	    char *despath = (char *)qdict_get_str(qdict, "despath");
-        strcpy(agent_despath, despath);
-	    agent_action = 4;
-    } // if
-    else {
-        monitor_printf(mon, "Please enter w_init to start thread\n");
-    } // else
-}
-void do_win_status(Monitor *mon, const QDict *qdict)
-{
-    if ( agent_thread == 1 ) {
-        agent_action = 5;
-    } // if
-    else {
-        monitor_printf(mon, "Please enter w_init to start thread\n");
-    } // else
-}
-*/
-
-
 void do_win_impo( Monitor *mon, const QDict *qdict ) 
 {
 
@@ -107,6 +71,69 @@ void do_win_expo( Monitor *mon, const QDict *qdict )
     }
 }
 
+void do_win_exec( Monitor *mon, const QDict *qdict )
+{
+    MBA_AGENT_RETURN ret;
+
+    char* cmdline = (char*)qdict_get_str(qdict, "cmdline");
+
+    ret = agent_execute( cmdline );
+
+    switch( ret ) { 
+
+        case AGENT_RET_SUCCESS:
+            break;
+
+        case AGENT_RET_EFAIL:
+            monitor_printf( mon, "Failed to setup 'execute' action\n" );
+            break;
+
+        case AGENT_RET_EBUSY:
+            monitor_printf( mon, "Agent is busy handling the previous command. Come back later\n" );
+            break;
+
+        case AGENT_RET_EINIT:
+            monitor_printf( mon, "Please enter w_init to initialize agent thread\n" );
+            break;
+
+        default:
+            monitor_printf( mon, "Unknown failure of execute. Code: %d\n", ret );
+            break;
+    }   
+}
+
+void do_win_invo( Monitor *mon, const QDict *qdict )
+{
+    MBA_AGENT_RETURN ret;
+
+    char* cmdline = (char*)qdict_get_str(qdict, "cmdline");
+
+    ret = agent_invoke( cmdline );
+
+    switch( ret ) {
+
+        case AGENT_RET_SUCCESS:
+            break;
+
+        case AGENT_RET_EFAIL:
+            monitor_printf( mon, "Failed to setup 'invoke' action\n" );
+            break;
+
+        case AGENT_RET_EBUSY:
+            monitor_printf( mon, "Agent is busy handling the previous command. Come back later\n" );
+            break;
+
+        case AGENT_RET_EINIT:
+            monitor_printf( mon, "Please enter w_init to initialize agent thread\n" );
+            break;
+
+        default:
+            monitor_printf( mon, "Unknown failure of invoke. Code: %d\n", ret );
+            break;
+    }
+
+}
+
 void do_win_logf( Monitor *mon, const QDict *qdict )
 {
     MBA_AGENT_RETURN ret;
@@ -133,7 +160,7 @@ void do_win_logf( Monitor *mon, const QDict *qdict )
             break;
 
         default:
-            monitor_printf( mon, "Unknown failure of import. Code: %d\n", ret );
+            monitor_printf( mon, "Unknown failure of log file export. Code: %d\n", ret );
             break;
     }   
 }

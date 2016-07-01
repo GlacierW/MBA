@@ -86,6 +86,7 @@
 #endif
 
 #if defined(CONFIG_AGENT)
+#include "ext/agent/agent.h"
 #include "ext/agent/agent-commands.h"
 #endif
 
@@ -5226,6 +5227,11 @@ static void monitor_command_cb(void *opaque, const char *cmdline,
     Monitor *mon = opaque;
 
     monitor_suspend(mon);
+#if defined(CONFIG_AGENT)
+    if( agent_is_exec() )
+        agent_handle_exec_command( cmdline );
+    else
+#endif
     handle_user_command(mon, cmdline);
     monitor_resume(mon);
 }

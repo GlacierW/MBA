@@ -1,39 +1,32 @@
-/*
-{
-	.name         = "w_exec",
-        .args_type    = "despath:s",
-        .params       = "despath",
-        .help         = "Exec commands from QEMU to Windows agent. Need full path of target file in Windows.",
-        .mhandler.cmd = do_win_exec,
-},
-{
-	.name	      = "w_invo",
-        .args_type    = "despath:s",
-        .params       = "despath",
-        .help         = "Invo commands from QEMU to Windows agent. Need full path of target file in Windows.",
-        .mhandler.cmd = do_win_invo,
-},
-{
-	.name	      = "w_stat",
-	.args_type    = "",
-	.params       = "",
-	.help         = "Check Windows agent's status.",
-	.mhandler.cmd = do_win_status,
-},
-*/
 {
     .name         = "w_impo",
     .args_type    = "srcpath:s,dstpath:s",
     .params       = "fullpath_host_srcfile fullpath_guest_dstfile",
-    .help         = "Import a host file into the guest. Fullpath of both the source file and the destination file are required.",
+    .help         = "Import a host file into the guest."
+                    "\n\t\t\tFullpath without spaces of both the source file and the destination file are required.",
     .mhandler.cmd = do_win_impo,
 },
 {
     .name         = "w_expo",
     .args_type    = "srcpath:s,dstpath:s",
     .params       = "fullpath_guest_srcfile fullpath_host_dstfile",
-    .help         = "Export a guest file to the host. Fullpath of both the source file and the destination file are required.",
+    .help         = "Export a guest file to the host."
+                    "\n\t\t\tFullpath without spaces of both the source file and the destination file are required.",
     .mhandler.cmd = do_win_expo,
+},
+{
+	.name         = "w_exec",
+    .args_type    = "cmdline:s",
+    .params       = "command_to_execute",
+    .help         = "Execute the given command inside the guest and perform interactive Input/Output.",
+    .mhandler.cmd = do_win_exec,
+},
+{
+    .name         = "w_invo",
+    .args_type    = "cmdline:s",
+    .params       = "command_to_execute",
+    .help         = "Invoke the given command inside the guest without waiting the result/output.",
+    .mhandler.cmd = do_win_invo,
 },
 {
 	.name	      = "w_logf",

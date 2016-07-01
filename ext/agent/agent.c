@@ -23,7 +23,9 @@ struct agent_context {
 
     // member for agent action
     struct {
+        pthread_mutex_t mtx;
         MBA_AGENT_ACTION type;
+        char cmdline[SZ_MAX_COMMAND];
         char dst_path[SZ_MAX_FILEPATH];
         char src_path[SZ_MAX_FILEPATH];
     } act;
@@ -38,266 +40,6 @@ struct agent_context {
 typedef struct agent_context agent_context;
 
 agent_context ac[1];
-
-/*
-#define MAX_REDIR_PORT 55535
-#define GUEST_PORT 8888
-#define REDIR_PORT_LENGHT 10
-#define MAX_COMMAND_SIZE 256
-#define AGENT_SYSTEM_RECEIVE 18
-#define MAX_FILE_SIZE 1638400  
-#define FILE_SIZE_LENGHT 11 
-#define MESSAGE_SIZE_LENGHT 11
-#define STAT_COMMAND_RETURN 37
-#define THREAD_IDLE 0
-#define THREAD_BUSY 1
-#define AGENT_IDLE 0
-#define TEN_SECOND 10
-#define MBA_CMD_IMPO 1 //  Command begging with 'impo' from MBA     
-#define MBA_CMD_EXPO 2 //  Command begging with 'expo' from MBA     
-#define MBA_CMD_EXEC 3 //  Command begging with 'exec' from MBA     
-#define MBA_CMD_INVO 4 //  Command begging with 'invo' from MBA     
-#define MBA_CMD_STAT 5 //  Command begging with 'stat' from MBA     
-#define MBA_CMD_LOGF 6 //  Command begging with 'logf' from MBA 
-
-char* redir_Port;
-char* agent_srcpath;
-char* agent_despath;
-char buf[MAX_FILE_SIZE], receive[AGENT_SYSTEM_RECEIVE];
-unsigned int agent_action;
-unsigned int agent_thread;
-uint16_t port;
-int sockfd, numbytes;
-struct sockaddr_in servaddr;
-*/
-/*
-char* getRandomRedirPort(void) {
-    srand(time(NULL));
-    int r = (rand() % MAX_REDIR_PORT) + 10001, rNum = 0, temp = r;
-    port = r ;
-    for ( ; temp != 0 ; temp /= 10)
-        rNum++;
-    char* randPort = calloc( rNum + REDIR_PORT_LENGHT, sizeof(char) );
-    sprintf( randPort, "tcp:%d::%d", r, GUEST_PORT );
-    printf( "randPort:%s   port:%d\n", randPort, port );
-    return randPort;
-} // getRandomRedirPort()
-
-void initial_string(char* word, int len) {
-    int run = 0;
-    for ( ; run < len ; run++ ) 
-        word[run] = '\0';
-} // initial_string()
-
-void init_socket(void) { 
-    sockfd = socket( AF_INET,SOCK_STREAM, 0 );
-    bzero(&servaddr,sizeof servaddr);
-    servaddr.sin_family = AF_INET;
-    servaddr.sin_port = htons(port);
-    inet_pton(AF_INET,"127.0.0.1",&(servaddr.sin_addr));  
-} // init_socket()
-
-void print_system_receive(Monitor* mon, int receiveLength) {
-    char receiveCommand[MAX_COMMAND_SIZE];
-    initial_string( receiveCommand, MAX_COMMAND_SIZE);
-    numbytes = read(sockfd, receive, AGENT_SYSTEM_RECEIVE );
-    monitor_printf(mon, "%s", receive );
-    numbytes = read(sockfd, receiveCommand, receiveLength );
-    monitor_printf(mon, "%s\n", receiveCommand );
-} // print_system_receive()
-
-void import_cmd(Monitor* mon) {
-    long long int file_size;
-    char command[MAX_COMMAND_SIZE], char_file_size[FILE_SIZE_LENGHT];
-    FILE *fp;
-    fp = fopen(agent_srcpath, "rb" );
-    if ( fp ) {
-        initial_string( command, MAX_COMMAND_SIZE );
-        initial_string( buf, MAX_FILE_SIZE );
-        initial_string( char_file_size, FILE_SIZE_LENGHT );
-        initial_string( receive, AGENT_SYSTEM_RECEIVE );
-        init_socket();
-        file_size = fread(buf, sizeof(char), sizeof(buf), fp);
-        sprintf( char_file_size, "%lld", file_size );
-        sprintf( command, "impo %s %s", agent_despath, char_file_size );   
-        if ( file_size > MAX_FILE_SIZE ) {
-            monitor_printf(mon, "Impo file size should be less than 16MB.\n(qemu)");
-        } // if
-        else {
-            connect(sockfd,(struct sockaddr *)&servaddr,sizeof(servaddr));         
-            numbytes = write(sockfd, command, sizeof(command) );
-            while ( file_size != 0 ) {
- 	            numbytes = write(sockfd, buf, file_size );
-                file_size -= numbytes;
-            } // while
-
-            monitor_printf(mon, "File_sending_over\n(qemu)");
- 	        fclose(fp);
-        } // else
- 
-        print_system_receive(mon, strlen(command));
-        monitor_printf(mon, "get impo cmd From:%s To:%s numbytes:%d\n(qemu)", agent_srcpath, agent_despath, numbytes);
-    } // if
-    else {
-        monitor_printf(mon, "Could not find the file\n(qemu)");
-    } // else
-
-    agent_action = AGENT_IDLE;
-    close(sockfd);
-} // import_cmd()
-
-void export_cmd(Monitor* mon) {
-    char command[MAX_COMMAND_SIZE], get_file_size[FILE_SIZE_LENGHT];
-    FILE *fp;   
-    long long int file_size;
-    init_socket();
-    initial_string( command, MAX_COMMAND_SIZE );
-    initial_string( buf, MAX_FILE_SIZE );
-    initial_string( get_file_size, FILE_SIZE_LENGHT );
-    sprintf( command, "expo %s", agent_srcpath );
-    fp = fopen(agent_despath, "w" );
-    if ( fp ) { 
-        connect(sockfd,(struct sockaddr *)&servaddr,sizeof(servaddr));
-        numbytes = write(sockfd, command, sizeof(command) ); 
-        numbytes = read(sockfd, get_file_size, FILE_SIZE_LENGHT );
-        file_size = atoi(get_file_size);
-        monitor_printf(mon, "file_size:%lld\n(qemu)", file_size);
-        if ( atoi(get_file_size) > MAX_FILE_SIZE ) {
-            monitor_printf(mon, "Expo file size should be less than 16MB.\n(qemu)");
-        } // if
-        else {                
-            while ( file_size > 0 ) { 
-                numbytes = read(sockfd, buf, file_size );
-                fwrite(buf, sizeof(char), numbytes, fp);	
-                file_size -= numbytes;
-            } // while
-
-            print_system_receive(mon, strlen(command));
-            monitor_printf(mon, "get expo cmd From:%s To:%s bytes:%d\n(qemu)", agent_srcpath, agent_despath, numbytes);
-        } // else 
-
-        fclose(fp);
-    } // if
-    else {
-        monitor_printf(mon, "export file failed\n(qemu)");
-    } // else
- 	
-    agent_action = AGENT_IDLE;
-    close(sockfd);
-} // export_cmd()
-
-void execute_cmd(Monitor* mon) {
-    char command[MAX_COMMAND_SIZE], execReturn[MAX_COMMAND_SIZE], getMessageSize[MESSAGE_SIZE_LENGHT],
-    getMessage[MAX_FILE_SIZE], readMessageBuf[MAX_FILE_SIZE];
-    init_socket();
-    initial_string( command, MAX_COMMAND_SIZE);
-    initial_string( execReturn, MAX_COMMAND_SIZE);
-    initial_string( getMessageSize, MESSAGE_SIZE_LENGHT);
-    initial_string( getMessage, MAX_FILE_SIZE);
-    sprintf( command, "exec %s", agent_despath );
-    
-    connect(sockfd,(struct sockaddr *)&servaddr,sizeof(servaddr));
-    numbytes = write(sockfd, command, sizeof(command) );
-    monitor_printf(mon, "ready for reading message\n");
-    numbytes = read(sockfd, getMessageSize, MESSAGE_SIZE_LENGHT );
-    monitor_printf(mon, "[getMessageSize:%s] [numbytes:%d]\n", getMessageSize, numbytes);
-    while ( strcmp( getMessageSize, "0" ) != 0 ) {
-        initial_string( readMessageBuf, MAX_FILE_SIZE );
-        numbytes = read(sockfd, readMessageBuf, atoi(getMessageSize) );
-        monitor_printf(mon, "getMessage:%s\n", readMessageBuf);
-        strcat( getMessage, readMessageBuf );
-        numbytes = read(sockfd, getMessageSize, MESSAGE_SIZE_LENGHT );
-        monitor_printf(mon, "[getMessageSize:%s] [numbytes:%d]\n", getMessageSize, numbytes);
-    } // while
-    
-    monitor_printf(mon, "Reading Message Done\n");
-    print_system_receive(mon,  strlen(command) );
-    monitor_printf(mon, "get exec cmd %s bytes:%d\n(qemu)", agent_despath, numbytes);
-    agent_action = AGENT_IDLE;
-    close(sockfd);
-} // exec_cmd()
-
-void invoke_cmd(Monitor* mon) {
-    char command[MAX_COMMAND_SIZE];
-    init_socket();
-    initial_string( command, MAX_COMMAND_SIZE);
-    sprintf( command, "invo %s", agent_despath );
- 
-    connect(sockfd,(struct sockaddr *)&servaddr,sizeof(servaddr));
-    numbytes = write(sockfd, command, sizeof(command) );
-    print_system_receive(mon, strlen(command));
-    monitor_printf(mon, "get invo cmd %s bytes:%d\n(qemu)", agent_despath, numbytes);
-    agent_action = AGENT_IDLE;
-    close(sockfd);
-} // invoke_cmd()
-
-void status_cmd(Monitor* mon) {
-    char command[MAX_COMMAND_SIZE], stat[STAT_COMMAND_RETURN];
-    init_socket();
-    initial_string( command, MAX_COMMAND_SIZE);
-    initial_string( stat, STAT_COMMAND_RETURN );
-    sprintf( command, "stat" );
-    connect(sockfd,(struct sockaddr *)&servaddr,sizeof(servaddr));
-    numbytes = write(sockfd, command, sizeof(command) );
-	monitor_printf(mon, "get status cmd bytes:%d\n", numbytes);
-                
-    struct timeval timeout;
-    timeout.tv_sec = TEN_SECOND;
-    timeout.tv_usec = 0;
-    if (setsockopt (sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout,
-        sizeof(timeout)) < 0)
-            monitor_printf(mon,"setsockopt failed\n");
-
-    numbytes = read(sockfd, stat, STAT_COMMAND_RETURN );
-    if ( numbytes > 0 )
-        monitor_printf(mon, "%s\n(qemu)", stat );
-    else
-        monitor_printf(mon, "agent not working\n(qemu)" );
-    print_system_receive(mon, strlen(command));
-    agent_action = AGENT_IDLE;
-    close(sockfd);
-} // status_cmd()
-
-void logf_cmd(Monitor* mon) {
-    char command[MAX_COMMAND_SIZE], get_file_size[FILE_SIZE_LENGHT];
-    FILE *fp;   
-    long long int file_size;
-    init_socket();
-    initial_string( command, MAX_COMMAND_SIZE );
-    initial_string( buf, MAX_FILE_SIZE );
-    initial_string( get_file_size, FILE_SIZE_LENGHT );
-    sprintf( command, "logf" );
-    fp = fopen(agent_despath, "w" );
-    if ( fp ) { 
-        connect(sockfd,(struct sockaddr *)&servaddr,sizeof(servaddr));
-        numbytes = write(sockfd, command, sizeof(command) ); 
-        numbytes = read(sockfd, get_file_size, FILE_SIZE_LENGHT );
-        file_size = atoi(get_file_size);
-        monitor_printf(mon, "file_size:%lld\n", file_size);
-        if ( atoi(get_file_size) > MAX_FILE_SIZE ) {
-            monitor_printf(mon, "file size should be less than 16MB.\n(qemu)");
-        } // if
-        else {                
-            while ( file_size > 0 ) { 
-                numbytes = read(sockfd, buf, file_size );
-                fwrite(buf, sizeof(char), numbytes, fp);	
-                file_size -= numbytes;
-            } // while
-
-            print_system_receive(mon, strlen(command));
-            monitor_printf(mon, "get logf cmd\n(qemu)");
-        } // else 
-
-        fclose(fp);
-    } // if
-    else {
-        monitor_printf(mon, "export log failed\n(qemu)");
-    } // else
- 	
-    agent_action = AGENT_IDLE;
-    close(sockfd);
-} // logf_cmd()
-*/
 
 /// Private function
 /// These function should not be called directly, especially in the QEMU emulation thread.
@@ -316,8 +58,12 @@ static void agent_cleanup( void ) {
     while( pthread_mutex_trylock(&ac->thread.mtx) == EBUSY )
         pthread_mutex_unlock( &ac->thread.mtx );
     pthread_mutex_unlock( &ac->thread.mtx );
-
     pthread_mutex_destroy( &ac->thread.mtx );
+
+    while( pthread_mutex_trylock(&ac->act.mtx) == EBUSY )
+        pthread_mutex_unlock( &ac->act.mtx );
+    pthread_mutex_unlock( &ac->act.mtx );
+    pthread_mutex_destroy( &ac->act.mtx );
     
     // context structure zero-out
     bzero( ac, sizeof(agent_context) );
@@ -365,9 +111,17 @@ static ssize_t as_read( int sock_fd, void* buf, size_t count ) {
     return n_rbytes;
 }
 
-
-static inline void set_agent_action( MBA_AGENT_ACTION act_type ) {
+/// Synchronously set the current agent action.
+/// The agent action type is shared by the QEMU emulation & Agent threads.
+/// Thereby, a mutex(lock) is required to perform mutually exclusive access.
+/// 
+///     \param act_type     a enum value indicating the action type
+/// 
+/// Return none
+static void set_agent_action( MBA_AGENT_ACTION act_type ) {
+    pthread_mutex_lock( &ac->act.mtx );
     ac->act.type = act_type;
+    pthread_mutex_unlock( &ac->act.mtx );
 }
 
 /// Import a host file into guest
@@ -538,6 +292,108 @@ expo_fail:
     return AGENT_RET_EFAIL;
 }
 
+/// Execute a guest command and perform interactive stdin/stdout
+/// Return none
+static MBA_AGENT_RETURN execute_guest_cmd_return( void ) {
+    
+    char exec_rdy[sizeof(MSG_EXEC_READY)];
+    char cmd_emit[SZ_MAX_COMMAND];
+
+    uint32_t msize;
+    char     msg_chunk[4096];
+
+    int n_rbytes;
+    int n_wbytes;
+
+    const char* cmdline = ac->act.cmdline;
+
+    int i;
+
+    // construct the final command for agent server
+    bzero( cmd_emit, SZ_MAX_COMMAND );
+    snprintf( cmd_emit, SZ_MAX_COMMAND, "exec %s", cmdline );
+
+    // emit command
+    n_wbytes = as_write( ac->sock, cmd_emit, SZ_MAX_COMMAND );
+    if( n_wbytes != SZ_MAX_COMMAND ) {
+        agent_printf( "Failed to emit command '%s'\n", cmd_emit );
+        goto exec_fail;
+    }
+    
+    // read the constant string "EXEC_READY"
+    bzero( exec_rdy, sizeof(MSG_EXEC_READY) );
+    n_rbytes = as_read( ac->sock, exec_rdy, sizeof(MSG_EXEC_READY) );
+
+    if( n_rbytes != sizeof(MSG_EXEC_READY) || strcmp(exec_rdy, MSG_EXEC_READY) != 0 ) {
+        agent_printf( "Failed to receive the ready signal for agent 'execute' action\n" );
+        goto exec_fail;
+    }
+
+    // infinite loop to receive guest output
+    msize = 0;
+    while( true ) {
+
+        // get output message size
+        n_rbytes = as_read( ac->sock, &msize, sizeof(uint32_t) );
+        if( n_rbytes != sizeof(uint32_t) ) 
+            goto exec_fail;
+
+        if( msize == 0 )
+            break;
+
+        // get & print message(may not be null-terminated) content
+        while( msize ) {
+
+            // measure the maximum bytes should be read
+            n_rbytes = (msize < sizeof(msg_chunk)) ? msize : sizeof(msg_chunk); 
+
+            // read output message
+            n_rbytes = as_read( ac->sock, msg_chunk, n_rbytes );
+
+            if( n_rbytes <= 0 ) {
+                agent_printf( "Failed to revceive agent exec output\n" );
+                goto exec_fail;
+            }
+
+            for( i = 0; i < n_rbytes; ++i )
+                agent_printf( "%c", msg_chunk[i] );
+            msize -= n_rbytes;
+        }
+    }   
+
+    return AGENT_RET_SUCCESS;
+
+exec_fail:
+    return AGENT_RET_EFAIL;
+}
+
+/// Execute a guest command without expecting the output
+/// Return none
+static MBA_AGENT_RETURN execute_guest_cmd_noreturn( void ) {
+
+    char cmd_emit[SZ_MAX_COMMAND];
+
+    int n_wbytes;
+    
+    const char* cmdline = ac->act.cmdline;
+
+    // construct the final command for agent server
+    bzero( cmd_emit, SZ_MAX_COMMAND );
+    snprintf( cmd_emit, SZ_MAX_COMMAND, "invo %s", cmdline );
+
+    // emit command
+    n_wbytes = as_write( ac->sock, cmd_emit, SZ_MAX_COMMAND );
+    if( n_wbytes != SZ_MAX_COMMAND ) {
+        agent_printf( "Failed to emit command '%s'\n", cmd_emit );
+        goto invo_fail;
+    }
+
+    return AGENT_RET_SUCCESS;
+
+invo_fail:
+    return AGENT_RET_EFAIL;
+}
+
 /// Export the agent server log to host
 /// Return none
 static MBA_AGENT_RETURN export_agent_log( void ) {
@@ -619,7 +475,6 @@ logf_fail:
     return AGENT_RET_EFAIL;
 }
 
-
 /// Receive agent server ack message
 /// Return none
 static void show_server_ack( void ) {
@@ -700,12 +555,18 @@ static void* agent_client_mainloop( void* null_arg ) {
                 ret = export_guest_file();
                 break;
 
+            case AGENT_ACT_EXEC:
+                ret = execute_guest_cmd_return();
+                break;
+
+            case AGENT_ACT_INVO:
+                ret = execute_guest_cmd_noreturn();
+                break;
+
             case AGENT_ACT_LOGF:
                 ret = export_agent_log();
                 break;
 
-            case AGENT_ACT_EXEC:
-            case AGENT_ACT_INVO:
             default:
                 agent_printf( "Unkown agent action type: %d\n", ac->act.type );
                 break;
@@ -732,6 +593,17 @@ inline bool agent_is_ready( void ) {
     return ac->ready;
 }
 
+bool agent_is_exec( void ) {
+
+    bool ret = false;
+
+    pthread_mutex_lock( &ac->act.mtx );
+    ret = (ac->act.type == AGENT_ACT_EXEC);
+    pthread_mutex_unlock( &ac->act.mtx );
+
+    return ret;
+}
+
 void agent_printf( const char* fmt, ... ) {
 
     va_list args;
@@ -743,6 +615,23 @@ void agent_printf( const char* fmt, ... ) {
     monitor_vprintf( ac->mon, fmt, args );
     va_end( args );
 }
+
+void agent_handle_exec_command( const char* cmdline ) {
+
+    char cmd_emit[SZ_MAX_COMMAND];
+
+    if( !agent_is_ready() || !agent_is_exec() )
+        return;
+
+    bzero( cmd_emit, SZ_MAX_COMMAND );
+    strncpy( cmd_emit, cmdline, SZ_MAX_COMMAND - 1 );
+
+    // append the newline character
+    strcat( cmd_emit, "\n" );
+
+    // forward execute command to agent server
+    as_write( ac->sock, cmd_emit, SZ_MAX_COMMAND );
+}       
 
 MBA_AGENT_RETURN agent_import( const char* dst_path, const char* src_path ) {
 
@@ -802,6 +691,58 @@ MBA_AGENT_RETURN agent_export( const char* dst_path, const char* src_path ) {
     return AGENT_RET_SUCCESS;
 } 
 
+MBA_AGENT_RETURN agent_execute( const char* cmdline ) {
+
+    if( !agent_is_ready() )
+        return AGENT_RET_EINIT;
+
+    // get thread lock to setup EXECute action parameters
+    if( pthread_mutex_trylock( &ac->thread.mtx ) == EBUSY )
+        return AGENT_RET_EBUSY;
+
+    // setup execute action
+    set_agent_action( AGENT_ACT_EXEC );
+
+    bzero( ac->act.cmdline, SZ_MAX_COMMAND );
+    strncpy( ac->act.cmdline, cmdline, SZ_MAX_COMMAND );
+
+    // wake up agent thread
+    if( pthread_cond_signal(&ac->thread.cond) != 0 )
+        return AGENT_RET_EFAIL;
+
+    // release lock
+    if( pthread_mutex_unlock(&ac->thread.mtx) != 0 )
+        return AGENT_RET_EFAIL;
+
+    return AGENT_RET_SUCCESS;   
+} 
+
+MBA_AGENT_RETURN agent_invoke( const char* cmdline ) {
+    
+    if( !agent_is_ready() )
+        return AGENT_RET_EINIT;
+
+    // get thread lock to setup INVOke action parameters
+    if( pthread_mutex_trylock( &ac->thread.mtx ) == EBUSY )
+        return AGENT_RET_EBUSY;
+
+    // setup invoke action
+    set_agent_action( AGENT_ACT_INVO );
+
+    bzero( ac->act.cmdline, SZ_MAX_COMMAND );
+    strncpy( ac->act.cmdline, cmdline, SZ_MAX_COMMAND );
+
+    // wake up agent thread
+    if( pthread_cond_signal(&ac->thread.cond) != 0 )
+        return AGENT_RET_EFAIL;
+
+    // release lock
+    if( pthread_mutex_unlock(&ac->thread.mtx) != 0 )
+        return AGENT_RET_EFAIL;
+
+    return AGENT_RET_SUCCESS;   
+}
+
 MBA_AGENT_RETURN agent_logfile( const char* dst_path ) {
 
     if( !agent_is_ready() )
@@ -846,6 +787,9 @@ MBA_AGENT_RETURN agent_init( Monitor *mon, uint16_t server_fwd_port ) {
     ac->fwd_port = server_fwd_port;
 
     // initialize thread sync var
+    if( pthread_mutex_init(&ac->act.mtx, NULL) != 0 )
+        goto init_fail;
+
     if( pthread_mutex_init(&ac->thread.mtx, NULL) != 0 )
         goto init_fail;
 
@@ -862,6 +806,7 @@ MBA_AGENT_RETURN agent_init( Monitor *mon, uint16_t server_fwd_port ) {
     return AGENT_RET_SUCCESS;
 
 init_fail:
+    pthread_mutex_destroy( &ac->act.mtx );
     pthread_mutex_destroy( &ac->thread.mtx );
     pthread_cond_destroy( &ac->thread.cond );
 
