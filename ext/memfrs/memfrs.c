@@ -66,6 +66,7 @@ INPUT: json_object* struc       json object of structure we want to query
 
 OUTPUT: field_info*             return the field information in type if field_info
 *******************************************************************/
+
 field_info* memfrs_q_field( json_object* struc, const char* field_name )
 {
     json_object* target = NULL;
@@ -92,10 +93,9 @@ field_info* memfrs_q_field( json_object* struc, const char* field_name )
 
     //query and unpack field type
     tmp_jobject = json_object_array_get_idx(target, 0);
-    strncpy(f_info->type_name, json_object_get_string(tmp_jobject), STRLEN); 
+    strncpy(f_info->type_name, json_object_get_string(tmp_jobject), STRLEN);
 
-    //TODO: type size leave empty now 
-
+    //TODO: type size leave empty now
 
     // Put the json object of field type into fielf_info structure
     if(g_struct_info != NULL)
@@ -104,13 +104,14 @@ field_info* memfrs_q_field( json_object* struc, const char* field_name )
     return f_info;
 }
 
+
 /*******************************************************************
 int memfrs_close_field(field_info* field)
 
 free the memory of field_info.
 
-INPUT:     field_info* field,   pointer of field_info object to be freed 
-OUTPUT:    int,                 return 0 if sucess, and not 0 otherwise       
+INPUT:     field_info* field,   pointer of field_info object to be freed
+OUTPUT:    int,                 return 0 if sucess, and not 0 otherwise
 
 *******************************************************************/
 int memfrs_close_field(field_info* field)
@@ -131,9 +132,9 @@ OUTPUT:   json_object*,         json object representation of the target struct
 json_object* memfrs_q_struct(const char* ds_name)
 {
     json_object* target = NULL;
-    
+
     // Query global structure info with structure name ds_name
-    // Restore the query result into target json_object 
+    // Restore the query result into target json_object
     json_object_object_get_ex(g_struct_info, ds_name, &target);
     
     if(target==NULL)
@@ -157,12 +158,12 @@ int memfrs_load_structs( const char* type_filename)
 }
 
 /*******************************************************************
-bool memfrs_kpcr_self_check( uint64_t kpcr_ptr ) 
+bool memfrs_kpcr_self_check( uint64_t kpcr_ptr )
 
 Hueristic check if certain address contain the data structure _KPCR
 
 INPUT:     uint64_t kpcr_ptr,        the 64bit address of possible KPCR pointer
-OUTPUT:    bool,                     return true if kpcr found, else retuen false 
+OUTPUT:    bool,                     return true if kpcr found, else retuen false
 *******************************************************************/
 bool memfrs_kpcr_self_check( uint64_t kpcr_ptr ) {
 
@@ -190,15 +191,15 @@ bool memfrs_kpcr_self_check( uint64_t kpcr_ptr ) {
     {
         g_kpcr_ptr = 0;
         return false;
-    }  
+    }
 
-    // Check if the Self pointer point back to _KPCR structure, which is the hueristic check of _KPCR 
+    // Check if the Self pointer point back to _KPCR structure, which is the hueristic check of _KPCR
     if( kpcr_ptr == self_ptr ) {
         g_kpcr_ptr = kpcr_ptr;
         printf("KPCR found %lx\n", g_kpcr_ptr);
         return true;
     }
-  
+
     g_kpcr_ptr = 0;
     return false;
 }
@@ -341,22 +342,28 @@ void hexdump(Monitor *mon, uint8_t* buf, size_t length)
 }
 
 /*******************************************************************
-int memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu ) 
+int memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
 
 Eumerate the running process
- 
-INPUT:     uint64_t kpcr_ptr,        the address of _KPCR struct 
+
+INPUT:     uint64_t kpcr_ptr,        the address of _KPCR struct
            CPUState *cpu,            the pointer to current cpu
 OUTPUT:    int,                      return 0 if sucess, and not 0 otherwise
 *******************************************************************/
-int memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu ) 
+int memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
 {
     uint64_t kthread_ptr,
-             eprocess_ptr;
+             eprocess_ptr,
+             peb_ptr,
+             rtl_ptr,
+             buf_ptr;
 
+    CPUX86State* x86_cpu = (CPUX86State*)cpu->env_ptr;
     uint64_t cr3;
+    uint64_t cr3_init;
 
-    uint8_t buf[STRLEN];
+    uint8_t buf[256];
+    uint8_t length;
 
     uint64_t eprocess_ptr_init = 0;
 
@@ -368,11 +375,17 @@ int memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
 
     json_object* jeprocess = NULL;
     int offset_cr3_to_eprocess = 0;
+
     int offset_blink_to_eprocess = 0;
     int offset_entry_list_to_eprocess = 0;
     int offset_process_name_to_eprocess = 0;
     int count = 0;
-    field_info* f_info, *f_info2 = NULL;
+    field_info* f_info, *f_info2, *f_info3, *f_info4 = NULL;
+
+    int offset_peb_to_eprocess = 0;
+    int offset_parameter_to_peb = 0;
+    int offset_length_to_rtl = 0;
+    int offset_buffer_to_rtl = 0;
 
     //Check if the data structure information is loaded
     if(g_struct_info ==NULL)
@@ -400,9 +413,9 @@ int memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
 
     // Query Prcb field in _KPCR struct
     f_info = memfrs_q_field(jkpcr, "Prcb");
-    // Query Prcb for the sub-field name CurrentThread 
+    // Query Prcb for the sub-field name CurrentThread
     f_info2 = memfrs_q_field(f_info->jobject_type, "CurrentThread");
-    // Calculating the offset of CurrentThread in _KPCR 
+    // Calculating the offset of CurrentThread in _KPCR
     offset_curthread_to_kpcr = f_info->offset + f_info2->offset;
     //Cleaning ...
     memfrs_close_field(f_info2);
@@ -414,14 +427,14 @@ int memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
     f_info = memfrs_q_field(jkthread, "Process");
     offset_process_to_kthread = f_info->offset;
     memfrs_close_field(f_info);
-    
+
     // Read the concrete memory value of kthread_ptr(CurrentThread) via _KPCR address
     cpu_memory_rw_debug( cpu, kpcr_ptr + offset_curthread_to_kpcr, (uint8_t*)&kthread_ptr, sizeof(kthread_ptr), 0 );
-    // Read the concrete memory value of PROCESS via CurrentThread 
-    // Get the first PROCESS 
+    // Read the concrete memory value of PROCESS via CurrentThread
+    // Get the first PROCESS
     cpu_memory_rw_debug( cpu, kthread_ptr + offset_process_to_kthread, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), 0 );
 
-    // Retrieve the _EPROCESS structure 
+    // Retrieve the _EPROCESS structure
     jeprocess = memfrs_q_struct("_EPROCESS");
     // Query Pcb field in _EPROCESS struct
     f_info = memfrs_q_field(jeprocess, "Pcb");
@@ -447,8 +460,28 @@ int memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
     offset_process_name_to_eprocess = f_info->offset;
     memfrs_close_field(f_info);
 
+
+
+    f_info = memfrs_q_field(jeprocess, "Peb");
+    offset_peb_to_eprocess = f_info->offset;
+    f_info2 = memfrs_q_field(f_info->jobject_type, "ProcessParameters");
+    offset_parameter_to_peb = f_info2->offset;
+    f_info3 = memfrs_q_field(f_info2->jobject_type, "ImagePathName");
+    f_info4 = memfrs_q_field(f_info3->jobject_type, "Length");
+    offset_length_to_rtl = f_info3->offset + f_info4->offset;
+    f_info4 = memfrs_q_field(f_info3->jobject_type, "Buffer");
+    offset_buffer_to_rtl = f_info3->offset + f_info4->offset;
+
+    memfrs_close_field(f_info4);
+    memfrs_close_field(f_info3);
+    memfrs_close_field(f_info2);
+    memfrs_close_field(f_info);
+
+
     // Start iteration process list
     eprocess_ptr_init = eprocess_ptr;
+
+    cr3_init = x86_cpu->cr[3];
 
     do {
         //Read CR3 & Process name
@@ -456,7 +489,25 @@ int memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
         cpu_memory_rw_debug( cpu, eprocess_ptr + offset_process_name_to_eprocess, (uint8_t*)buf, sizeof(buf), 0 );
         printf( "eprocess: %lx CR3: %lx, Process Name: %s\n", eprocess_ptr, cr3, buf );
 
-        // read next entry  
+        if( cr3 !=0 ){
+            cpu_memory_rw_debug( cpu, eprocess_ptr + offset_peb_to_eprocess, (uint8_t*)&peb_ptr, sizeof(peb_ptr), 0 );
+            x86_cpu->cr[3] = cr3;
+            cpu_memory_rw_debug( cpu, peb_ptr + offset_parameter_to_peb, (uint8_t*)&rtl_ptr, sizeof(rtl_ptr), 0 );
+            cpu_memory_rw_debug( cpu, rtl_ptr + offset_length_to_rtl, (uint8_t*)&length, sizeof(length), 0 );
+            cpu_memory_rw_debug( cpu, rtl_ptr + offset_buffer_to_rtl, (uint8_t*)&buf_ptr, sizeof(buf_ptr), 0 );
+            cpu_memory_rw_debug( cpu, buf_ptr, (uint8_t*)buf, sizeof(buf), 0 );
+
+            printf( "Full path: " );
+            int i;
+            for(i=0;i<length;i=i+1){
+                printf("%c", (char)(*(buf+i)));
+            }
+            printf( "\n\n" );
+            x86_cpu->cr[3] = cr3_init;
+            fflush(stdout);
+        }
+
+        // read next entry
         cpu_memory_rw_debug( cpu, eprocess_ptr + offset_blink_to_eprocess, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), 0 );
         // Substract entry_list offset to find base address of eprocess
         eprocess_ptr -= offset_entry_list_to_eprocess;
