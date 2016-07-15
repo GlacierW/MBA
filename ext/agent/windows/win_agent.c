@@ -369,7 +369,7 @@ static void import_cmd(char *filePath, SOCKET sClientSocket)
 	DWORDLONG nBytesWrite;
 
 	DWORDLONG fileSize;
-	DWORDLONG fileSizeStored;
+	DWORDLONG fileSizeStored = 0;
 
 	DWORD recvRound;
     

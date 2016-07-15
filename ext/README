@@ -3,3 +3,5 @@ Note that each directory must containt the source and the test/ directory for th
 
     1. De-coupled Information Flow Tracking system (DIFT) for taint analysis
     2. The Sleuth Kit and mba extension (TSK) for disk forensics
+    3. The memory forensics extension (memfrs)
+    4. The in-VM agent for Windows 10 x64 extension
