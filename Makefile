@@ -230,6 +230,17 @@ libagent.a: ext/agent/agent.o
 block-obj-y += libagent.a
 endif
 
+## Modified by Bletchley ##
+#MEMFRS
+
+ifdef CONFIG_MEMFRS
+json-c/.libs/libjson-c.a:
+	cd json-c &&\
+	sh autogen.sh &&\
+	./configure --enable-static CFLAGS="-fPIC" &&\
+        $(MAKE)
+endif
+
 #########################
 ## Modified by misterlihao ##
 ifdef  CONFIG_TSK

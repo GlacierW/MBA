@@ -86,11 +86,19 @@
 #endif
 
 #if defined(CONFIG_AGENT)
+<<<<<<< HEAD
+=======
+#include "ext/agent/agent.h"
+>>>>>>> 75eb4731ce6ee01bcc4155e74db166a385f7a5c0
 #include "ext/agent/agent-commands.h"
 #endif
 
 #if defined(CONFIG_TSK)
 #include "ext/tsk/tsk-commands.h"
+#endif
+
+#if defined(CONFIG_MEMFRS)
+#include "ext/memfrs/memfrs-commands.h"
 #endif
 
 //#define DEBUG
@@ -2968,6 +2976,10 @@ static mon_cmd_t mon_cmds[] = {
 #if defined(CONFIG_TSK)
 #include "ext/tsk/tsk-commands-spec.h"
 #endif
+
+#if defined(CONFIG_MEMFRS)
+#include "ext/memfrs/memfrs-commands-spec.h" 
+#endif
     { NULL, NULL, },
 };
 
@@ -5218,6 +5230,11 @@ static void monitor_command_cb(void *opaque, const char *cmdline,
     Monitor *mon = opaque;
 
     monitor_suspend(mon);
+#if defined(CONFIG_AGENT)
+    if( agent_is_exec() )
+        agent_handle_exec_command( cmdline );
+    else
+#endif
     handle_user_command(mon, cmdline);
     monitor_resume(mon);
 }

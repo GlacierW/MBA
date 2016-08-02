@@ -1,3 +1,26 @@
+<<<<<<< HEAD
+=======
+/*
+ *  MBA agent extension of QEMU command header
+ *
+ *  Copyright (c)   2016 Chiawei Wang
+ *                  2016 Jui-Chien, Jai
+ *
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ */
+>>>>>>> 75eb4731ce6ee01bcc4155e74db166a385f7a5c0
 #ifndef __AGENT_COMMANDS_H__
 #define __AGENT_COMMANDS_H__
 
@@ -7,6 +30,11 @@ void do_win_impo(struct Monitor *mon, const struct QDict *qdict);
 void do_win_expo(struct Monitor *mon, const struct QDict *qdict);
 void do_win_exec(struct Monitor *mon, const struct QDict *qdict);
 void do_win_invo(struct Monitor *mon, const struct QDict *qdict);
+<<<<<<< HEAD
 void do_win_init(struct Monitor *mon, const struct QDict *qdict);
 void do_win_stat(struct Monitor *mon, const struct QDict *qdict);
+=======
+void do_win_logf(struct Monitor *mon, const struct QDict *qdict);
+void do_win_init(struct Monitor *mon, const struct QDict *qdict);
+>>>>>>> 75eb4731ce6ee01bcc4155e74db166a385f7a5c0
 #endif

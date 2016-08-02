@@ -25,6 +25,10 @@
 #include "qemu-common.h"
 #include "qemu/readline.h"
 
+#if defined(CONFIG_AGENT)
+#include "../ext/agent/agent.h"
+#endif
+
 #define IS_NORM 0
 #define IS_ESC  1
 #define IS_CSI  2
@@ -32,6 +36,11 @@
 
 void readline_show_prompt(ReadLineState *rs)
 {
+#if defined(CONFIG_AGENT)
+    if( agent_is_exec() )
+        rs->printf_func(rs->opaque, "%s", AGENT_EXEC_PROMPT);
+    else
+#endif
     rs->printf_func(rs->opaque, "%s", rs->prompt);
     rs->flush_func(rs->opaque);
     rs->last_cmd_buf_index = 0;

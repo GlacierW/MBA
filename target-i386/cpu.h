@@ -28,6 +28,10 @@
 #define TARGET_LONG_BITS 32
 #endif
 
+#if defined(CONFIG_MEMFRS)
+#include "ext/memfrs/memfrs.h"
+#endif
+
 /* Maximum instruction code size */
 #define TARGET_MAX_INSN_SIZE 16
 
@@ -1054,6 +1058,11 @@ static inline void cpu_x86_load_seg_cache(CPUX86State *env,
         env->hflags = (env->hflags &
                        ~(HF_SS32_MASK | HF_ADDSEG_MASK)) | new_hflags;
     }
+
+#if defined(CONFIG_MEMFRS)
+    if( g_kpcr_ptr == 0 && env->segs[5].base != 0 && memfrs_kpcr_self_check(env->segs[5].base) )
+        g_kpcr_ptr = env->segs[5].base;
+#endif
 }
 
 static inline void cpu_x86_load_seg_cache_sipi(X86CPU *cpu,

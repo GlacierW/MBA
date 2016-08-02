@@ -340,8 +340,13 @@ tcmalloc="no"
 ## Modified by Glacier ##
 dift="no"
 dift_debug="no"
+<<<<<<< HEAD
 
 agent="no"
+=======
+agent="no"
+memfrs="no"
+>>>>>>> 75eb4731ce6ee01bcc4155e74db166a385f7a5c0
 #########################
 ## Modified by misterlihao ##
 tsk="no"
@@ -1155,6 +1160,11 @@ for opt do
   ;;
   --enable-agent) agent="yes"
   ;;
+<<<<<<< HEAD
+=======
+  --enable-memfrs) memfrs="yes"
+  ;;
+>>>>>>> 75eb4731ce6ee01bcc4155e74db166a385f7a5c0
   #########################
   ## Modified by misterlihao ##
   --enable-tsk) tsk="yes"
@@ -1439,6 +1449,7 @@ Advanced options (experts only):
   --enable-debug-dift      enable debug mode of dynamic information flow tracking
   --enable-agent	   enable Windows agent
   --enable-tsk             enable sleuth kit disk forensics sopport
+  --enable-memfrs          enable Virtual Machine Memory Introspection for Windows
 
 NOTE: The object files are built at the place where configure is launched
 EOF
@@ -4504,7 +4515,12 @@ echo "tcmalloc support  $tcmalloc"
 ## Modified by Glacier ##
 echo "dift support      $dift"
 echo "dift debug support $dift_debug"
+<<<<<<< HEAD
 echo "agent support	$agent"
+=======
+echo "Windows in-VM agent support $agent"
+echo "Windows VMI support $memfrs"
+>>>>>>> 75eb4731ce6ee01bcc4155e74db166a385f7a5c0
 #########################
 ## Modified by misterlihao ##
 echo "tsk support      $tsk"
@@ -5398,6 +5414,13 @@ if test "$agent" = "yes"; then
   echo "CONFIG_AGENT=y" >> $config_target_mak
 fi
 
+<<<<<<< HEAD
+=======
+if test "$memfrs" = "yes"; then
+  echo "CONFIG_MEMFRS=y" >> $config_host_mak
+  echo "CONFIG_MEMFRS=y" >> $config_target_mak
+fi
+>>>>>>> 75eb4731ce6ee01bcc4155e74db166a385f7a5c0
 #########################
 ## Modified by misterlihao ##
 if test "$tsk" = "yes"; then

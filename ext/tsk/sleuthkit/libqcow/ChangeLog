@@ -1,15 +1,17 @@
 TODO
-* add snapshot support
-  - backing filename
-  - in-image snapshots
 * pyqcow
   - add function to set the keys
 * add write support ?
+* add snapshot support
+  - backing filename
+  - in-image snapshots
 
 File format:
 * reference count support
 
 Tools:
+* qcowmount - fuse version
+  - fuse multi thread support
 * qcowmount - dokan version
   - have it run in background (using CreateProcess)?
   - what about unmount?
@@ -17,9 +19,18 @@ Tools:
   - create compatible dokan lib
 
 Tests:
-* add concurrent open close test
-* add concurrent seek test ?
-* add password for encrypted QCOW images
+* libqcow_file_set_keys
+* libqcow_file_set_utf8_password
+* libqcow_file_set_utf16_password
+* libqcow_get_access_flags functions
+* libqcow_get_codepage
+* libqcow_set_codepage
+* libqcow_check_file_signature and libqcow_check_file_signature_wide
+* thread-safety
+
+20160403
+* worked on tests
+* worked on multi-threading support
 
 20160126
 * worked on tests

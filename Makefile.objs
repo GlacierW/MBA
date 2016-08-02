@@ -123,3 +123,8 @@ common-obj-y += ext/tsk/tsk.o
 
 ext/tsk/tsk.o-cflags := -I$(SRC_PATH)/ext/tsk -I$(SRC_PATH)/ext/tsk/sleuthkit -DHAVE_CONFIG_H
 endif
+
+ifdef CONFIG_MEMFRS
+common-obj-y += json-c/.libs/libjson-c.a
+endif
+
