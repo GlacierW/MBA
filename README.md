@@ -1,6 +1,8 @@
+# Malware Behavior Analyzer - MBA 
++ Continuous Integration (Travis-CI)  
+[![Build Status](https://travis-ci.org/GlacierW/MBA.svg?branch=master)](https://travis-ci.org/GlacierW/MBA)
 
-Malware Behavior Analyzer, MBA [![Build Status](https://travis-ci.org/misterlihao/MBA.svg?branch=temp-demo-travis-ci)](https://travis-ci.org/misterlihao/MBA)
-
+# Introduction
 MBA is a QEMU-based, sandbox system dedicated to malware analysis for Windows x64
 Currently, MBA supports the following features:
 
@@ -42,15 +44,14 @@ Currently, MBA supports the following features:
 More features are under development.
 
 
-- MBA Team,  
-    Chi-Wei, Wang       cwwangabc@gmail.com  
-    Chia-Wei, Wang      chiaweiw@cs.nctu.edu.tw  
-    Chong-Kuan, Chen    ckchen@cs.nctu.edu.tw  
-    Hao, Li             misterlihao@gmail.com  
-    Jui-Chien, Jai      jcjao0120@gmail.com  
-    Chuan-Hua, Cheng    newchengxx@gmail.com  
-    E-Lin, Ho           dennisieur210@gmail.com  
+# Members
+Chi-Wei, Wang       cwwangabc@gmail.com  
+Chia-Wei, Wang      chiaweiw@cs.nctu.edu.tw  
+Chong-Kuan, Chen    ckchen@cs.nctu.edu.tw  
+Hao, Li             misterlihao@gmail.com  
+Jui-Chien, Jao      jcjao0120@gmail.com  
+Chuan-Hua, Cheng    newchengxx@gmail.com  
+E-Lin, Ho           dennisieur210@gmail.com  
 
-  Network Security Lab,  
-  National Chiao-Tung University, Taiwan  
-
+Network Security Lab,  
+National Chiao-Tung University, Taiwan

@@ -342,8 +342,6 @@ dift="no"
 dift_debug="no"
 agent="no"
 memfrs="no"
-#########################
-## Modified by misterlihao ##
 tsk="no"
 #########################
 
@@ -1157,9 +1155,14 @@ for opt do
   ;;
   --enable-memfrs) memfrs="yes"
   ;;
-  #########################
-  ## Modified by misterlihao ##
   --enable-tsk) tsk="yes"
+  ;;
+  --enable-mba-all)
+    dift="yes"
+    dift_debug="yes"
+    agent="yes"
+    memfrs="yes"
+    tsk="yes"
   ;;
   #########################
   *)
@@ -1439,7 +1442,7 @@ Advanced options (experts only):
   --enable-tcmalloc        enable tcmalloc support
   --enable-dift            enable dynamic information flow tracking
   --enable-debug-dift      enable debug mode of dynamic information flow tracking
-  --enable-agent	   enable Windows agent
+  --enable-agent           enable Windows in-VM agent
   --enable-tsk             enable sleuth kit disk forensics sopport
   --enable-memfrs          enable Virtual Machine Memory Introspection for Windows
 
@@ -4505,13 +4508,11 @@ echo "bzip2 support     $bzip2"
 echo "NUMA host support $numa"
 echo "tcmalloc support  $tcmalloc"
 ## Modified by Glacier ##
-echo "dift support      $dift"
-echo "dift debug support $dift_debug"
+echo "dift support                $dift"
+echo "dift debug support          $dift_debug"
 echo "Windows in-VM agent support $agent"
-echo "Windows VMI support $memfrs"
-#########################
-## Modified by misterlihao ##
-echo "tsk support      $tsk"
+echo "memory forensics support    $memfrs"
+echo "disk forensics(tsk) support $tsk"
 #########################
 
 if test "$sdl_too_old" = "yes"; then
@@ -5406,8 +5407,6 @@ if test "$memfrs" = "yes"; then
   echo "CONFIG_MEMFRS=y" >> $config_host_mak
   echo "CONFIG_MEMFRS=y" >> $config_target_mak
 fi
-#########################
-## Modified by misterlihao ##
 if test "$tsk" = "yes"; then
   echo "CONFIG_TSK=y" >> $config_host_mak
   echo "CONFIG_TSK=y" >> $config_target_mak
