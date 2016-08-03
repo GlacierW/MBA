@@ -39,6 +39,15 @@
 
 #include "dift.h"
 
+#if defined(CONFIG_DIFT_TEST)
+#include "test/test.h"
+/// Change name to avoid macros in test.h from expanding.
+/// Refer to _dift_log to call original dift_log in tests.
+#define _MOCKABLE(x) _##x
+#else
+#define _MOCKABLE(x) x
+#endif
+
 #define likely(x)   __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
 
@@ -1012,7 +1021,7 @@ static int is_valid_disk_range( uint64_t haddr, uint64_t len ) {
 
 
 // DIFT Public API - All of the public APIs are named with the prefix "dift_"
-int dift_log( const char* fmt, ... ) {
+int _MOCKABLE(dift_log)( const char* fmt, ... ) {
 
     int ret = -1;
 
