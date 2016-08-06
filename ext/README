@@ -5,3 +5,4 @@ Note that each directory must containt the source and the test/ directory for th
     2. TSK      The disk forensics based on customized The Sleuth Kit
     3. MEMFRS   The memory forensics for Windows 10 x64 guest OS
     4. AGENT    The in-VM agent for Windows 10 x64 guest OS
+    5. OBHOOK   The Out-of-Box Hooking, a VM-based whole-system hook against guest OS
