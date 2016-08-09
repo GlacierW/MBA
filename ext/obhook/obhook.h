@@ -19,6 +19,7 @@
 #ifndef __OBHOOK_H__
 #define __OBHOOK_H__
 
+#include <stdbool.h>
 #include "cpu.h"
 
 #define MAX_NM_OBHOOK       65535
@@ -35,18 +36,19 @@ enum OBHOOK_ERRNO {
 typedef enum OBHOOK_ERRNO OBHOOK_ERRNO;
 
 extern OBHOOK_ERRNO obhook_errno;
+extern bool obhook_pending_hooks;
 
-/// Add a process-aware, out-of-box hook toward the given process address.
+/// Add a process-aware, out-of-box hook toward the given address
 ///
 ///     \param  cr3     CR3 value of the targeted process
-///     \param  addr    process/user address to implant the hook
+///     \param  addr    address to implant the hook
 ///     \param  label   user-friendly name for the hook (optional, can be NULL)
 ///     \param  cb      callback routine to be invoked when the hook is triggered
 ///                     Note that each callback routine will be invoked and given
 ///                     a pointer to the current CPU state structure
 ///
 /// Return a new obhook descriptor on success, otherwise -1 is returned and the obhook_errno is set
-extern int obhook_add_process( target_ulong cr3, target_ulong user_addr, char* label, void*(*cb) (void *) );
+extern int obhook_add_process( target_ulong cr3, target_ulong addr, const char* label, void*(*cb) (void *) );
 
 /// Add an universal, out-of-box hook toward the given address
 ///
@@ -61,7 +63,7 @@ extern int obhook_add_process( target_ulong cr3, target_ulong user_addr, char* l
 ///                     a pointer to the current CPU state structure
 ///
 /// Return a new obhook descriptor on success, otherwise -1 is returned and the obhook_errno is set
-extern int obhook_add_universal( target_ulong kern_addr, char* label, void*(*cb) (void *) );
+extern int obhook_add_universal( target_ulong kern_addr, const char* label, void*(*cb) (void *) );
 
 /// Enable a out-of-box hook by the given descriptor
 ///
