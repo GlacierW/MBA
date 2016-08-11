@@ -199,6 +199,7 @@ endif
 
 ifdef CONFIG_OBHOOK
 all-obj-y += ../ext/obhook/obhook.o
+all-obj-y += ../ext/obhook/obhook-commands.o
 endif
 
 

@@ -17,79 +17,14 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "uthash.h"
-#include "utlist.h"
 #include "obhook.h"
 
 #define MASK_KERN_ADDR 0xffff000000000000
 
-// globally accessible error number of obhook
+// global variables 
+obhook_context obhk_ctx[1];
 OBHOOK_ERRNO obhook_errno;
-
 bool obhook_pending_hooks;
-
-struct obhk_ht_record;
-struct obhk_cb_record;
-
-/// To keep the simplicity of implementation,
-/// obkh_ht_recrod as the hash table key is designed to support
-/// both per-process and universal hooks
-struct obhk_ht_record {
-
-    target_ulong addr;
-
-    // cr3 = 0 indicates an universal hook
-    target_ulong cr3;
-
-    // used for per-process hook
-    struct obhk_ht_record* proc_obhk_tbl;
-
-    // callback routines registered
-    struct obhk_cb_record* cb_list;
-
-    // handle for hash table
-    UT_hash_handle hh;
-};
-typedef struct obhk_ht_record obhk_ht_record;
-
-struct obhk_cb_record {
-
-    // a reverse-pointer to the hash table record
-    struct obhk_ht_record* ht_rec;
-
-    // unique identifier for each hook
-    uint16_t uid;
-
-    bool enabled;
-    bool universal;
-
-    // user-friendly label string
-    char label[MAX_SZ_OBHOOK_LABEL];
-
-    void* (*cb_func) (void*);
-
-    struct obhk_cb_record* next;
-};
-typedef struct obhk_cb_record obhk_cb_record; 
-
-struct obhook_context {
-
-    // 2-layers lookup hash table for out-of-box hook
-    //   The 1-layer is indexed by process CR3
-    //   The 2-layer is indexed by address where the hook implanted at
-    //
-    // Note that the hash record with CR3=0 indicates 
-    // the universal hooks, which are trigger regardless 
-    // of processes and the address is in kernel space.
-    obhk_ht_record* hook_tbl;
-
-    // the fast index table for queries to registered hook
-    obhk_cb_record* index_tbl[MAX_NM_OBHOOK];
-};
-typedef struct obhook_context obhook_context;
-
-// file-global context for out-of-box hooking
-static obhook_context obhk_ctx[1];
 
 /// Private function
 /// These function should be invoked only in the scope of this file
@@ -112,6 +47,8 @@ static inline bool is_kern_addr( target_ulong addr ) {
     return ((addr & MASK_KERN_ADDR) == MASK_KERN_ADDR);
 }
 
+/// Enable/Disable a registered hook
+/// Return 0 on success, -1 and errno is set otherwise
 static int toggle_obhk( int obhook_d, bool enabled ) {
 
     if( obhk_ctx->index_tbl[obhook_d] == NULL ) {
@@ -124,6 +61,8 @@ static int toggle_obhk( int obhook_d, bool enabled ) {
     return 0;
 }
 
+/// Internal implementation of out-of-box hook registration
+/// Return 0 on success, -1 and errno is set otherwise.
 static int add_obhk_internal( target_ulong cr3, target_ulong addr, const char* label, void*(*cb) (void*) ) {
 
     obhk_ht_record* ht_rec;
@@ -225,6 +164,7 @@ obhk_add_fail:
 
 }
 
+
 /// Public API of Out-of-Box hook
 /// Each API function should be named with the prefix 'obhook_'
 int obhook_enable( int obhook_d ) {
@@ -237,6 +177,7 @@ int obhook_disable( int obhook_d ) {
 
 int obhook_delete( int obhook_d ) {
 
+    obhk_ht_record* ht_proc_rec;
     obhk_ht_record* ht_rec;
     obhk_cb_record* cb_rec;
 
@@ -253,12 +194,20 @@ int obhook_delete( int obhook_d ) {
     // remove the registered hook from linked list
     LL_DELETE( ht_rec->cb_list, cb_rec );
     
-    // remove the hash table record if no hook within
+    // remove the 2-layer hash table record if no hook at an address
     if( ht_rec->cb_list == NULL ) {
 
+        HASH_FIND( hh, obhk_ctx->hook_tbl, &ht_rec->cr3, sizeof(target_ulong), ht_proc_rec );
+
         // delete & free from hash table
-        HASH_DEL( obhk_ctx->hook_tbl, ht_rec );
+        HASH_DELETE( hh, ht_proc_rec->proc_obhk_tbl, ht_rec );
         free( ht_rec );
+
+        // remove the 1-layer hash table record if no hook within a process
+        if( HASH_CNT(hh, ht_proc_rec->proc_obhk_tbl) == 0 ) {
+            HASH_DELETE( hh, obhk_ctx->hook_tbl, ht_proc_rec );
+            free( ht_proc_rec );
+        }
     }
 
     // remove & free hook record from the fast index table
@@ -268,41 +217,6 @@ int obhook_delete( int obhook_d ) {
     return 0;
 
 obhk_del_fail:
-    return -1;
-}
-
-int obhook_list( void ) {
-
-    obhk_ht_record* ht_rec;
-    obhk_ht_record* ht_tmp;
-
-    obhk_ht_record* ht_proc_rec;
-    obhk_ht_record* ht_proc_tmp;
-
-    obhk_cb_record* cb_rec;
-
-    // list per-process hook
-    HASH_ITER( hh, obhk_ctx->hook_tbl, ht_rec, ht_tmp ) {
-
-        if( ht_rec == NULL )
-            break;
-
-        printf( "CR3: %016lx\n", ht_rec->cr3 );
-        HASH_ITER( hh, ht_rec->proc_obhk_tbl, ht_proc_rec, ht_proc_tmp ) {
-
-            if( ht_proc_rec == NULL )
-                break;
-            printf( "\t%016lx", ht_proc_rec->addr );
-            LL_FOREACH( ht_proc_rec->cb_list, cb_rec ) {
-                if( cb_rec == NULL )
-                    break;
-                printf( "(%d, %s, %d) ", cb_rec->uid, cb_rec->label, cb_rec->enabled );
-                cb_rec->cb_func(NULL);
-            }
-        }
-    }
-
-    printf( "\n" );
     return -1;
 }
 
