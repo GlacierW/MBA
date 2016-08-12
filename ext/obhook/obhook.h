@@ -47,7 +47,7 @@ struct obhk_ht_record {
 
     target_ulong addr;
 
-    // cr3 = 0 indicates an universal hook
+    // cr3 = 0 is reserved for the universal hook
     target_ulong cr3;
 
     // used for per-process hook
@@ -134,6 +134,13 @@ extern int obhook_add_process( target_ulong cr3, target_ulong addr, const char* 
 /// Return a new obhook descriptor on success, otherwise -1 is returned and the obhook_errno is set
 extern int obhook_add_universal( target_ulong kern_addr, const char* label, void*(*cb) (void *) );
 
+/// Delete a out-of-box hook by the given descriptor
+///
+///     \param  obhook_d    decriptor of the hook to be deleted
+///
+/// Return 0 on success, otherwise -1 is returned and the obhook_errno is set
+extern int obhook_delete( int obhook_d );
+
 /// Enable a out-of-box hook by the given descriptor
 ///
 ///     \param  obhook_d    descriptor of the hook to be enabled
@@ -148,11 +155,19 @@ extern int obhook_enable( int obhook_d );
 /// Return 0 on success, otherwise -1 is returned and the obhook_errno is set
 extern int obhook_disable( int obhook_d );
 
-/// Delete a out-of-box hook by the given descriptor
+/// Get the callbacks of a universal hook implanted at the specified address
 ///
-///     \param  obhook_d    decriptor of the hook to be deleted
+///     \param  kern_addr   kernel address where the hook implanted at
 ///
-/// Return 0 on success, otherwise -1 is returned and the obhook_errno is set
-extern int obhook_delete( int obhook_d );
+/// Return a pointer to the list of callbacks of the hook on success, NULL and obhook_errno iset otherwise
+extern obhk_cb_record* obhook_getcbs_univ( target_ulong kern_addr );
+
+/// Get the callbacks of a per-process hook implanted at the specified address
+///
+///     \param  cr3     CR3 value of the targeted process
+///     \param  addr    address where the hook implanted at
+///
+/// Return a pointer to the list of callbacks of the hook on success, NULL and obhook_errno iset otherwise
+extern obhk_cb_record* obhook_getcbs_proc( target_ulong cr3, target_ulong addr );
 
 #endif

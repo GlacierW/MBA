@@ -164,15 +164,37 @@ obhk_add_fail:
 
 }
 
+/// Internal implementation to get the callback functions of a hook
+/// Return pointer to the list of the callbacks on success, NULL if not found
+static obhk_cb_record* get_obhk_cb_internal( target_ulong cr3, target_ulong addr ) {
+
+    obhk_ht_record* ht_rec;
+    obhk_ht_record* ht_proc_rec;
+
+    HASH_FIND( hh, obhk_ctx->hook_tbl, &cr3, sizeof(target_ulong), ht_rec );
+    if( ht_rec == NULL ) 
+        goto get_obhk_cb_fail;
+
+    HASH_FIND( hh, ht_rec->proc_obhk_tbl, &addr, sizeof(target_ulong), ht_proc_rec );
+    if( ht_proc_rec == NULL ) 
+        goto get_obhk_cb_fail;
+
+    return ht_proc_rec->cb_list;
+
+get_obhk_cb_fail:
+    obhook_errno = OBHOOK_ERR_FAIL;
+    return NULL;
+}
+
 
 /// Public API of Out-of-Box hook
 /// Each API function should be named with the prefix 'obhook_'
-int obhook_enable( int obhook_d ) {
-    return toggle_obhk( obhook_d, true );
+int obhook_add_process( target_ulong cr3, target_ulong addr, const char* label, void*(*cb) (void*) ) {
+    return add_obhk_internal( cr3, addr, label, cb );
 }
 
-int obhook_disable( int obhook_d ) {
-    return toggle_obhk( obhook_d, false );
+int obhook_add_universal( target_ulong kern_addr, const char* label, void*(*cb) (void*) ) {
+    return add_obhk_internal( 0, kern_addr, label, cb );
 }
 
 int obhook_delete( int obhook_d ) {
@@ -220,10 +242,23 @@ obhk_del_fail:
     return -1;
 }
 
-int obhook_add_process( target_ulong cr3, target_ulong addr, const char* label, void*(*cb) (void*) ) {
-    return add_obhk_internal( cr3, addr, label, cb );
+int obhook_enable( int obhook_d ) {
+    return toggle_obhk( obhook_d, true );
 }
 
-int obhook_add_universal( target_ulong kern_addr, const char* label, void*(*cb) (void*) ) {
-    return add_obhk_internal( 0, kern_addr, label, cb );
+int obhook_disable( int obhook_d ) {
+    return toggle_obhk( obhook_d, false );
+}
+
+obhk_cb_record* obhook_getcbs_univ( target_ulong kern_addr ) {
+
+    if( !is_kern_addr(kern_addr) ) {
+        obhook_errno = OBHOOK_ERR_INVALID_ADDR;
+        return NULL;
+    }
+    return get_obhk_cb_internal( 0, kern_addr );
+}
+
+obhk_cb_record* obhook_getcbs_proc( target_ulong cr3, target_ulong addr ) {
+   return get_obhk_cb_internal( cr3, addr );
 }

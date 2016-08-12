@@ -38,6 +38,10 @@
 #include "ext/dift/dift.h"
 #endif
 
+#if defined(CONFIG_OBHOOK)
+#include "ext/obhook/obhook.h"
+#endif
+
 
 #define PREFIX_REPZ   0x01
 #define PREFIX_REPNZ  0x02
@@ -5203,6 +5207,14 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
 #endif
         );
     }
+#endif
+
+#if defined(CONFIG_OBHOOK)
+    /// if any out-of-box hook is desired to be implanted
+    /// generate the helper function as the runtime dispatcher
+    if( obhook_getcbs_univ(s->pc) != NULL 
+     || obhook_getcbs_proc(env->cr[3], s->pc) != NULL )
+        gen_helper_obhook_dispatcher( cpu_env );
 #endif
 
     s->pc++;

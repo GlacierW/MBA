@@ -1,7 +1,7 @@
 /*
  *  HMP command implementation of the MBA out-of-box hook
  *
- *  Copyright (c)   2012 Chiawei Wang
+ *  Copyright (c)   2016 Chiawei Wang
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
