@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 /*
  *  MBA agent extension of QEMU command header
  *
@@ -20,7 +18,6 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
->>>>>>> 75eb4731ce6ee01bcc4155e74db166a385f7a5c0
 #ifndef __AGENT_COMMANDS_H__
 #define __AGENT_COMMANDS_H__
 

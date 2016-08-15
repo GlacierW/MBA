@@ -1,13 +1,3 @@
-<<<<<<< HEAD
-#ifndef __AGENT_H__
-#define __AGENT_H__
-extern void create_agent_thread(Monitor *mon);
-extern unsigned int agent_action;
-extern unsigned int agent_file_size;
-extern char* agent_srcpath;
-extern char* agent_despath;
-#endif
-=======
 /*
  *  Windows in-VM agent header
  *
@@ -183,5 +173,3 @@ extern MBA_AGENT_RETURN agent_logfile( const char* dst_path );
 ///        AGENT_RET_EFAIL, general failure
 extern MBA_AGENT_RETURN agent_init( Monitor* mon, uint16_t server_fwd_port );
 #endif
-
->>>>>>> 75eb4731ce6ee01bcc4155e74db166a385f7a5c0
