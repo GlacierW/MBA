@@ -26,6 +26,7 @@
 #include "ext/memfrs/memfrs-commands.h"
 #include "ext/memfrs/memfrs.h"
 #include "ext/memfrs/kernel.h"
+#include "ext/memfrs/vad.h"
 
 #include "qmp-commands.h"
 
@@ -137,36 +138,6 @@ void do_scan_phymem(Monitor *mon, const QDict *qdict)
 
 }
 
-/*
-void hexdump(Monitor *mon, uint8_t* buf, size_t length)
-{
-    int i,j ;
-
-    for(i = 0 ; i < length ; i+=0x10) {
-        monitor_printf(mon, "%02x: ", i);
-        for(j = 0; j< 0x10; j++){
-            if(i+j > length)
-                monitor_printf( mon, "   " );
-            else
-                monitor_printf( mon, "%02x " , buf[i+j]);
-        }
-
-        monitor_printf(mon, "  |  ");
-
-        for(j = 0; j< 0x10; j++){
-            if(i+j > length)
-                monitor_printf( mon, "-" );
-            else if(buf[i+j] >= 0x20 && buf[i+j] <= 0x7e)
-                monitor_printf( mon, "%c" , buf[i+j]);
-            else
-                monitor_printf( mon, "." );
-        }
-
-        monitor_printf(mon, "|\n");
-    }
-
-}*/
-
 void do_show_phymem_content(Monitor *mon, const QDict *qdict)
 {
     uint64_t target_addr = qdict_get_int(qdict, "addr");
@@ -257,9 +228,9 @@ void do_module_list(Monitor *mon, const QDict *qdict)
             monitor_printf(mon, "pattern found %"PRIx64"\n", i);
             //ret = cpu_memory_rw_debug((CPUState *)&copied_cpu, target_addr, (uint8_t*)buf, target_length, 0);
             cpu_physical_memory_read(i-0x4+0x10+0x48, buf, SIZEOFUNICODESTRING);
-            parse_unicode_str_new(buf, cpu);
+            parse_unicode_str(buf, cpu);
             cpu_physical_memory_read(i-0x4+0x10+0x58, buf, SIZEOFUNICODESTRING);
-            parse_unicode_str_new(buf, cpu);
+            parse_unicode_str(buf, cpu);
             monitor_printf(mon, "\n");
         }
     }

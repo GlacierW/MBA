@@ -32,6 +32,12 @@
 uint64_t g_kpcr_ptr = 0;
 json_object *g_struct_info = NULL;
 
+
+bool memfrs_check_struct_info(void)
+{
+    return (g_struct_info!=NULL)? 1 : 0;
+}
+
 /*******************************************************************
 field_info* memfrs_q_field( json_object* struc, const char* field_name  )
 
@@ -204,6 +210,17 @@ UT_array* memfrs_scan_virmem( CPUState *cpu, uint64_t start_addr, uint64_t end_a
     return match_addr;
 }
 
+/*******************************************************************
+UT_array* memfrs_scan_phymem( uint64_t start_addr, uint64_t end_addr, const char* pattern )
+
+Scan for specific pattern in the VM's physical memory
+
+INPUT:    uint64_t start_addr,  The start address
+          uint64_t end_addr,    the end address
+          const char* pattern   pattern to search, support only ascii string
+OUTPUT:   UT_array*,            An UT_array that contains the address of found pattern
+
+*******************************************************************/
 UT_array* memfrs_scan_phymem( uint64_t start_addr, uint64_t end_addr, const char* pattern ) {
     uint64_t i;
     UT_array *match_addr;
@@ -228,6 +245,19 @@ UT_array* memfrs_scan_phymem( uint64_t start_addr, uint64_t end_addr, const char
     return match_addr;
 }
 
+/*******************************************************************
+void memfrs_get_virmem_content( CPUState *cpu, uint64_t cr3, uint64_t target_addr, uint64_t target_length, uint8_t* buf)
+
+Get the memory content in virtual memory
+
+INPUT:    CPUState *cpu          Current cpu
+          uint64_t cr3           CR3 value, 0 if no specific process
+          uint64_t target_addr   The target address 
+          uint64_t target_length The length to be getten
+          uint8_t* buf           The buffer to save the memory content
+OUTPUT:   void
+
+*******************************************************************/
 void memfrs_get_virmem_content( CPUState *cpu, uint64_t cr3, uint64_t target_addr, uint64_t target_length, uint8_t* buf)
 {
     X86CPU copied_cpu;
@@ -399,11 +429,7 @@ int memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
     return 0;
 }
 
-
-#define SIZEOFUNICODESTRING 0x10
-
-
-void parse_unicode_str(uint64_t ustr_ptr, CPUState *cpu)
+void parse_unicode_strptr(uint64_t ustr_ptr, CPUState *cpu)
 {
     json_object* ustr = NULL;
     field_info* f_info = NULL;
@@ -413,8 +439,6 @@ void parse_unicode_str(uint64_t ustr_ptr, CPUState *cpu)
     uint8_t *buf;
     char* str;
     int i;
-
-    //printf("String va:  %" PRIx64 "\n", ustr_ptr);
 
     ustr = memfrs_q_struct("_UNICODE_STRING");
 
@@ -453,7 +477,7 @@ void parse_unicode_str(uint64_t ustr_ptr, CPUState *cpu)
     printf("Filename %s\n", str);
 }
 
-void parse_unicode_str_new(uint8_t* ustr, CPUState *cpu)
+void parse_unicode_str(uint8_t* ustr, CPUState *cpu)
 {
     json_object* justr = NULL;
     field_info* f_info = NULL;
@@ -504,306 +528,5 @@ void parse_unicode_str_new(uint8_t* ustr, CPUState *cpu)
     str[i] = 0x00;
     //printf("Filename %ls\n", (wchar_t*p)buf);
     printf("Filename %s\n", str);
-}
-
-
-int parse_mmvad_node(uint64_t mmvad_ptr, CPUState *cpu);
-
-
-const char *MI_VAD_TYPE_STR[] = {
-    "VadNone",
-    "VadDevicePhysicalMemory",
-    "VadImageMap",
-    "VadAwe",
-    "VadWriteWatch",
-    "VadLargePages",
-    "VadRotatePhysical",
-    "VadLargePageSection"
-};
-
-typedef enum{
-    VadNone,
-    VadDevicePhysicalMemory,
-    VadImageMap,
-    VadAwe,
-    VadWriteWatch,
-    VadLargePages,
-    VadRotatePhysical,
-    VadLargePageSection
-} MI_VAD_TYPE_ENUM;
-
-typedef enum{
-    PAGE_EXECUTE = 0x10,
-    PAGE_EXECUTE_READ = 0x20,
-    PAGE_EXECUTE_READWRITE = 0x40,
-    PAGE_EXECUTE_WRITECOPY = 0x80,
-    PAGE_NOACCESS = 0x01,
-    PAGE_READONLY = 0x02,
-    PAGE_READWRITE = 0x04,
-    PAGE_WRITECOPY = 0x08,
-    PAGE_GUARD = 0x100,
-    PAGE_NOCACHE = 0x200, 
-    PAGE_WRITECOMBINE = 0x400,
-} PAGE_PERMISSION;
-
-static int const MmProtectToValue[32] = {
-	PAGE_NOACCESS,
-	PAGE_READONLY,
-	PAGE_EXECUTE,
-	PAGE_EXECUTE_READ,
-	PAGE_READWRITE,
-	PAGE_WRITECOPY,
-	PAGE_EXECUTE_READWRITE,
-	PAGE_EXECUTE_WRITECOPY,
-	PAGE_NOACCESS,
-	PAGE_NOCACHE | PAGE_READONLY,
-	PAGE_NOCACHE | PAGE_EXECUTE,
-	PAGE_NOCACHE | PAGE_EXECUTE_READ,
-	PAGE_NOCACHE | PAGE_READWRITE,
-	PAGE_NOCACHE | PAGE_WRITECOPY,
-	PAGE_NOCACHE | PAGE_EXECUTE_READWRITE,
-	PAGE_NOCACHE | PAGE_EXECUTE_WRITECOPY,
-	PAGE_NOACCESS,
-	PAGE_GUARD | PAGE_READONLY,
-	PAGE_GUARD | PAGE_EXECUTE,
-	PAGE_GUARD | PAGE_EXECUTE_READ,
-	PAGE_GUARD | PAGE_READWRITE,
-	PAGE_GUARD | PAGE_WRITECOPY,
-	PAGE_GUARD | PAGE_EXECUTE_READWRITE,
-	PAGE_GUARD | PAGE_EXECUTE_WRITECOPY,
-	PAGE_NOACCESS,
-	PAGE_WRITECOMBINE | PAGE_READONLY,
-	PAGE_WRITECOMBINE | PAGE_EXECUTE,
-	PAGE_WRITECOMBINE | PAGE_EXECUTE_READ,
-	PAGE_WRITECOMBINE | PAGE_READWRITE,
-	PAGE_WRITECOMBINE | PAGE_WRITECOPY,
-	PAGE_WRITECOMBINE | PAGE_EXECUTE_READWRITE,
-	PAGE_WRITECOMBINE | PAGE_EXECUTE_WRITECOPY
-};
-
-const char *PAGE_PERMISSION_STR[] = {
-    "PAGE_NOACCESS",
-    "PAGE_READONLY",
-    "PAGE_EXECUTE",
-    "PAGE_EXECUTE_READ",
-    "PAGE_READWRITE",
-    "PAGE_WRITECOPY",
-    "PAGE_EXECUTE_READWRITE",
-    "PAGE_EXECUTE_WRITECOPY",
-    "PAGE_NOACCESS",
-    "PAGE_NOCACHE | PAGE_READONLY",
-    "PAGE_NOCACHE | PAGE_EXECUTE",
-    "PAGE_NOCACHE | PAGE_EXECUTE_READ",
-    "PAGE_NOCACHE | PAGE_READWRITE",
-    "PAGE_NOCACHE | PAGE_WRITECOPY",
-    "PAGE_NOCACHE | PAGE_EXECUTE_READWRITE",
-    "PAGE_NOCACHE | PAGE_EXECUTE_WRITECOPY",
-    "PAGE_NOACCESS",
-    "PAGE_GUARD | PAGE_READONLY",
-    "PAGE_GUARD | PAGE_EXECUTE",
-    "PAGE_GUARD | PAGE_EXECUTE_READ",
-    "PAGE_GUARD | PAGE_READWRITE",
-    "PAGE_GUARD | PAGE_WRITECOPY",
-    "PAGE_GUARD | PAGE_EXECUTE_READWRITE",
-    "PAGE_GUARD | PAGE_EXECUTE_WRITECOPY",
-    "PAGE_NOACCESS",
-    "PAGE_WRITECOMBINE | PAGE_READONLY",
-    "PAGE_WRITECOMBINE | PAGE_EXECUTE",
-    "PAGE_WRITECOMBINE | PAGE_EXECUTE_READ",
-    "PAGE_WRITECOMBINE | PAGE_READWRITE",
-    "PAGE_WRITECOMBINE | PAGE_WRITECOPY",
-    "PAGE_WRITECOMBINE | PAGE_EXECUTE_READWRITE",
-    "PAGE_WRITECOMBINE | PAGE_EXECUTE_WRITECOPY",
-};
-
-int parse_mmvad_node(uint64_t mmvad_ptr, CPUState *cpu)
-{
-    json_object* jmmvad = NULL;
-    json_object* jobj = NULL; 
-    field_info* f_info = NULL;
-    //field_info* f_info2 = NULL;
-    int offset = 0; 
-    int vad_type, vad_protection;   
-
-    uint32_t starting_vpn, ending_vpn;
-    uint8_t starting_vpn_high, ending_vpn_high; 
-    uint64_t start_viraddr, end_viraddr;
-    uint64_t file_pointer_ptr;
-    uint64_t subsection_ptr, control_area_ptr, file_name_unicode_ptr;
-    uint8_t ustring[SIZEOFUNICODESTRING];
-    uint32_t u;
-
-    jmmvad = memfrs_q_struct("_MMVAD_SHORT");
-
-    f_info = memfrs_q_field(jmmvad, "u");
-    offset = f_info->offset;
-    cpu_memory_rw_debug( cpu, mmvad_ptr+offset, (uint8_t*)&u, sizeof(u), 0 );
-    memfrs_close_field(f_info);
-
-    f_info = memfrs_q_field(jmmvad, "StartingVpn");
-    offset = f_info->offset;
-    cpu_memory_rw_debug( cpu, mmvad_ptr+offset, (uint8_t*)&starting_vpn, sizeof(starting_vpn), 0 );
-    memfrs_close_field(f_info);
-
-    f_info = memfrs_q_field(jmmvad, "EndingVpn");
-    offset = f_info->offset;
-    cpu_memory_rw_debug( cpu, mmvad_ptr+offset, (uint8_t*)&ending_vpn, sizeof(ending_vpn), 0 );
-    memfrs_close_field(f_info);
-    
-    f_info = memfrs_q_field(jmmvad, "StartingVpnHigh");
-    offset = f_info->offset;
-    cpu_memory_rw_debug( cpu, mmvad_ptr+offset, (uint8_t*)&starting_vpn_high, sizeof(starting_vpn_high), 0 );
-    memfrs_close_field(f_info);
-
-    f_info = memfrs_q_field(jmmvad, "EndingVpnHigh");
-    offset = f_info->offset;
-    cpu_memory_rw_debug( cpu, mmvad_ptr+offset, (uint8_t*)&ending_vpn_high, sizeof(ending_vpn_high), 0 );
-    memfrs_close_field(f_info);
-    
-    start_viraddr = (( (uint64_t)starting_vpn_high << 32 ) + starting_vpn ) << 12;
-    end_viraddr = ((( (uint64_t)ending_vpn_high << 32 ) + ending_vpn ) << 12 ) + 0xfff;
-    printf("VAD vir range %" PRIx64 " <---------> %" PRIx64 "\n", start_viraddr, end_viraddr); 
-
-    printf("u: %x\n", u);
-    printf("type: %x\n", u & 0b111);
-    printf("protection: %x\n", ((u >> 3) & 0b11111));
-          
-    vad_type = u & 0b111;
-    printf("type: %s(%x)\n", MI_VAD_TYPE_STR[vad_type], vad_type);
-
-    vad_protection =  ((u >> 3) & 0b11111);
-    printf("type: %s(%x)\n", PAGE_PERMISSION_STR[vad_protection], vad_protection);
-
-    if(vad_type != VadImageMap)
-        return 0;
-    jmmvad = memfrs_q_struct("_MMVAD");
-    f_info = memfrs_q_field(jmmvad, "Subsection");
-    offset = f_info->offset;
-    cpu_memory_rw_debug( cpu, mmvad_ptr+offset, (uint8_t*)&subsection_ptr, sizeof(subsection_ptr), 0 );
-    jobj = f_info->jobject_type;
-    memfrs_close_field(f_info);
-    //printf("Subsection %" PRIx64 "\n", subsection_ptr);
-
-    f_info = memfrs_q_field( jobj, "ControlArea" );
-    offset = f_info->offset;
-    cpu_memory_rw_debug( cpu, subsection_ptr+offset, (uint8_t*)&control_area_ptr, sizeof(control_area_ptr), 0 ); 
-    jobj = f_info->jobject_type;
-    memfrs_close_field(f_info);
-    //printf("ControlArea %" PRIx64 "\n", control_area_ptr);
-
-    //file_pointer_ptr
-    f_info = memfrs_q_field( jobj, "FilePointer" );
-    offset = f_info->offset;
-    cpu_memory_rw_debug( cpu, control_area_ptr+offset, (uint8_t*)&file_pointer_ptr, sizeof(file_pointer_ptr), 0 );
-    jobj = f_info->jobject_type;
-    memfrs_close_field(f_info);
-
-    //printf("File Pointer %" PRIx64 "\n", file_pointer_ptr);
-    file_pointer_ptr &= 0xfffffffffffffff0;
-    //printf("File Pointer %" PRIx64 "\n", file_pointer_ptr);
-    
-    if(file_pointer_ptr==0)
-        return 0;
-
-    jobj = memfrs_q_struct("_FILE_OBJECT");
-    f_info = memfrs_q_field( jobj, "FileName" );
-    offset = f_info->offset;
-    cpu_memory_rw_debug( cpu, file_pointer_ptr+offset, (uint8_t*)ustring, SIZEOFUNICODESTRING , 0 );
-    file_name_unicode_ptr = file_pointer_ptr+offset;
-    //file_pointer_ptr+offset
-    jobj = f_info->jobject_type;
-    memfrs_close_field(f_info);   
-
-    
-    parse_unicode_str(file_name_unicode_ptr, cpu);
-    parse_unicode_str_new(ustring, cpu);
-    return 0;
-}
-
-UT_icd vad_adr_icd = {sizeof(uint64_t), NULL, NULL, NULL };
-
-void traverse_vad_tree(uint64_t eprocess_ptr, CPUState *cpu)
-{
-    int offset_vadroot_to_eprocess = 0;
-    int offset_left_to_vadnode = 0;
-    int offset_right_to_vadnode = 0;
-    //int tmp_offset = 0;
-
-    UT_array *vad_node_queue;
-    uint64_t vad_root, left, right;
-    //uint32_t starting_vpn, ending_vpn;
-    //uint8_t starting_vpn_high;
-    //uint8_t ending_vpn_high; 
-    uint64_t* current_node;
-
-    
-    utarray_new(vad_node_queue, &vad_adr_icd);
-   
-    json_object* jeprocess = NULL;
-    json_object* jvadnode = NULL;
-    field_info* f_info = NULL;
-    
-    if(g_struct_info ==NULL)
-    {
-        printf("Data structure information is not loaded\n");
-        return;
-    }
-    
-    jeprocess = memfrs_q_struct("_EPROCESS");
-    //printf("jeprocess %p\n", (void*)jeprocess);
-    f_info = memfrs_q_field(jeprocess, "VadRoot");
-    //printf("f_info %p\n", f_info);    
-
-    offset_vadroot_to_eprocess = f_info->offset;
-    //printf("f_info->offset %x\n", f_info->offset);  
-    memfrs_close_field(f_info);
-   
-    //set left
-    jvadnode = memfrs_q_struct("_RTL_BALANCED_NODE");
-    //printf("jvadnode %p\n", (void*)jvadnode);
-    f_info = memfrs_q_field(jvadnode, "Left");
-    //printf("jvadnode %p\n", (void*)jvadnode);
-    offset_left_to_vadnode = f_info->offset;
-    //printf("f_info->offset %x\n", f_info->offset);
-    memfrs_close_field(f_info);
-
-    f_info = memfrs_q_field(jvadnode, "Right");
-    offset_right_to_vadnode = f_info->offset;
-    memfrs_close_field(f_info);
-
-    //printf("testtest\n");    
-
-    cpu_memory_rw_debug( cpu, eprocess_ptr + offset_vadroot_to_eprocess, (uint8_t*)&vad_root, sizeof(vad_root), 0 );
-
-    printf("vad root: %" PRIx64 "\n", vad_root);
-
-    utarray_push_back(vad_node_queue, &vad_root);
-
-    while(utarray_len(vad_node_queue) != 0)
-    {
-        current_node = (uint64_t*)utarray_back(vad_node_queue);
-        printf("Find Node %" PRIx64 "\n", *current_node);
-
-        parse_mmvad_node(*current_node, cpu);
-
-        //utarray_pop_back(vad_node_queue);
-        cpu_memory_rw_debug( cpu, (*current_node)+offset_left_to_vadnode, (uint8_t*)&left, sizeof(left), 0 );
-        cpu_memory_rw_debug( cpu, (*current_node)+offset_right_to_vadnode, (uint8_t*)&right, sizeof(right), 0 );
-
-        //Get 
-        
-        //f_info = memfrs_q_field(jvadnode, "");
-        //tmp_offset = 
-        
-
-        utarray_pop_back(vad_node_queue);
-        //printf("left %" PRIx64 ", right %" PRIx64 "\n", left, right);
-        if(left != 0)
-            utarray_push_back(vad_node_queue, &left);
-        if(right != 0)
-            utarray_push_back(vad_node_queue, &right);
-    }
-
-    return ; 
 }
 
