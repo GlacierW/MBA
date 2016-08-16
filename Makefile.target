@@ -184,6 +184,7 @@ endif
 ifdef CONFIG_MEMFRS
 all-obj-y += ../ext/memfrs/memfrs-commands.o
 all-obj-y += ../ext/memfrs/memfrs.o
+all-obj-y += ../ext/memfrs/kernel.o
 ../ext/memfrs/memfrs.o-cflags := -D__STDC_VERSION__=199901 -I../json-c/
 endif
 
