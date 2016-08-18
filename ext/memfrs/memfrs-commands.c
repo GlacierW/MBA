@@ -27,6 +27,7 @@
 #include "ext/memfrs/memfrs.h"
 #include "ext/memfrs/kernel.h"
 #include "ext/memfrs/vad.h"
+#include "ext/memfrs/kmod.h"
 
 #include "qmp-commands.h"
 
@@ -208,18 +209,18 @@ void do_traverse_vad(Monitor *mon, const QDict *qdict)
 
 void do_module_list(Monitor *mon, const QDict *qdict)
 {
-    uint64_t i ;
-    uint8_t* module_tag = (uint8_t*)malloc(strlen(POOL_TAG_MODULE));
-    uint8_t buf[SIZEOFUNICODESTRING];
+    //uint64_t i ;
+    //uint8_t* module_tag = (uint8_t*)malloc(strlen(POOL_TAG_MODULE));
+    //uint8_t buf[SIZEOFUNICODESTRING];
     CPUState *cpu=NULL;
     cpu = ENV_GET_CPU((CPUArchState*)mba_mon_get_cpu());
 
-    if(buf == NULL){
+    /*if(buf == NULL){
         monitor_printf(mon, "Cannot allocate memory for do_show_memory_taint_map()\n");
         return;
-    }
+    }*/
 
-    monitor_printf(mon, "Scan for pattern %s\n", POOL_TAG_MODULE);
+    /*monitor_printf(mon, "Scan for pattern %s\n", POOL_TAG_MODULE);
     for(i = 0; i < MAXMEM-strlen(POOL_TAG_MODULE); i++)
     {
         cpu_physical_memory_read(i, module_tag, strlen(POOL_TAG_MODULE));
@@ -233,8 +234,8 @@ void do_module_list(Monitor *mon, const QDict *qdict)
             parse_unicode_str(buf, cpu);
             monitor_printf(mon, "\n");
         }
-    }
- 
+    }*/
+    scan_module(cpu); 
 }
 
 
