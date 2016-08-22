@@ -1,29 +1,25 @@
 CPP       = g++
-CC        = gcc
-OBJ       = gtest_main.o dift_unittest.o #dift.o
-LINKOBJ   = gtest_main.o dift_unittest.o #dift.o
-LINKFLAGS = -lpthread -lgcov -lgtest 
-BIN       = gtest_dift
-CXXFLAGS  = -Wall -DCONFIG_DIFT_GTEST
-CFLAGS    = -Wall -DCONFIG_DIFT_GTEST
-RM        = rm -f
+OBJ       = gtest_main.o dift_unittest.o $(GTEST_LIB)
+LINKOBJ   = gtest_main.o dift_unittest.o $(GTEST_LIB)
+LINKFLAGS = -lpthread -lgcov 
+BIN_DEST  = bin
+BIN       = $(BIN_DEST)/test_dift
+CXXFLAGS  = -Wall -DCONFIG_DIFT_TEST -isystem ${GTEST_DIR}/include -isystem ${GMOCK_DIR}/include
 GCOV_FILE = *.gcno *.gcda *.gcov
 
-.PHONY: 
+.PHONY: all clean
 
 all: $(BIN)
 
 clean:
-	${RM} $(OBJ) $(BIN) $(GCOV_FILE)
+	rm -rf $(OBJ) $(BIN_DEST) $(GCOV_FILE)
 
 $(BIN): $(OBJ)
+	mkdir -p $(BIN_DEST)
 	$(CPP) $(LINKOBJ) -o $(BIN) $(LIBS) $(LINKFLAGS)
 
 gtest_main.o: gtest_main.cc
 	$(CPP) -c gtest_main.cc -o gtest_main.o $(CXXFLAGS)
-
-#dift.o: dift.c
-#	$(CPP) -c dift.c -o dift.o $(CXXFLAGS)
 
 dift_unittest.o: dift_unittest.cc
 	$(CPP) -c dift_unittest.cc -o dift_unittest.o $(CXXFLAGS)

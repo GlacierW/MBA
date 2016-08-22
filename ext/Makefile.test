@@ -1,0 +1,48 @@
+CPP = g++
+AR  = ar
+EXT_DIR = $(shell pwd)
+
+GTEST_ROOT  = $(EXT_DIR)/gtest
+GTEST_DIR   = $(GTEST_ROOT)/googletest
+GMOCK_DIR   = $(GTEST_ROOT)/googlemock
+GTEST_LIB   = $(EXT_DIR)/libgmock.a
+
+.PHONY: all dift tsk memfrs agent obhook
+
+all: $(GTEST_LIB) dift tsk memfrs agent obhook
+
+
+dift: $(GTEST_LIB)
+	cd dift/test && \
+    make GTEST_DIR=$(GTEST_DIR) GMOCK_DIR=$(GMOCK_DIR) GTEST_LIB=$(GTEST_LIB)
+
+tsk: $(GTEST_LIB)
+	cd tsk/test && \
+	make GTEST_DIR=$(GTEST_DIR) GMOCK_DIR=$(GMOCK_DIR) GTEST_LIB=$(GTEST_LIB)
+
+memfrs: $(GTEST_LIB)
+	cd memfrs/test && \
+	make GTEST_DIR=$(GTEST_DIR) GMOCK_DIR=$(GMOCK_DIR) GTEST_LIB=$(GTEST_LIB)
+
+agent: $(GTEST_LIB)
+	cd agent/test && \
+	make GTEST_DIR=$(GTEST_DIR) GMOCK_DIR=$(GMOCK_DIR) GTEST_LIB=$(GTEST_LIB)
+
+$(GTEST_LIB):
+	rm -rf $(GTEST_ROOT)
+	git clone https://github.com/google/googletest.git $(GTEST_ROOT)
+	$(CPP) -isystem $(GTEST_DIR)/include -I$(GTEST_DIR) \
+        -isystem $(GMOCK_DIR)/include -I$(GMOCK_DIR) \
+        -pthread -c $(GTEST_DIR)/src/gtest-all.cc
+	$(CPP) -isystem $(GTEST_DIR)/include -I$(GTEST_DIR) \
+        -isystem $(GMOCK_DIR)/include -I$(GMOCK_DIR) \
+        -pthread -c $(GMOCK_DIR)/src/gmock-all.cc
+	$(AR) -rv $(GTEST_LIB) gtest-all.o gmock-all.o
+
+clean:
+	rm -f  $(GTEST_LIB) *.o
+	rm -rf $(GTEST_ROOT)
+	cd dift/test && make clean
+	cd tsk/test && make clean
+	cd memfrs/test && make clean
+	cd agent/test && make clean
