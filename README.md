@@ -3,8 +3,9 @@
 [![Build Status](https://travis-ci.org/GlacierW/MBA.svg?branch=master)](https://travis-ci.org/GlacierW/MBA)
 
 # Introduction
-MBA is a QEMU-based, sandbox system dedicated to malware analysis for Windows x64
-Currently, MBA supports the following features:
+MBA is a QEMU-based, sandbox system dedicated to malware analysis.  
+Currently, MBA is mainly for the x86_64 architecture and Win10 x64 guest OS.  
+The following features are supported:
 
     1. De-coupled Information Flow Tracking (DIFT)
        It is also known as taint analysis.
@@ -43,6 +44,36 @@ Currently, MBA supports the following features:
 
 More features are under development.
 
+# Quick Start
+Download MBA source 
+
+    $ git clone https://github.com/GlacierW/MBA
+    $ cd MBA/
+
+Configure QEMU to enable all of the MBA features.  
+To enable a MBA feature individually, please refer to `./configure -h`
+
+    $ ./configure --target-list=x86_64-softmmu --enable-mba-all
+    
+Compile MBA. (May take a while, use `-j<CPU_CORE>` to speedup)
+
+    $ make
+
+Start MBA with the prepared Win10_64bit image in QCOW2 format.  
+Due to the implementation issue, 2048MB RAM and 16GB disk space for the guest OS are recommended.  
+
+    $ ./x86_64-softmmu/qemu-system-x86_64 \
+      -m 2048 \
+      -hda <YOUR_IMAGE> \
+      -net nic,model=rtl8139 -net user \
+      -k en-us -usb \
+      -monitor stdio \
+      -vnc :1 
+
+Now the VNC server should be able to connect to via the port 5901.  
+
+The APIs of each MBA extension can be found under the `ext` directory.  
+The documents are under preparation.
 
 # Members
 Chi-Wei, Wang       cwwangabc@gmail.com  
