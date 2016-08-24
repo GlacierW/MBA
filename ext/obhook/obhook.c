@@ -19,6 +19,12 @@
 
 #include "obhook.h"
 
+#if defined(CONFIG_OBHOOK_TEST)
+#define _MOCKABLE(x) _##x
+#else
+#define _MOCKABLE(x) x
+#endif
+
 #define MASK_KERN_ADDR 0xffff000000000000
 
 // global variables 
@@ -31,7 +37,7 @@ bool obhook_pending_hooks;
 
 /// Search available slot in the index table
 /// Return index number as the uid for a new obhook, -1 if no more obhook space
-static int get_obhook_uid( void ) {
+static int _MOCKABLE(get_obhook_uid)( void ) {
 
     int i;
     for( i = 0; i < MAX_NM_OBHOOK; ++i )
@@ -51,13 +57,14 @@ static inline bool is_kern_addr( target_ulong addr ) {
 /// Return 0 on success, -1 and errno is set otherwise
 static int toggle_obhk( int obhook_d, bool enabled ) {
 
-    if( obhk_ctx->index_tbl[obhook_d] == NULL ) {
+    if( 
+        obhook_d < 0 
+     || obhook_d >= MAX_NM_OBHOOK 
+     || obhk_ctx->index_tbl[obhook_d] == NULL ) {
         obhook_errno = OBHOOK_ERR_INVALID_DESCRIPTOR;
         return -1;
     }
-
     obhk_ctx->index_tbl[obhook_d]->enabled = enabled;
-
     return 0;
 }
 
@@ -173,16 +180,15 @@ static obhk_cb_record* get_obhk_cb_internal( target_ulong cr3, target_ulong addr
 
     HASH_FIND( hh, obhk_ctx->hook_tbl, &cr3, sizeof(target_ulong), ht_rec );
     if( ht_rec == NULL ) 
-        goto get_obhk_cb_fail;
+        goto get_obhk_cb_not_found;
 
     HASH_FIND( hh, ht_rec->proc_obhk_tbl, &addr, sizeof(target_ulong), ht_proc_rec );
     if( ht_proc_rec == NULL ) 
-        goto get_obhk_cb_fail;
+        goto get_obhk_cb_not_found;
 
     return ht_proc_rec->cb_list;
 
-get_obhk_cb_fail:
-    obhook_errno = OBHOOK_ERR_FAIL;
+get_obhk_cb_not_found:
     return NULL;
 }
 
@@ -190,6 +196,11 @@ get_obhk_cb_fail:
 /// Public API of Out-of-Box hook
 /// Each API function should be named with the prefix 'obhook_'
 int obhook_add_process( target_ulong cr3, target_ulong addr, const char* label, void*(*cb) (void*) ) {
+
+    if( cr3 == 0 ) {
+        obhook_errno = OBHOOK_ERR_INVALID_CR3;
+        return -1;
+    }
     return add_obhk_internal( cr3, addr, label, cb );
 }
 
@@ -202,6 +213,12 @@ int obhook_delete( int obhook_d ) {
     obhk_ht_record* ht_proc_rec;
     obhk_ht_record* ht_rec;
     obhk_cb_record* cb_rec;
+
+    // general descriptor check
+    if( obhook_d < 0 || obhook_d >= MAX_NM_OBHOOK ) {
+        obhook_errno = OBHOOK_ERR_INVALID_DESCRIPTOR;
+        goto obhk_del_fail;
+    }
 
     // get the hook(callback function) record to be deleted
     cb_rec = obhk_ctx->index_tbl[obhook_d];
@@ -260,5 +277,10 @@ obhk_cb_record* obhook_getcbs_univ( target_ulong kern_addr ) {
 }
 
 obhk_cb_record* obhook_getcbs_proc( target_ulong cr3, target_ulong addr ) {
-   return get_obhk_cb_internal( cr3, addr );
+
+    if( cr3 == 0 ) {
+        obhook_errno = OBHOOK_ERR_INVALID_CR3;
+        return NULL;
+    }
+    return get_obhk_cb_internal( cr3, addr );
 }

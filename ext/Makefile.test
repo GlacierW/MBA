@@ -28,6 +28,10 @@ agent: $(GTEST_LIB)
 	cd agent/test && \
 	make GTEST_DIR=$(GTEST_DIR) GMOCK_DIR=$(GMOCK_DIR) GTEST_LIB=$(GTEST_LIB)
 
+obhook: $(GTEST_LIB)
+	cd obhook/test && \
+	make GTEST_DIR=$(GTEST_DIR) GMOCK_DIR=$(GMOCK_DIR) GTEST_LIB=$(GTEST_LIB)
+
 $(GTEST_LIB):
 	rm -rf $(GTEST_ROOT)
 	git clone https://github.com/google/googletest.git $(GTEST_ROOT)
@@ -46,3 +50,4 @@ clean:
 	cd tsk/test && make clean
 	cd memfrs/test && make clean
 	cd agent/test && make clean
+	cd obhook/test && make clean

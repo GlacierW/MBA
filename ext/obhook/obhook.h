@@ -19,10 +19,12 @@
 #ifndef __OBHOOK_H__
 #define __OBHOOK_H__
 
+#if !defined(CONFIG_OBHOOK_TEST)
 #include <stdbool.h>
 #include "uthash.h"
 #include "utlist.h"
 #include "cpu.h"
+#endif
 
 #define MAX_NM_OBHOOK       65535
 #define MAX_SZ_OBHOOK_LABEL 16
@@ -30,6 +32,7 @@
 enum OBHOOK_ERRNO {
     OBHOOK_ERR_FAIL,
     OBHOOK_ERR_FULL_HOOK,
+    OBHOOK_ERR_INVALID_CR3,
     OBHOOK_ERR_INVALID_ADDR,
     OBHOOK_ERR_INVALID_LABEL,
     OBHOOK_ERR_INVALID_CALLBACK,
@@ -109,7 +112,7 @@ extern bool obhook_pending_hooks;
 
 /// Add a process-aware, out-of-box hook at the given address
 ///
-///     \param  cr3     CR3 value of the targeted process
+///     \param  cr3     CR3 value of the targeted process, should not be zero
 ///     \param  addr    address to implant the hook
 ///     \param  label   user-friendly name for the hook (optional, can be NULL)
 ///     \param  cb      callback routine to be invoked when the hook is triggered
@@ -164,7 +167,7 @@ extern obhk_cb_record* obhook_getcbs_univ( target_ulong kern_addr );
 
 /// Get the callbacks of a per-process hook implanted at the specified address
 ///
-///     \param  cr3     CR3 value of the targeted process
+///     \param  cr3     CR3 value of the targeted process, should not be zero
 ///     \param  addr    address where the hook implanted at
 ///
 /// Return a pointer to the list of callbacks of the hook on success, NULL and obhook_errno iset otherwise
