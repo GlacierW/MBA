@@ -16,6 +16,10 @@ DEF_HELPER_2(divq_EAX, void, env, tl)
 DEF_HELPER_2(idivq_EAX, void, env, tl)
 #endif
 
+#if defined(CONFIG_OBHOOK)
+DEF_HELPER_1(obhook_dispatcher, void, env)
+#endif
+
 DEF_HELPER_2(aam, void, env, int)
 DEF_HELPER_2(aad, void, env, int)
 DEF_HELPER_1(aaa, void, env)

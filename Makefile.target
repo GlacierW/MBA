@@ -197,6 +197,11 @@ all-obj-y += ../ext/tsk/tsk-commands.o
 ../ext/tsk/tsk-commands.o-cflags := -DHAVE_CONFIG_H -I$(SRC_PATH)/ext/tsk/sleuthkit 
 endif
 
+ifdef CONFIG_OBHOOK
+all-obj-y += ../ext/obhook/obhook.o
+all-obj-y += ../ext/obhook/obhook-commands.o
+endif
+
 
 $(QEMU_PROG_BUILD): config-devices.mak
 

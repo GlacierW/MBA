@@ -343,6 +343,7 @@ dift_debug="no"
 agent="no"
 memfrs="no"
 tsk="no"
+obhook="no"
 #########################
 
 # parse CC options first
@@ -1157,12 +1158,15 @@ for opt do
   ;;
   --enable-tsk) tsk="yes"
   ;;
+  --enable-obhook) obhook="yes"
+  ;;
   --enable-mba-all)
     dift="yes"
     dift_debug="yes"
     agent="yes"
     memfrs="yes"
     tsk="yes"
+    obhook="yes"
   ;;
   #########################
   *)
@@ -1440,11 +1444,13 @@ Advanced options (experts only):
   --enable-numa            enable libnuma support
   --disable-tcmalloc       disable tcmalloc support
   --enable-tcmalloc        enable tcmalloc support
-  --enable-dift            enable dynamic information flow tracking
+  --enable-dift            enable decoupled/dynamic information flow tracking
   --enable-debug-dift      enable debug mode of dynamic information flow tracking
   --enable-agent           enable Windows in-VM agent
   --enable-tsk             enable sleuth kit disk forensics sopport
   --enable-memfrs          enable Virtual Machine Memory Introspection for Windows
+  --enable-obhook          enable Out-of-Box hooking for Windows 10 x64
+  --enable-mba-all         enable all of the MBA features
 
 NOTE: The object files are built at the place where configure is launched
 EOF
@@ -4513,6 +4519,7 @@ echo "dift debug support          $dift_debug"
 echo "Windows in-VM agent support $agent"
 echo "memory forensics support    $memfrs"
 echo "disk forensics(tsk) support $tsk"
+echo "Out-of-Box hook support     $obhook"
 #########################
 
 if test "$sdl_too_old" = "yes"; then
@@ -5407,9 +5414,15 @@ if test "$memfrs" = "yes"; then
   echo "CONFIG_MEMFRS=y" >> $config_host_mak
   echo "CONFIG_MEMFRS=y" >> $config_target_mak
 fi
+
 if test "$tsk" = "yes"; then
   echo "CONFIG_TSK=y" >> $config_host_mak
   echo "CONFIG_TSK=y" >> $config_target_mak
+fi
+
+if test "$obhook" = "yes"; then
+  echo "CONFIG_OBHOOK=y" >> $config_host_mak
+  echo "CONFIG_OBHOOK=y" >> $config_target_mak
 fi
 #########################
 

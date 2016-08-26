@@ -42,6 +42,13 @@ The following features are supported:
          > execute a command in the guest w/wo return output expected
          > import/export a file into/from the guest
 
+    5. Out-of-Box Hooking (OBHook)
+       The obhook extension provides the VM-based hook against the guest OS.
+       This features allows MBA to intercept the event-of-interest of the guest.
+       Note that the obhook is purely implemented beneath the guest OS, namely
+       the hypervisor (QEMU). Thereby, not a code snippets is required to be
+       inserted to the guest, and thus prevent the interference of malware.
+
 More features are under development.
 
 # Quick Start

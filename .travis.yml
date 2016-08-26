@@ -46,3 +46,7 @@ matrix: # define more builds here
     - env: EXTRA_CONFIG="--enable-dift"
            TEST_CMD="make dift -C ext/ -f Makefile.test && ext/dift/test/bin/test_dift"
       compiler: gcc
+    # enable & run obhook unit test
+    - env: EXTRA_CONFIG="--enable-obhook"
+           TEST_CMD="make obhook -C ext -f Makefile.test && ext/obhook/test/bin/test_obhook"
+      compiler: gcc
