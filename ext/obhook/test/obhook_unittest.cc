@@ -42,7 +42,7 @@ struct mock_func : hook_func {
 
 } *mock_ptr;
 
-#define GEN_MOCK_OBJECT(x)  mock_func x; mock_ptr = &mock;
+#define GEN_MOCK_OBJECT(x)  mock_func x; mock_ptr = &x;
 
 // mock the functions in the original code
 #define calloc(x, y)      mock_ptr->calloc(x, y)
