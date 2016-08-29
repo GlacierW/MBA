@@ -150,7 +150,7 @@ int parse_mmvad_node(uint64_t mmvad_ptr, CPUState *cpu)
     jobj = f_info->jobject_type;
     memfrs_close_field(f_info);
 
-    f_info = memfrs_q_field( jobj, "ControlArea" );
+    f_info = memfrs_q_field( jobj, "ControlArea" ); //ControlArea
     offset = f_info->offset;
     cpu_memory_rw_debug( cpu, subsection_ptr+offset, (uint8_t*)&control_area_ptr, sizeof(control_area_ptr), 0 );
     jobj = f_info->jobject_type;

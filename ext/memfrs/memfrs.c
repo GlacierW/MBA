@@ -59,6 +59,11 @@ field_info* memfrs_q_field( json_object* struc, const char* field_name )
     // Query the field in the structures(struc) by the field_name
     // Save the result into target json object
     json_object_object_get_ex(struc, field_name, &target);
+    if(target == NULL)
+    {
+        printf("\"%s\" not found\n", field_name);
+        return NULL;
+    }
 
     // The result is the json array as ( field_type, field_offset, field_size, field_is_pointer)
     // query and unpack offset
@@ -113,6 +118,9 @@ json_object* memfrs_q_struct(const char* ds_name)
     // Query global structure info with structure name ds_name
     // Restore the query result into target json_object 
     json_object_object_get_ex(g_struct_info, ds_name, &target);
+    
+    if(target==NULL)
+        printf("%s not found\n", ds_name);
     return target;
 }
 
@@ -374,7 +382,7 @@ int memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
     // Retrieve the _KTHREAD structure
     jkthread = memfrs_q_struct("_KTHREAD");
     // Query PROCESS field in  _KTHREAD struct
-    f_info = memfrs_q_field(jkthread, "PROCESS");
+    f_info = memfrs_q_field(jkthread, "Process");
     offset_process_to_kthread = f_info->offset;
     memfrs_close_field(f_info);
     
