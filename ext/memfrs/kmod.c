@@ -22,6 +22,8 @@
 #include "ext/memfrs/memfrs.h"
 #include "ext/memfrs/kmod.h"
 
+#define SIZE_OF_POOL_HEADER 0x10
+
 /*********************************************************************************
 void scan_module(CPUState *cpu)
 
@@ -37,7 +39,31 @@ void scan_module(CPUState *cpu)
     uint64_t i ;
     uint8_t* module_tag = (uint8_t*)malloc(strlen(POOL_TAG_MODULE));
     uint8_t buf[SIZEOFUNICODESTRING];
+    int offset_tag, offset_fullname, offset_basename;
+
     printf("Scan for pattern %s\n", POOL_TAG_MODULE);
+
+    // Check if ds metadata is already loaded
+    if( memfrs_check_struct_info() == 0)
+    {
+        printf("Data structure information is not loaded\n");
+        return;
+    }
+
+    json_object* jobj = memfrs_q_struct("_POOL_HEADER");
+    field_info* f_info = NULL;
+    f_info = memfrs_q_field(jobj, "PoolTag");
+    offset_tag = f_info->offset;
+    memfrs_close_field(f_info);
+
+    jobj = memfrs_q_struct("_LDR_DATA_TABLE_ENTRY");
+    f_info = memfrs_q_field(jobj, "FullDllName");
+    offset_fullname = f_info->offset;
+    memfrs_close_field(f_info);
+
+    f_info = memfrs_q_field(jobj, "BaseDllName");
+    offset_basename = f_info->offset;
+    memfrs_close_field(f_info);
 
     //Scan whole physical memory
     for(i = 0; i < MAXMEM-strlen(POOL_TAG_MODULE); i++)
@@ -49,11 +75,11 @@ void scan_module(CPUState *cpu)
             printf( "pattern found %"PRIx64"\n", i);
             //TODO: Use ds query api instead
             // Retrieve whole path
-            cpu_physical_memory_read(i-0x4+0x10+0x48, buf, SIZEOFUNICODESTRING);
+            cpu_physical_memory_read(i- offset_tag+ SIZE_OF_POOL_HEADER+ offset_fullname, buf, SIZEOFUNICODESTRING);
             parse_unicode_str(buf, cpu);
   
             // Retrieve base name of kernel module
-            cpu_physical_memory_read(i-0x4+0x10+0x58, buf, SIZEOFUNICODESTRING);
+            cpu_physical_memory_read(i- offset_tag+ SIZE_OF_POOL_HEADER+ offset_basename, buf, SIZEOFUNICODESTRING);
             parse_unicode_str(buf, cpu);
             printf("\n");
         }
