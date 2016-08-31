@@ -78,7 +78,7 @@ Makefile: ;
 configure: ;
 
 .PHONY: all clean cscope distclean dvi html info install install-doc \
-	pdf recurse-all speed test dist
+	pdf recurse-all speed test dist mba-test mba-test-clean
 
 $(call set-vpath, $(SRC_PATH))
 
@@ -218,7 +218,8 @@ Makefile: $(version-obj-y) $(version-lobj-y)
 libqemustub.a: $(stub-obj-y)
 libqemuutil.a: $(util-obj-y)
 
-## Modified by Glacier ##
+######################################################################
+## MBA extensions
 
 # DIFT 
 ifdef  CONFIG_DIFT
@@ -226,9 +227,7 @@ libdift.a: ext/dift/dift.o
 block-obj-y += libdift.a
 endif
 
-## Modified by Bletchley ##
-#MEMFRS
-
+# MEMFRS
 ifdef CONFIG_MEMFRS
 json-c/.libs/libjson-c.a:
 	cd json-c &&\
@@ -237,11 +236,10 @@ json-c/.libs/libjson-c.a:
         $(MAKE)
 endif
 
-#########################
-## Modified by misterlihao ##
-ifdef  CONFIG_TSK
+# TSK
 #XXX(misterlihao@gmail.com):will not remake even if these libraries have been modified.
 #XXX(misterlihao@gmail.com):make clean will only delete .a file.
+ifdef  CONFIG_TSK
 ext/tsk/sleuthkit/libqcow/libqcow/.libs/libqcow.a:
 	cd ext/tsk/sleuthkit/libqcow &&\
 	./synclibs.sh &&\
@@ -255,7 +253,9 @@ ext/tsk/sleuthkit/tsk/.libs/libtsk.a:  ext/tsk/sleuthkit/libqcow/libqcow/.libs/l
 	$(MAKE)
 ext/tsk/tsk.o:ext/tsk/sleuthkit/tsk/.libs/libtsk.a
 endif
-#########################
+######################################################################
+
+
 block-modules = $(foreach o,$(block-obj-m),"$(basename $(subst /,-,$o))",) NULL
 util/module.o-cflags = -D'CONFIG_BLOCK_MODULES=$(block-modules)'
 
@@ -350,6 +350,8 @@ clean:
 	if test -d $$d; then $(MAKE) -C $$d $@ || exit 1; fi; \
 	rm -f $$d/qemu-options.def; \
         done
+	@# MBA extension test cleanup
+	cd ext/ && make clean -f Makefile.test
 
 VERSION ?= $(shell cat VERSION)
 
@@ -632,3 +634,11 @@ endif
 # Include automatically generated dependency files
 # Dependencies in Makefile.objs files come from our recursive subdir rules
 -include $(wildcard *.d tests/*.d)
+
+
+# Generate MBA test 
+mba-test:
+	cd ext && make -f Makefile.test
+
+mba-test-clean:
+	cd ext && make clean -f Makefile.test

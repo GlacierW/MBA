@@ -38,10 +38,15 @@ script:
   - make -j4 && sh -c "${TEST_CMD}"
 matrix: # define more builds here
   include:
-    # enable dift, and corresponding unit tests
-    - env: EXTRA_CONFIG="--enable-dift"
-           TEST_CMD="make --directory=ext/dift/test && ext/dift/test/gtest_dift"
+    # enable all MBA extensions
+    - env: EXTRA_CONFIG="--enable-mba-all"
+           TEST_CMD="make mba-test"
       compiler: gcc
-    - env: EXTRA_CONFIG="--enable-dift --enable-tsk --enable-memfrs"
-           TEST_CMD="make --directory=ext/dift/test && ext/dift/test/gtest_dift"
+    # enable & run dift unit test
+    - env: EXTRA_CONFIG="--enable-dift"
+           TEST_CMD="make dift -C ext/ -f Makefile.test && ext/dift/test/bin/test_dift"
+      compiler: gcc
+    # enable & run obhook unit test
+    - env: EXTRA_CONFIG="--enable-obhook"
+           TEST_CMD="make obhook -C ext -f Makefile.test && ext/obhook/test/bin/test_obhook"
       compiler: gcc

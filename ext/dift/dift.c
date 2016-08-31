@@ -33,7 +33,7 @@
 #include <inttypes.h>
 #include <stdbool.h>
 
-#if !defined(CONFIG_DIFT_GTEST)
+#if !defined(CONFIG_DIFT_TEST)
 #include <config-host.h>
 #endif
 

@@ -176,11 +176,12 @@ all-obj-y += $(common-obj-y)
 all-obj-y += $(target-obj-y)
 all-obj-$(CONFIG_SOFTMMU) += $(block-obj-y)
 
-# MBA
-ifdef  CONFIG_DIFT
+# MBA extensions
+ifdef CONFIG_DIFT
 all-obj-y += ../ext/dift/dift-commands.o
 endif
-ifdef  CONFIG_AGENT
+
+ifdef CONFIG_AGENT
 all-obj-y += ../ext/agent/agent-commands.o
 <<<<<<< HEAD
 =======
@@ -194,9 +195,14 @@ all-obj-y += ../ext/memfrs/memfrs.o
 >>>>>>> 75eb4731ce6ee01bcc4155e74db166a385f7a5c0
 endif
 
-ifdef  CONFIG_TSK
+ifdef CONFIG_TSK
 all-obj-y += ../ext/tsk/tsk-commands.o
 ../ext/tsk/tsk-commands.o-cflags := -DHAVE_CONFIG_H -I$(SRC_PATH)/ext/tsk/sleuthkit 
+endif
+
+ifdef CONFIG_OBHOOK
+all-obj-y += ../ext/obhook/obhook.o
+all-obj-y += ../ext/obhook/obhook-commands.o
 endif
 
 

@@ -106,5 +106,6 @@ TAGS
 *.sh
 imgs/*
 *.swp
-ext/dift/gtest_dift
+ext/gtest
+ext/*/test/bin
 config.cmd

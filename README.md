@@ -1,8 +1,11 @@
+# Malware Behavior Analyzer - MBA 
++ Continuous Integration (Travis-CI)  
+[![Build Status](https://travis-ci.org/GlacierW/MBA.svg?branch=master)](https://travis-ci.org/GlacierW/MBA)
 
-Malware Behavior Analyzer, MBA [![Build Status](https://travis-ci.org/misterlihao/MBA.svg?branch=temp-demo-travis-ci)](https://travis-ci.org/misterlihao/MBA)
-
-MBA is a QEMU-based, sandbox system dedicated to malware analysis for Windows x64
-Currently, MBA supports the following features:
+# Introduction
+MBA is a QEMU-based, sandbox system dedicated to malware analysis.  
+Currently, MBA is mainly for the x86_64 architecture and Win10 x64 guest OS.  
+The following features are supported:
 
     1. De-coupled Information Flow Tracking (DIFT)
        It is also known as taint analysis.
@@ -39,18 +42,54 @@ Currently, MBA supports the following features:
          > execute a command in the guest w/wo return output expected
          > import/export a file into/from the guest
 
+    5. Out-of-Box Hooking (OBHook)
+       The obhook extension provides the VM-based hook against the guest OS.
+       This features allows MBA to intercept the event-of-interest of the guest.
+       Note that the obhook is purely implemented beneath the guest OS, namely
+       the hypervisor (QEMU). Thereby, not a code snippets is required to be
+       inserted to the guest, and thus prevent the interference of malware.
+
 More features are under development.
 
+# Quick Start
+Download MBA source 
 
-- MBA Team,  
-    Chi-Wei, Wang       cwwangabc@gmail.com  
-    Chia-Wei, Wang      chiaweiw@cs.nctu.edu.tw  
-    Chong-Kuan, Chen    ckchen@cs.nctu.edu.tw  
-    Hao, Li             misterlihao@gmail.com  
-    Jui-Chien, Jai      jcjao0120@gmail.com  
-    Chuan-Hua, Cheng    newchengxx@gmail.com  
-    E-Lin, Ho           dennisieur210@gmail.com  
+    $ git clone https://github.com/GlacierW/MBA
+    $ cd MBA/
 
-  Network Security Lab,  
-  National Chiao-Tung University, Taiwan  
+Configure QEMU to enable all of the MBA features.  
+To enable a MBA feature individually, please refer to `./configure -h`
 
+    $ ./configure --target-list=x86_64-softmmu --enable-mba-all
+    
+Compile MBA. (May take a while, use `-j<CPU_CORE>` to speedup)
+
+    $ make
+
+Start MBA with the prepared Win10_64bit image in QCOW2 format.  
+Due to the implementation issue, 2048MB RAM and 16GB disk space for the guest OS are recommended.  
+
+    $ ./x86_64-softmmu/qemu-system-x86_64 \
+      -m 2048 \
+      -hda <YOUR_IMAGE> \
+      -net nic,model=rtl8139 -net user \
+      -k en-us -usb \
+      -monitor stdio \
+      -vnc :1 
+
+Now the VNC server should be able to connect to via the port 5901.  
+
+The APIs of each MBA extension can be found under the `ext` directory.  
+The documents are under preparation.
+
+# Members
+Chi-Wei, Wang       cwwangabc@gmail.com  
+Chia-Wei, Wang      chiaweiw@cs.nctu.edu.tw  
+Chong-Kuan, Chen    ckchen@cs.nctu.edu.tw  
+Hao, Li             misterlihao@gmail.com  
+Jui-Chien, Jao      jcjao0120@gmail.com  
+Chuan-Hua, Cheng    newchengxx@gmail.com  
+E-Lin, Ho           dennisieur210@gmail.com  
+
+Network Security Lab,  
+National Chiao-Tung University, Taiwan

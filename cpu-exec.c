@@ -32,6 +32,10 @@
 #include "ext/dift/dift.h"
 #endif
 
+#if defined(CONFIG_OBHOOK)
+#include "ext/obhook/obhook.h"
+#endif
+
 /* -icount align implementation. */
 
 typedef struct SyncClocks {
@@ -490,6 +494,17 @@ int cpu_exec(CPUArchState *env)
                 if( dift_code_top + 10000 > CONFIG_MAX_TB_ESTI )
                     tb_flush( env );
 #endif
+
+#if defined(CONFIG_OBHOOK)
+                // if any pending hooks which are newly registered,
+                // the translated code block should be flushed
+                if( obhook_pending_hooks ) {
+                    tb_flush( env );
+                    obhook_pending_hooks = false;
+                }
+
+#endif
+
                 spin_lock(&tcg_ctx.tb_ctx.tb_lock);
                 have_tb_lock = true;
                 tb = tb_find_fast(env);
