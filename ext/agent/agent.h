@@ -30,6 +30,8 @@
 
 #define MSG_EXEC_READY "EXEC_READY"
 #define MSG_ACK_PREFIX "System Receive : "
+#define MSG_REC_SUCCESS "SUCCESS"
+#define MSG_REC_FAIL "FAIL"
 
 // performing agent action
 enum MBA_AGENT_ACTION {
@@ -173,3 +175,4 @@ extern MBA_AGENT_RETURN agent_logfile( const char* dst_path );
 ///        AGENT_RET_EFAIL, general failure
 extern MBA_AGENT_RETURN agent_init( Monitor* mon, uint16_t server_fwd_port );
 #endif
+

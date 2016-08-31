@@ -29,10 +29,13 @@
 
 #define SZ_MAX_CMD 256          // max command size
 #define SZ_MAX_LOG 256          // log message buffer size
+#define SZ_MAX_L 256          // log message buffer size
 #define SZ_MAX_FILECHUNK 8192	// maximum import/export file chunk
 
 #define MSG_EXEC_READY  "EXEC_READY"
 #define MSG_ACK_PREFIX	"System Receive : "
+#define MSG_REC_SUCCESS "SUCCESS"
+#define MSG_REC_FAIL "FAIL"
 
 enum cmd_type {
     MBA_CMD_UNKNOWN,    // 0 : Unknow command from MBA
@@ -44,3 +47,4 @@ enum cmd_type {
 };
 
 #endif
+

@@ -153,11 +153,14 @@ static MBA_AGENT_RETURN import_host_file( void ) {
     uint64_t    fsize;
     char        fbuf[SZ_MAX_FILECHUNK];
     char*       fptr;
-
+	
     char cmd_emit[SZ_MAX_COMMAND];
+	
+    char        errorbuf[sizeof(MSG_REC_SUCCESS)];
 
     int n_rbytes;
     int n_wbytes;
+    int n_rerrorbytes;
 
     const char* dst_path = ac->act.dst_path;
     const char* src_path = ac->act.src_path;
@@ -193,6 +196,17 @@ static MBA_AGENT_RETURN import_host_file( void ) {
         goto impo_fail;
     }
 
+	// --------Check if server is able to open file-------- //
+    n_rerrorbytes = read( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
+    if( n_rerrorbytes != sizeof(MSG_REC_SUCCESS) ) {
+        agent_printf( "Failed to check server opened file successfully\n" );
+        goto impo_fail;
+    }
+	if ( strncmp(errorbuf, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ){
+        agent_printf( "Server failed to open file\n" );
+        goto impo_fail;
+    }
+	
     // read & send file content to server
     while( fsize ) {
 
@@ -200,8 +214,11 @@ static MBA_AGENT_RETURN import_host_file( void ) {
         n_rbytes = read( fd, fbuf, SZ_MAX_FILECHUNK );
         if( n_rbytes == -1 ) {
             agent_printf( "Failed to read content of '%s'\n", src_path );
+			as_write( ac->sock, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS) );
             goto impo_fail;
         }
+		else
+			as_write( ac->sock, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS) );
 
         fsize -= n_rbytes;
 
@@ -216,6 +233,17 @@ static MBA_AGENT_RETURN import_host_file( void ) {
 
             n_rbytes -= n_wbytes;
             fptr     += n_wbytes;
+			
+			// --------Check if server can write file successfully-------- //
+			n_rerrorbytes = read( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
+			if ( n_rerrorbytes != sizeof(MSG_REC_SUCCESS) ) {
+				agent_printf( "Failed to check server write file content " );
+				goto impo_fail;
+			}
+			if ( strncmp(errorbuf, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ){
+				agent_printf( "Server failed to write file\n" );
+				goto impo_fail;
+			}
         }
     
     }
@@ -238,12 +266,14 @@ static MBA_AGENT_RETURN export_guest_file( void ) {
     uint64_t fsize;
     
     char  fbuf[SZ_MAX_FILECHUNK];
+    char  errorbuf[sizeof(MSG_REC_SUCCESS)];
     char* fptr;
 
     int fd = -1;
 
     int n_rbytes;
     int n_wbytes;
+    int n_rerrorbytes;
 
     const char* dst_path = ac->act.dst_path;
     const char* src_path = ac->act.src_path;
@@ -259,6 +289,28 @@ static MBA_AGENT_RETURN export_guest_file( void ) {
         goto expo_fail;
     }
 
+	// --------Check if server is able to open file-------- //
+    n_rerrorbytes = read( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
+    if( n_rerrorbytes != sizeof(MSG_REC_SUCCESS) ) {
+        agent_printf( "Failed to check server opened file successfully\n" );
+        goto impo_fail;
+    }
+	if ( strncmp(errorbuf, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ){
+        agent_printf( "Server failed to open file\n" );
+        goto impo_fail;
+    }
+	
+	// --------Check if server is able to read filesize-------- //
+    n_rerrorbytes = read( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
+    if( n_rerrorbytes != sizeof(MSG_REC_SUCCESS) ) {
+        agent_printf( "Failed to check server read filesize successfully\n" );
+        goto impo_fail;
+    }
+	if ( strncmp(errorbuf, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ){
+        agent_printf( "Server failed to read filesize\n" );
+        goto impo_fail;
+    }
+	
     // receive file size
     n_rbytes = as_read( ac->sock, &fsize, sizeof(uint64_t) );
     if( n_rbytes != sizeof(uint64_t) ) {
@@ -270,15 +322,45 @@ static MBA_AGENT_RETURN export_guest_file( void ) {
     fd = open( dst_path, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
     if( fd == -1 ) {
         agent_printf( "Failed to open '%s' for file export\n", dst_path );
+		as_write( ac->sock, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS) );
         goto expo_fail;
     }
+	else
+		as_write( ac->sock, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS) );
 
     // receive & store file content
     while( fsize ) {
 
         // measure the maximum bytes should be read
-        n_rbytes = (fsize < SZ_MAX_FILECHUNK) ? fsize : SZ_MAX_FILECHUNK;
+		if ( fsize < SZ_MAX_FILECHUNK )
+		{
+			n_rbytes = fsize;
+			
+			// --------Check if server is able to open file-------- //
+			n_rerrorbytes = read( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
+			if( n_rerrorbytes != sizeof(MSG_REC_SUCCESS) ) {
+				agent_printf( "Failed to check server open file successfully\n" );
+				goto impo_fail;
+			}
+			if ( strncmp(errorbuf, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ){
+				agent_printf( "Server failed to open file\n" );
+				goto impo_fail;
+			}
+		}
+        else
+			n_rbytes = SZ_MAX_FILECHUNK;
 
+		// --------Check if server is able to read filesize-------- //
+		n_rerrorbytes = read( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
+		if( n_rerrorbytes != sizeof(MSG_REC_SUCCESS) ) {
+			agent_printf( "Failed to check server read file successfully\n" );
+			goto impo_fail;
+		}
+		if ( strncmp(errorbuf, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ){
+			agent_printf( "Server failed to read file\n" );
+			goto impo_fail;
+		}
+	
         // receive file content from agent server
         n_rbytes = as_read( ac->sock, fbuf, n_rbytes );
         if( n_rbytes <= 0 ) {
@@ -294,11 +376,14 @@ static MBA_AGENT_RETURN export_guest_file( void ) {
             n_wbytes = write( fd, fptr, n_rbytes );
             if( n_wbytes == -1 ) {
                 agent_printf( "Failed to store file content\n" );
+				as_write( ac->sock, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS) );
                 goto expo_fail;
             }
 
             n_rbytes -= n_wbytes;
             fptr     += n_wbytes;
+			
+			as_write( ac->sock, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS) );
         }
     }
 
@@ -422,12 +507,14 @@ static MBA_AGENT_RETURN export_agent_log( void ) {
     uint64_t fsize;
 
     char  fbuf[SZ_MAX_FILECHUNK];
+    char  errorbuf[sizeof(MSG_REC_SUCCESS)];
     char* fptr;
 
     int fd = -1;
 
     int n_rbytes;
     int n_wbytes;
+	int n_rerrorbytes;
 
     const char* dst_path = ac->act.dst_path;
 
@@ -441,6 +528,17 @@ static MBA_AGENT_RETURN export_agent_log( void ) {
         agent_printf( "Failed to emit command '%s'\n", cmd_emit );
         goto logf_fail;
     }
+	
+	// --------Check if server is able to read filesize-------- //
+    n_rerrorbytes = read( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
+    if( n_rerrorbytes != sizeof(MSG_REC_SUCCESS) ) {
+        agent_printf( "Failed to check server read filesize successfully\n" );
+        goto impo_fail;
+    }
+	if ( strncmp(errorbuf, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ){
+        agent_printf( "Server failed to read filesize\n" );
+        goto impo_fail;
+    }
 
     // receive log file size
     n_rbytes = as_read( ac->sock, &fsize, sizeof(uint64_t) );
@@ -453,8 +551,11 @@ static MBA_AGENT_RETURN export_agent_log( void ) {
     fd = open( dst_path, O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
     if( fd == -1 ) {
         agent_printf( "Failed to open '%s' for agent log export\n", dst_path );
+		as_write( ac->sock, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS) );
         goto logf_fail;
     }
+	else
+		as_write( ac->sock, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS) );
 
     // receive & store file content
     while( fsize ) {
@@ -462,11 +563,22 @@ static MBA_AGENT_RETURN export_agent_log( void ) {
         // measure the maximum bytes should be read
         n_rbytes = (fsize < SZ_MAX_FILECHUNK) ? fsize : SZ_MAX_FILECHUNK;
 
+		// --------Check if server is able to read file-------- //
+		n_rerrorbytes = read( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
+		if( n_rerrorbytes != sizeof(MSG_REC_SUCCESS) ) {
+			agent_printf( "Failed to check server read file successfully\n" );
+			goto impo_fail;
+		}
+		if ( strncmp(errorbuf, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ){
+			agent_printf( "Server failed to read file\n" );
+			goto impo_fail;
+		}
+	
         // receive file content from agent server
         n_rbytes = as_read( ac->sock, fbuf, n_rbytes );
         if( n_rbytes <= 0 ) {
             agent_printf( "Failed to receive file content\n" );
-            goto logf_fail;
+            goto expo_fail;
         }
 
         fsize -= n_rbytes;
@@ -477,12 +589,16 @@ static MBA_AGENT_RETURN export_agent_log( void ) {
             n_wbytes = write( fd, fptr, n_rbytes );
             if( n_wbytes == -1 ) {
                 agent_printf( "Failed to store file content\n" );
-                goto logf_fail;
+				as_write( ac->sock, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS) );
+                goto expo_fail;
             }
 
             n_rbytes -= n_wbytes;
             fptr     += n_wbytes;
+			
+			as_write( ac->sock, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS) );
         }
+		
     }
 
     close( fd );
@@ -831,3 +947,4 @@ init_fail:
 
     return AGENT_RET_EFAIL;
 }
+
