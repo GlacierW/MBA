@@ -176,6 +176,7 @@ static DWORD WINAPI get_and_send_input_thread(LPVOID lpvThreadParam)
 static void read_and_handle_output(HANDLE hPipeRead)
 {
     CHAR  cOutBuf[4096];        // output buffer, read from child
+    CHAR  cInBuf[sizeof(MSG_REC_SUCCESS)];
     DWORD nBytesRead;
 
 	// send ready message for agent 'execute' action
@@ -196,6 +197,13 @@ static void read_and_handle_output(HANDLE hPipeRead)
 
         send(g_sClientSocket, (const char*)&nBytesRead, sizeof(nBytesRead), 0);
         send(g_sClientSocket, cOutBuf, nBytesRead, 0);
+		
+		recv( sClientSocket, cInBuf, sizeof(MSG_REC_SUCCESS), 0 );
+		if ( strncmp(cInBuf, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ) {
+			display_error("read_and_handle_output - Client failed to receive output", FALSE);
+			return;
+		}
+		
     }
 }
 
@@ -268,45 +276,64 @@ static void execute_cmd(char *sCmdline) {
     pipeAttr.bInheritHandle = TRUE;
 
     // Create the child output pipe.
-    if (!CreatePipe(&hOutputRead, &hOutputWrite, &pipeAttr, 0))
+    if (!CreatePipe(&hOutputRead, &hOutputWrite, &pipeAttr, 0)) {
         display_error("execute_cmd - CreatePipe", TRUE);
+		return;
+	}
 
     // Create a duplicate of the output write handle for the std error write handle.
     // This is necessary in case the child application closes one of its std output handles.
     if ( !DuplicateHandle(
         	GetCurrentProcess(), hOutputWrite,
         	GetCurrentProcess(), &hErrorWrite,
-        	0, TRUE, DUPLICATE_SAME_ACCESS) )
-        display_error("execute_cmd - DuplicateHandle : hErrorWrite -> hOutputWrite", TRUE);
+        	0, TRUE, DUPLICATE_SAME_ACCESS) ) {
+				display_error("execute_cmd - DuplicateHandle : hErrorWrite -> hOutputWrite", TRUE);
+				return;
+			}
+        
 
     // Create the child input pipe.
-    if ( !CreatePipe( &hInputRead, &hInputWrite, &pipeAttr,0) )
+    if ( !CreatePipe( &hInputRead, &hInputWrite, &pipeAttr,0) ){
     	display_error("execute_cmd - CreatePipe", TRUE);
+		return;
+	}
 
 	// Ensure the handle for reading from child stdout pipe is not inherited
-	if ( !SetHandleInformation( hOutputRead, HANDLE_FLAG_INHERIT, 0) ) 
+	if ( !SetHandleInformation( hOutputRead, HANDLE_FLAG_INHERIT, 0) ) {
 		display_error("execute_cmd - SetHandleInformation : Child read", TRUE);
+		return;
+	}
 
 	// Ensure the handle for writing to child stdin pipe is not inherited
-	if ( !SetHandleInformation( hInputWrite, HANDLE_FLAG_INHERIT, 0) ) 
+	if ( !SetHandleInformation( hInputWrite, HANDLE_FLAG_INHERIT, 0) ) {
 		display_error("execute_cmd - SetHandleInformation : Child write", TRUE);
+		return;
+	}
 		
     // Sets up STARTUPINFO structure, and launches redirected child.
     prep_and_launch_redirected_child(sCmdline, hOutputWrite, hInputRead, hErrorWrite);
 
     // Close pipe handles (do not continue to modify in the parent).
-    if (!CloseHandle(hOutputWrite)) 
+    if (!CloseHandle(hOutputWrite)) {
 		display_error("execute_cmd - CloseHandle : Child Write", TRUE);
-    if (!CloseHandle(hInputRead)) 
+		return;
+	}
+    if (!CloseHandle(hInputRead)) {
 		display_error("execute_cmd - CloseHandle : Child Read", TRUE);
-    if (!CloseHandle(hErrorWrite)) 
+		return;
+	}
+    if (!CloseHandle(hErrorWrite)) {
 		display_error("execute_cmd - CloseHandle : Child Error", TRUE);
+		return;
+	}
 
 	// Duplicate ClientSocket for thread
 	WSADuplicateSocket( g_sClientSocket, GetCurrentProcessId(), &protoInfo );
 	g_sClientDupSocket = WSASocket( AF_INET, SOCK_STREAM, IPPROTO_TCP, &protoInfo, 0, 0 );
-	if( g_sClientDupSocket == INVALID_SOCKET )
+	if( g_sClientDupSocket == INVALID_SOCKET ) {
 		display_error("execute_cmd - WSASocket : Dup ClientSocket", TRUE );
+		return;
+	}
 
     // Launch the thread that gets the input and sends it to the child.
     hThread = CreateThread(
@@ -317,8 +344,10 @@ static void execute_cmd(char *sCmdline) {
         0,                          // the flags that control the creation of the thread
         &dTid);                      // a pointer to a variable that receives the thread identifier.
                                     //      If this parameter is NULL, the thread identifier is not returned.
-    if (hThread == NULL) 
+    if (hThread == NULL) {
 		display_error("execute_cmd - CreateThread : Write", TRUE);
+		return;
+	}
 
 	// Read the child's output
 	read_and_handle_output( hOutputRead );
@@ -331,14 +360,20 @@ static void execute_cmd(char *sCmdline) {
     send(g_sClientSocket, (const char*)&dEndSize, sizeof(dEndSize), 0);
 
     // Wait Thread which keep receiving & forwarding commands
-    if (WaitForSingleObject(hThread, INFINITE) == WAIT_FAILED)
+    if (WaitForSingleObject(hThread, INFINITE) == WAIT_FAILED) {
         display_error("WaitForSingleObject", TRUE);
+		return;
+	}
 
     // Close input and output handle
-    if (!CloseHandle(hOutputRead))
+    if (!CloseHandle(hOutputRead)) {
 		display_error("execute_cmd - CloseHandle : hOutputRead", TRUE);
-    if (!CloseHandle(hInputWrite))
+		return;
+	}
+    if (!CloseHandle(hInputWrite)) {
 		display_error("execute_cmd - CloseHandle : hInputWrite", TRUE);
+		return;
+	}
 }
 
 /// Do 'invoke' instruction.
@@ -1030,4 +1065,5 @@ int __cdecl main( int argc, char* argv[] )
 
     return 0;
 }
+
 

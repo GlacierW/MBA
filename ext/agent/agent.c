@@ -459,6 +459,9 @@ static MBA_AGENT_RETURN execute_guest_cmd_return( void ) {
                 goto exec_fail;
             }
 
+	    // --------Tell the server the transfer is done-------- //
+	    as_write( ac->sock, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS) );
+
             for( i = 0; i < n_rbytes; ++i )
                 agent_printf( "%c", msg_chunk[i] );
             msize -= n_rbytes;
