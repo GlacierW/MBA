@@ -59,6 +59,7 @@ void stream_file_read(R_STREAM_FILE *stream_file, int size, char *res)
 	char *pdata = 0;
 	char *tmp;
 
+        //printf("stream_file pos %d\n", stream_file->pos);
 	if (size == -1) {
 		pdata = (char *) malloc(stream_file->pages_amount * stream_file->page_size);
 		GET_PAGE(pn_start, off_start, stream_file->pos, stream_file->page_size);

@@ -8,6 +8,10 @@
 #include "pdb.h"
 #include "limits.h"
 #include "tpi.h"
+#include "dbi.h"
+#include "gdata.h"
+#include "stream_pe.h"
+#include "omap.h"
 
 #define PDB7_SIGNATURE "Microsoft C/C++ MSF 7.00\r\n\x1A" "DS\0\0\0"
 #define PDB7_SIGNATURE_LEN 32	
@@ -42,14 +46,14 @@ int addFieldToStruct(json_object *parent_obj, char* field_name, char* field_type
     printf("to_string()=%s\n", json_object_to_json_string(parent_obj));
 }
 
-
+typedef void (*parse_stream_)(void *stream, R_STREAM_FILE *stream_file);
 
 typedef struct {
 	int indx;
-	//parse_stream_ parse_stream;
+	parse_stream_ parse_stream;
 	void *stream;
 	EStream type;
-	//free_func free;
+	free_func free;
 } SStreamParseFunc;
 
 int count_pages(int length, int page_size) {
@@ -464,7 +468,67 @@ void dump_json(R_PDB *pdb) {
         json_object_to_file("type_definition.json", tyde_definition);
 }
 
+void dump_gvar_json(R_PDB *pdb)
+{
+	SStreamParseFunc *omap = 0, *sctns = 0, *sctns_orig = 0 , *gsym = 0, *tmp = 0;
+	SIMAGE_SECTION_HEADER *sctn_header = 0;
+	SGDATAStream *gsym_data_stream = 0;
+	SPEStream *pe_stream = 0;
+	SGlobal *gdata = 0;
+        sstream_parse_func_element *it=NULL;
 
+        //l = pdb->pdb_streams2;
+	//it = r_list_iterator (l);
+	//while (r_list_iter_next (it)) {
+        DL_FOREACH(pdb->pdb_streams2 , it){
+		//tmp = (SStreamParseFunc *) r_list_iter_get(it);
+                tmp = it->sstream_parse_func;
+		switch (tmp->type) {
+		case ePDB_STREAM_SECT__HDR_ORIG:
+			sctns_orig = tmp;
+			break;
+		case ePDB_STREAM_SECT_HDR:
+			sctns = tmp;
+			break;
+		case ePDB_STREAM_OMAP_FROM_SRC:
+			omap = tmp;
+			break;
+		case ePDB_STREAM_GSYM:
+			gsym = tmp;
+			break;
+		default:
+			break;
+		}
+	}
+
+        printf("sctns_orig %d, sctns %d, omap %d, gsym %d\n", sctns_orig, sctns, omap, gsym);
+        if (!gsym) {
+		printf ("there is no global symbols in current pdb\n");
+		return;
+	}
+
+        // TODO: Add omap support 
+  
+        gsym_data_stream = (SGDATAStream *) gsym->stream;
+	if ((omap != 0) && (sctns_orig != 0)) {
+		pe_stream = (SPEStream *) sctns_orig->stream;
+	} else {
+		pe_stream = (SPEStream *) sctns->stream;
+	}
+
+        //it = r_list_iterator(gsym_data_stream->globals_list);
+	//while (r_list_iter_next(it)) {
+        //        gdata = (SGlobal *) r_list_iter_get(it);
+        DL_FOREACH(gsym_data_stream->globals_list, gdata){
+                //sctn_header = r_list_get_n(pe_stream->sections_hdrs, (gdata->segment -1));
+                sctn_header = utarray_eltptr(pe_stream->sections_hdrs, (gdata->segment -1));
+                if (sctn_header) {
+			char *name = gdata->name.name;
+                        //printf("%x\n", sctn_header->virtual_address);
+                        printf("name found: %s %x %d %s\n", name, sctn_header->virtual_address+gdata->offset, gdata->symtype, sctn_header->name);
+                }
+        }
+}
 
 int init_pdb_parser(R_PDB *pdb, const char *filename) {
 	char *signature = NULL;
@@ -707,6 +771,74 @@ void parse_pdb_info_stream(void *parsed_pdb_stream, R_STREAM_FILE *stream) {
 	stream_file_read (stream, tmp->/*data.*/cb_names, tmp->/*data.*/names);
 }
 
+static void find_indx_in_list(sstream_parse_func_element *l, int index, SStreamParseFunc **res) {
+	//SStreamParseFunc *stream_parse_func = NULL;
+        sstream_parse_func_element *stream_parse_func = NULL;
+	//RListIter *it = 0;
+
+	*res = 0;
+	//it = r_list_iterator(l);
+	//while (r_list_iter_next(it)) {
+        printf("start search %p\n", l);
+        DL_FOREACH( l, stream_parse_func){
+		//stream_parse_func = (SStreamParseFunc *) r_list_iter_get(it);
+                printf("this stream %d\n", ((SStreamParseFunc*)(stream_parse_func->sstream_parse_func))->indx);
+		if (index == ((SStreamParseFunc*)(stream_parse_func->sstream_parse_func))->indx) {
+			*res = stream_parse_func->sstream_parse_func;
+                        printf("%d index found\n", index);
+			return;
+		}
+	}
+}
+
+#define ADD_INDX_TO_LIST(list, index, stream_size, stream_type, free_func, parse_func) { \
+	if (index != -1) { \
+                SStreamParseFunc *stream_parse_func = (SStreamParseFunc*)calloc(1, sizeof(SStreamParseFunc));\
+		if (!stream_parse_func) return; \
+		stream_parse_func->indx = (index); \
+		stream_parse_func->type = (stream_type); \
+		stream_parse_func->parse_stream = (parse_func); \
+		stream_parse_func->free = (free_func); \
+		if (stream_size) { \
+			stream_parse_func->stream = malloc (stream_size); \
+			if (!stream_parse_func->stream) { \
+			        free(stream_parse_func); \
+				return; \
+			} \
+		} else { \
+			stream_parse_func->stream = 0; \
+		} \
+                sstream_parse_func_element* sstream_parse_ele = (sstream_parse_func_element*)calloc(1, sizeof(sstream_parse_func_element));\
+                sstream_parse_ele->sstream_parse_func = stream_parse_func;\
+                DL_APPEND(list, sstream_parse_ele);\
+                printf("add stream %d\n", stream_parse_func->indx);\
+	} \
+}
+
+/*
+ele = (pdb_streams_element*)calloc(1, sizeof(pdb_streams_element));
+                        ele->pdb_stream = pdb_info_stream;
+*/
+
+
+//static void fill_list_for_stream_parsing(RList *l, SDbiStream *dbi_stream) {
+static void fill_list_for_stream_parsing(sstream_parse_func_element **l, SDbiStream *dbi_stream) {
+    printf("[fill_list_for_stream_parsing] %d\n", dbi_stream->dbi_header.symrecStream);
+    ADD_INDX_TO_LIST(*l, dbi_stream->dbi_header.symrecStream, sizeof(SGDATAStream),
+			ePDB_STREAM_GSYM, free_gdata_stream, parse_gdata_stream);
+    printf("[fill_list_for_stream_parsing] %d %d\n", dbi_stream->dbg_header.sn_section_hdr, dbi_stream->dbg_header.sn_section_hdr_orig);
+    ADD_INDX_TO_LIST(*l, dbi_stream->dbg_header.sn_section_hdr, sizeof(SPEStream),
+					 ePDB_STREAM_SECT_HDR, free_pe_stream, parse_pe_stream);
+    ADD_INDX_TO_LIST(*l, dbi_stream->dbg_header.sn_section_hdr_orig, sizeof(SPEStream),
+					 ePDB_STREAM_SECT__HDR_ORIG, free_pe_stream, parse_pe_stream);
+    printf("[fill_list_for_stream_parsing] %d %d\n", dbi_stream->dbg_header.sn_omap_to_src, dbi_stream->dbg_header.sn_omap_from_src);
+
+    ADD_INDX_TO_LIST(*l, dbi_stream->dbg_header.sn_omap_to_src, sizeof(SOmapStream),
+					 ePDB_STREAM_OMAP_TO_SRC, free_omap_stream, parse_omap_stream);
+    ADD_INDX_TO_LIST(*l, dbi_stream->dbg_header.sn_omap_from_src, sizeof(SOmapStream),
+					 ePDB_STREAM_OMAP_FROM_SRC, free_omap_stream, parse_omap_stream);
+}
+
 int pdb_read_root(R_PDB *pdb) {
 	int i = 0;
 
@@ -733,6 +865,7 @@ int pdb_read_root(R_PDB *pdb) {
 	//it = r_list_iterator(root_stream->streams_list);
 	//while (r_list_iter_next(it)) {
 	//	page = (SPage*) r_list_iter_get(it);
+                stream_parse_func = 0;
 		init_r_stream_file(&stream_file, pdb->fp, (int *)page->stream_pages,
 						   page->num_pages/*root_stream->pdb_stream.pages_amount*/,
 						   page->stream_size,
@@ -775,27 +908,40 @@ int pdb_read_root(R_PDB *pdb) {
 			break;
 		case ePDB_STREAM_DBI:
 		{
-                        /*
-			SDbiStream *dbi_stream = R_NEW0 (SDbiStream);
+                        
+			//SDbiStream *dbi_stream = R_NEW0 (SDbiStream);
+                        SDbiStream *dbi_stream = (SDbiStream*)calloc(1,sizeof(SDbiStream));
 			init_dbi_stream(dbi_stream);
+                        
 			parse_dbi_stream(dbi_stream, &stream_file);
-			r_list_append(pList, dbi_stream);
+			
+                        //r_list_append(pList, dbi_stream);
+                        ele = (pdb_streams_element*)calloc(1, sizeof(pdb_streams_element));
+                        ele->pdb_stream = dbi_stream;
+                        DL_APPEND(pdb->pdb_streams, ele);
+
+                        /* 
 			pdb->pdb_streams2 = r_list_new();
 			fill_list_for_stream_parsing(pdb->pdb_streams2, dbi_stream);
                         */
+                        pdb->pdb_streams2 = NULL;
+                        fill_list_for_stream_parsing(&(pdb->pdb_streams2), dbi_stream);
 			break;
 		}
 		default:
-                        /*
+                        printf("Try to find %d stream\n", i);
 			find_indx_in_list(pdb->pdb_streams2, i, &stream_parse_func);
-			if (stream_parse_func) {
+			
+                        if (stream_parse_func) {
+                                printf("stream parse func found!!!!!\n");
 				if (stream_parse_func->parse_stream) {
 					stream_parse_func->parse_stream(stream_parse_func->stream,
 													&stream_file);
 					break;
 				}
 			}
-
+ 
+                        /*
 			pdb_stream = R_NEW0 (R_PDB_STREAM);
 			init_r_pdb_stream(pdb_stream, pdb->buf, (int *)page->stream_pages,
 							  root_stream->pdb_stream.pages_amount, i,

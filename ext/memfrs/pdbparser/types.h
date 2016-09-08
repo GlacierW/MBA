@@ -1015,3 +1015,146 @@ typedef enum {
 	eMTpureintro = 0x06,
 	eMT_MAX
 } EMPROP;
+
+/*================================================================================================*/
+
+typedef enum {
+	eIMAGE_FILE_MACHINE_UNKNOWN = 0x0,
+	eIMAGE_FILE_MACHINE_I386 = 0x014c,
+	eIMAGE_FILE_MACHINE_IA64 = 0x0200,
+	eIMAGE_FILE_MACHINE_AMD64 = 0x8664,
+	eMaxMachine
+} EMachine;
+
+#pragma pack(push, 1)
+typedef struct {
+	unsigned int magic;
+	unsigned int version;
+	unsigned int age;
+	short gssymStream;
+	unsigned short vers;
+	short pssymStream;
+	unsigned short pdbver;
+	short symrecStream;
+	unsigned short pdbver2;
+	unsigned int module_size;
+	unsigned int seccon_size;
+	unsigned int secmap_size;
+	unsigned int filinf_size;
+	unsigned int tsmap_size;
+	unsigned int mfc_index;
+	unsigned int dbghdr_size;
+	unsigned int ecinfo_size;
+	unsigned short flags;
+	EMachine machine; // read just 2 bytes
+	unsigned int resvd;
+} SDBIHeader;
+#pragma pack(pop)
+
+typedef struct {
+	short sn_fpo;
+	short sn_exception;
+	short sn_fixup;
+	short sn_omap_to_src;
+	short sn_omap_from_src;
+	short sn_section_hdr;
+	short sn_token_rid_map;
+	short sn_xdata;
+	short sn_pdata;
+	short sn_new_fpo;
+	short sn_section_hdr_orig;
+} SDbiDbgHeader;
+
+typedef struct {
+	short section;
+	short padding1;
+	int offset;
+	int size;
+	unsigned int flags;
+	int module;
+	short padding2;
+	unsigned int data_crc;
+	unsigned int reloc_crc;
+} SSymbolRange;
+
+typedef struct {
+	unsigned int opened;
+	SSymbolRange range;
+	unsigned short flags;
+	short stream;
+	unsigned int symSize;
+	unsigned int oldLineSize;
+	unsigned int lineSize;
+	short nSrcFiles;
+	short padding1;
+	unsigned int offsets;
+	unsigned int niSource;
+	unsigned int niCompiler;
+	SCString modName;
+	SCString objName;
+} SDBIExHeader;
+
+typedef struct {
+	SDBIHeader dbi_header;
+	SDbiDbgHeader dbg_header;
+	//RList *dbiexhdrs;
+        SDBIExHeader* dbiexhdrs;
+
+	free_func free_;
+} SDbiStream;
+
+// GDATA structrens
+typedef struct SGlobal{
+        unsigned short leaf_type;
+        unsigned int symtype;
+        unsigned int offset;
+        unsigned short segment;
+        SCString name;
+        struct SGlobal *prev;
+        struct SGlobal *next;
+} SGlobal;
+
+typedef struct {
+	//RList *globals_list;
+        SGlobal *globals_list;
+} SGDATAStream;
+// end GDATA structures
+
+
+// PE stream structures
+typedef union {
+	unsigned int physical_address;
+	unsigned int virtual_address;
+} UMISC;
+
+typedef struct {
+	char name[8];
+	UMISC misc;
+	unsigned int virtual_address;
+	unsigned int size_of_raw_data;
+	unsigned int pointer_to_raw_data;
+	unsigned int pointer_to_relocations;
+	unsigned int pointer_to_line_numbers;
+	unsigned short number_of_relocations;
+	unsigned short number_of_line_numbers;
+	unsigned int charactestics;
+} SIMAGE_SECTION_HEADER;
+
+typedef struct {
+	//RList *sections_hdrs;
+        UT_array *sections_hdrs;
+} SPEStream;
+// end PE stream structures
+
+// omap structures
+typedef struct {
+	unsigned int from;
+	unsigned int to;
+} SOmapEntry;
+
+typedef struct {
+	//RList *omap_entries;
+	unsigned int *froms;
+} SOmapStream;
+// end of omap structures
+

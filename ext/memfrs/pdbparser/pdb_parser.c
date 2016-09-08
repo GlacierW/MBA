@@ -12,6 +12,7 @@ int main(int argc, char *argv[])
     pdb7_parse(&pdb);
     //print_types(&pdb, 'j');    
     dump_json(&pdb);
+    dump_gvar_json(&pdb);
 }
 
 

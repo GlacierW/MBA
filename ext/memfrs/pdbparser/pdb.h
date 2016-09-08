@@ -12,6 +12,14 @@ typedef struct pdb_streams_element {
 } pdb_streams_element;
 
 
+//TODO: Use one structure to wrap all utlist
+// SStreamParseFunc
+typedef struct sstream_parse_func_element {
+    void *sstream_parse_func; // Pointer to the different type of stream
+    struct sstream_parse_func_element *prev; /* needed for a doubly-linked list only */
+    struct sstream_parse_func_element *next; /* needed for singly- or doubly-linked lists */
+} sstream_parse_func_element;
+
 typedef struct R_PDB {
 	int (*pdb_parse)(struct R_PDB *pdb);
 	void (*finish_pdb_parse)(struct R_PDB *pdb);
@@ -23,6 +31,7 @@ typedef struct R_PDB {
 	//RList *pdb_streams;
         pdb_streams_element *pdb_streams;
 	//RList *pdb_streams2;
+        sstream_parse_func_element *pdb_streams2;
 	//RBuffer *buf; // mmap of file
 //	int curr;
 
