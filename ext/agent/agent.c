@@ -3,6 +3,7 @@
  *
  *  Copyright (c)   2016 Chiawei Wang
  *                  2016 Chuan-Hua, Cheng
+ *                  2016 JuiChien, Jao
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -769,7 +770,7 @@ void agent_handle_exec_command( const char* cmdline ) {
 
     // forward execute command to agent server
     as_write( ac->sock, cmd_emit, SZ_MAX_COMMAND );
-}       
+}    
 
 MBA_AGENT_RETURN agent_import( const char* dst_path, const char* src_path ) {
 
