@@ -1,5 +1,18 @@
 #define exit(x) mock_ptr->exit(x)
 #define getpagesize() mock_ptr->getpagesize()
 #define calloc(x, y) mock_ptr->calloc(x, y)
+#define fflush(x) mock_ptr->fflush(x)
+#define vfprintf(x, y, z) mock_ptr->vfprintf(x, y, z)
+#define fopen(x, y) mock_ptr->fopen(x,y)
+#define dift_rec_enqueue(x) mock_ptr->dift_rec_enqueue(x)
+#define is_valid_tag(x) mock_ptr->is_valid_tag(x)
+#define is_valid_mem_range(x, y) mock_ptr->is_valid_mem_range(x, y)
+#define is_valid_disk_range(x, y) mock_ptr->is_valid_disk_range(x, y)
+#define pre_generate_routine() mock_ptr->pre_generate_routine() 
+#define init_queue() mock_ptr->init_queue()    
+#define init_case_mapping() mock_ptr->init_case_mapping()    
+#define init_dift_context(x) mock_ptr->init_dift_context(x) 
+#define pthread_create(x,y,z,a) mock_ptr->pthread_create(x,y,z,a)
 
 #define dift_log(x, ...) mock_ptr->dift_log(x)
+

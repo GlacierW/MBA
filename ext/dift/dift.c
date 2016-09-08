@@ -627,7 +627,7 @@ static void gen_rt_enqueue_waddr( void ) {
 }
 
 // DIFT Initialization 
-static void pre_generate_routine( void ) {
+static void _MOCKABLE(pre_generate_routine)( void ) {
 
     uintptr_t start, end;
     uint64_t page_size;
@@ -660,7 +660,7 @@ static void pre_generate_routine( void ) {
             PROT_READ | PROT_WRITE | PROT_EXEC);
 }
 
-static void init_queue( void ) {
+static void _MOCKABLE(init_queue)( void ) {
 
     int i;
     for( i = 0; i < Q_CHUNKS_SIZE; ++i ) {
@@ -676,7 +676,7 @@ static void init_queue( void ) {
     prev_head = 0;
 }
 
-static void init_case_mapping( void ) {
+static void _MOCKABLE(init_case_mapping)( void ) {
     uint32_t j;
     uint16_t i;
     for(j = 0 ; j < sizeof(case_mapping) ; j++)
@@ -685,7 +685,7 @@ static void init_case_mapping( void ) {
         case_mapping[case_list[i]] = i;
 }
 
-static void init_dift_context( dift_context *dc ) {
+static void _MOCKABLE(init_dift_context)( dift_context *dc ) {
 
     bzero( dc, sizeof(dift_context) );
     
@@ -995,7 +995,7 @@ static void* analysis_mainloop( void* arg ) {
 }
 
 // DIFT Private API - taint operand validity check
-static int is_valid_tag( const CONTAMINATION_RECORD tag ) {
+static int _MOCKABLE(is_valid_tag)( const CONTAMINATION_RECORD tag ) {
 
     CONTAMINATION_RECORD mask = 0x7f;
 
@@ -1005,16 +1005,16 @@ static int is_valid_tag( const CONTAMINATION_RECORD tag ) {
     return true;
 }
 
-static int is_valid_mem_range( uint64_t addr, uint64_t len ) {
+static int _MOCKABLE(is_valid_mem_range)( uint64_t addr, uint64_t len ) {
 
-    if( phys_ram_size - addr < len )
+    if( phys_ram_size - addr < len || addr > phys_ram_size )
         return false;
     return true;
 }
 
-static int is_valid_disk_range( uint64_t haddr, uint64_t len ) {
+static int _MOCKABLE(is_valid_disk_range)( uint64_t haddr, uint64_t len ) {
 
-    if( HD_MAX_SIZE - haddr < len )
+    if( HD_MAX_SIZE - haddr < len || haddr > HD_MAX_SIZE)
         return false;
     return true;
 }
@@ -1022,7 +1022,6 @@ static int is_valid_disk_range( uint64_t haddr, uint64_t len ) {
 
 // DIFT Public API - All of the public APIs are named with the prefix "dift_"
 int _MOCKABLE(dift_log)( const char* fmt, ... ) {
-
     int ret = -1;
 
     va_list ap;
@@ -1037,7 +1036,7 @@ int _MOCKABLE(dift_log)( const char* fmt, ... ) {
     return ret;
 }
 
-void dift_rec_enqueue( uint64_t data_in ) {
+void _MOCKABLE(dift_rec_enqueue)( uint64_t data_in ) {
 
     *(enqptr++) = data_in;
 
