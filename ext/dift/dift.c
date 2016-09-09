@@ -330,7 +330,7 @@ const char* XMM_NAME[] = {
 };
 
 // Pre-generate routine for DIFT TCG usage
-static void gen_rt_finish_curr_block( void ) {
+static void _MOCKABLE(gen_rt_finish_curr_block)( void ) {
     
     uint8_t* s;
 
@@ -371,7 +371,7 @@ static void gen_rt_finish_curr_block( void ) {
     out8(s, 0xc3);
 }
 
-static void gen_rt_get_next_enqptr( void ) {
+static void _MOCKABLE(gen_rt_get_next_enqptr)( void ) {
 
     uint8_t* s;
 
@@ -459,7 +459,7 @@ static void gen_rt_get_next_enqptr( void ) {
     out8(s, 0xc3);
 }
 
-static void gen_rt_enqueue_one_rec( void ) {
+static void _MOCKABLE(gen_rt_enqueue_one_rec)( void ) {
 
     uint8_t* s;
     uint8_t* label2_ptr;
@@ -504,7 +504,7 @@ static void gen_rt_enqueue_one_rec( void ) {
     out8(s, 0xc3);      // ret
 }
 
-static void gen_rt_enqueue_raddr( void ) {
+static void _MOCKABLE(gen_rt_enqueue_raddr)( void ) {
 
     uint8_t* s;
     uint8_t* label2_ptr;
@@ -565,7 +565,7 @@ static void gen_rt_enqueue_raddr( void ) {
     out8(s, 0xc3);      // ret
 }
 
-static void gen_rt_enqueue_waddr( void ) {
+static void _MOCKABLE(gen_rt_enqueue_waddr)( void ) {
     
     uint8_t* s;
     uint8_t* label2_ptr;
@@ -717,7 +717,7 @@ static void init_dift_context( dift_context *dc ) {
 }
 
 // DIFT Private API - Queue manipulation
-static uint64_t* next_block( dift_context *dc ) {
+static uint64_t* _MOCKABLE(next_block)( dift_context *dc ) {
 
     q_chunks_flag[dc->prev_tail] = CHUNK_AVAILABLE;
     while(unlikely(q_chunks_flag[dc->tail] != CHUNK_FILLED))
@@ -746,7 +746,7 @@ static uint64_t rec_dequeue( dift_context* dc ) {
     return ret;
 }
 
-static void kick_enqptr(void) {
+static void _MOCKABLE(kick_enqptr)(void) {
 
     if(((uint64_t)enqptr & ~CHUNK_BITSIZEMASK) == 0)
         return;
@@ -766,7 +766,7 @@ static void kick_enqptr(void) {
     head = (head + 1) % Q_CHUNKS_SIZE;
 }
 
-static void wait_dift_analysis( void ) { 
+static void _MOCKABLE(wait_dift_analysis)( void ) { 
     while( !dift_thread_ok_signal );
 }
 
@@ -788,7 +788,7 @@ static inline CONTAMINATION_RECORD get_mem_dirty( dift_context* dc, uint64_t add
 }
 
 // DIFT Private API - Disk taint operation
-static CONTAMINATION_RECORD* alloc_hd_dirty_page( void ) {
+static CONTAMINATION_RECORD* _MOCKABLE(alloc_hd_dirty_page)( void ) {
  
     CONTAMINATION_RECORD* rec = (CONTAMINATION_RECORD*)calloc( (1 << HD_L2_INDEX_BITS), sizeof(CONTAMINATION_RECORD) );
 
@@ -1037,7 +1037,7 @@ int _MOCKABLE(dift_log)( const char* fmt, ... ) {
     return ret;
 }
 
-void dift_rec_enqueue( uint64_t data_in ) {
+void _MOCKABLE(dift_rec_enqueue)( uint64_t data_in ) {
 
     *(enqptr++) = data_in;
 

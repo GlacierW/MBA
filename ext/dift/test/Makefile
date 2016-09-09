@@ -1,4 +1,3 @@
-AR        = ar
 CPP       = g++
 OBJ       = gtest_main.o dift_unittest.o $(GTEST_LIB)
 LINKOBJ   = gtest_main.o dift_unittest.o $(GTEST_LIB)
@@ -6,8 +5,6 @@ LINKFLAGS = -lpthread -lgcov
 BIN_DEST  = bin
 BIN       = $(BIN_DEST)/test_dift
 CXXFLAGS  = -Wall -DCONFIG_DIFT_TEST -isystem ${GTEST_DIR}/include -isystem ${GMOCK_DIR}/include
-RM        = rm -f
-RMDIR     = rm -rf
 GCOV_FILE = *.gcno *.gcda *.gcov
 
 .PHONY: all clean
@@ -21,7 +18,7 @@ $(BIN): $(OBJ)
 	mkdir -p $(BIN_DEST)
 	$(CPP) $(LINKOBJ) -o $(BIN) $(LIBS) $(LINKFLAGS)
 
-gtest_main.o: gtest_main.cc $(GTEST_SOURCE)
+gtest_main.o: gtest_main.cc
 	$(CPP) -c gtest_main.cc -o gtest_main.o $(CXXFLAGS)
 
 dift_unittest.o: test.h ../dift.c dift_unittest.cc
