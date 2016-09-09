@@ -33,7 +33,7 @@ struct hook_functions {
     virtual size_t getpagesize() = 0;
     virtual void* calloc( size_t, size_t ) = 0;
     virtual int dift_log( char const * ) = 0;
-    virtual uint64_t* next_block( dift_context* ) = 0;
+    virtual void next_block( dift_context* ) = 0;
     virtual uint8_t* alloc_hd_dirty_page() = 0;
     virtual void kick_enqptr() = 0;
     virtual void wait_dift_analysis() = 0;
@@ -44,13 +44,24 @@ struct hook_functions {
     virtual void gen_rt_enqueue_raddr() = 0;
     virtual void gen_rt_enqueue_waddr() = 0;
     virtual int mprotect( void*, size_t, int ) = 0;
+    virtual int fflush(FILE *) = 0;
+    virtual int vfprintf(FILE *, const char *, va_list) = 0;
+    virtual FILE* fopen(const char *, const char *) = 0;
+    virtual int is_valid_tag(const uint8_t) = 0;
+    virtual int is_valid_mem_range(uint64_t, uint64_t) = 0;
+    virtual int is_valid_disk_range(uint64_t, uint64_t) = 0;
+    virtual void pre_generate_routine() = 0;
+    virtual void init_queue() = 0;
+    virtual void init_case_mapping() = 0;
+    virtual void init_dift_context(dift_context*) = 0;
+    virtual int pthread_create(pthread_t*, const pthread_attr_t*, void*(*)(void*), void* ) = 0;
 };
 struct mock_functions : hook_functions {
     MOCK_METHOD1( exit, void(int) );
     MOCK_METHOD0( getpagesize, size_t() );
     MOCK_METHOD2( calloc, void*(size_t, size_t) );
     MOCK_METHOD1( dift_log, int(char const *) );
-    MOCK_METHOD1( next_block, uint64_t*(dift_context*) );
+    MOCK_METHOD1( next_block, void(dift_context*) );
     MOCK_METHOD0( alloc_hd_dirty_page, uint8_t*() );
     MOCK_METHOD0( kick_enqptr, void() );
     MOCK_METHOD0( wait_dift_analysis, void() );
@@ -61,6 +72,17 @@ struct mock_functions : hook_functions {
     MOCK_METHOD0( gen_rt_enqueue_raddr, void() );
     MOCK_METHOD0( gen_rt_enqueue_waddr, void() );
     MOCK_METHOD3( mprotect, int(void*, size_t, int) );
+    MOCK_METHOD1(fflush, int(FILE *));
+    MOCK_METHOD3(vfprintf, int(FILE *, const char *, va_list));
+    MOCK_METHOD2(fopen, FILE*(const char *, const char * ));
+    MOCK_METHOD1(is_valid_tag, int(const uint8_t));
+    MOCK_METHOD2(is_valid_mem_range, int(uint64_t, uint64_t));
+    MOCK_METHOD2(is_valid_disk_range, int(uint64_t, uint64_t));
+    MOCK_METHOD0(pre_generate_routine, void());
+    MOCK_METHOD0(init_queue, void());
+    MOCK_METHOD0(init_case_mapping, void());
+    MOCK_METHOD1(init_dift_context, void(dift_context*));
+    MOCK_METHOD4(pthread_create, int(pthread_t*, const pthread_attr_t*, void*(*)(void*), void*));
 } *mock_ptr;
 
 extern "C" {
@@ -81,6 +103,17 @@ extern "C" {
 #undef gen_rt_enqueue_raddr
 #undef gen_rt_enqueue_waddr
 #undef mprotect
+#undef fflush
+#undef vfprintf
+#undef fopen
+#undef is_valid_tag
+#undef is_valid_mem_range
+#undef is_valid_disk_range
+#undef pre_generate_routine
+#undef init_queue
+#undef init_case_mapping
+#undef init_dift_context
+#undef pthread_create
 
 #define GEN_MOCK_OBJECT( x )  mock_functions x; mock_ptr = &x;
 #define GEN_NICEMOCK_OBJECT( x )  NiceMock<mock_functions> x; mock_ptr = &x;
@@ -97,7 +130,7 @@ protected:
         EXPECT_CALL( mock, getpagesize() ).WillOnce( Return(0x1000) );
         phys_ram_size = 0x10000;
 
-        init_dift_context( dc );
+        _init_dift_context( dc );
     }
     virtual void TearDown() {
         free( dc->mem_dirty_tbl );
@@ -117,7 +150,7 @@ TEST( DiftContextInitialization, NORMAL ) {
     .Times( 1 ).WillOnce( Invoke(calloc) );
     EXPECT_CALL( mock, getpagesize() ).Times( 1 ).WillOnce( Return(pagesize) );
 
-    init_dift_context( dc );
+    _init_dift_context( dc );
 
     size_t count_checked_bytes = 0;
     #define ASSERT_EQ_ACCU_SIZE( expect, real )\
@@ -169,10 +202,10 @@ TEST( DiftContextInitialization, CALLOC_FAIL ) {
     EXPECT_CALL( mock, exit(1) ).WillOnce( Throw(exception) );
 
     ASSERT_ANY_THROW( {
-        init_dift_context( dc );
+        _init_dift_context( dc );
     } );
     ASSERT_ANY_THROW( {
-        init_dift_context( dc );
+        _init_dift_context( dc );
     } );
 }
 
@@ -278,7 +311,7 @@ TEST( RecordCase, PATTERN_CHECK ) {
 }
 
 TEST( RecordCase, INIT_CASE_MAPPING ) {
-    init_case_mapping();
+    _init_case_mapping();
 
     ASSERT_EQ( INSIDE_REG_ASSIGN, case_mapping[((0xc0 | OPT_REG << 4 | OPT_REG << 2 | MO_8) << 8) | EFFECT_INSIDE_REG | EFFECT_ASSIGN] );
     ASSERT_EQ( REG_REG_MIX_APPEND_MO16, case_mapping[((0xc0 | OPT_REG << 4 | OPT_REG << 2 | MO_16) << 8) | EFFECT_MIX | EFFECT_APPEND] );
@@ -342,7 +375,7 @@ TEST( RecordCase, GET_CASE_NB ) {
 
 class RecordQueue : public FixtureDiftContextInitialized{};
 TEST_F( RecordQueue, INIT_QUEUE ) {
-    init_queue();
+    _init_queue();
 
     ASSERT_EQ( 1, head );
     ASSERT_EQ( 0, prev_head );
@@ -363,7 +396,7 @@ TEST_F( RecordQueue, ENQUEUE ) {
     .WillRepeatedly( Invoke(calloc) );
     EXPECT_CALL( mock, getpagesize() ).WillRepeatedly( Return(getpagesize()) );
 
-    init_dift_context( dc );
+    _init_dift_context( dc );
     uint64_t const rec = 0x1234567812345678;
 
     EXPECT_EQ( 0, prev_head );
@@ -460,8 +493,10 @@ TEST_F( RecordQueue, KICK_ENQPTR) {
 }
 
 class Tainting :public FixtureDiftContextInitialized{};
-TEST_F( Tainting, SET_MEN_DIRTY ) {
+TEST_F( Tainting, SET_MEM_DIRTY ) {
+    GEN_MOCK_OBJECT( mock );
     uint64_t const test_addr = 0x0000000000000000;
+    EXPECT_CALL( mock, is_valid_mem_range(_,_) ).WillRepeatedly( Invoke(_is_valid_mem_range) );
 
     ASSERT_EQ( 0x0, get_mem_dirty(dc, test_addr) )
         << "should be clear before taint test";
@@ -476,8 +511,11 @@ TEST_F( Tainting, SET_MEN_DIRTY ) {
     ASSERT_EQ( 0x1, get_mem_dirty(dc, test_addr) );
 }
 
-TEST_F( Tainting, GET_MEN_DIRTY ) {
+TEST_F( Tainting, GET_MEM_DIRTY ) {
+    GEN_MOCK_OBJECT( mock );
     uint64_t const test_addr = 0x0;
+    EXPECT_CALL( mock, is_valid_mem_range(_,_) ).WillRepeatedly( Invoke(_is_valid_mem_range) );
+
     ASSERT_EQ( 0x0, get_mem_dirty(dc, test_addr) );
 
     set_mem_dirty( dc, test_addr, 0x4, 0 );
@@ -491,6 +529,7 @@ TEST_F( Tainting, GET_MEN_DIRTY ) {
 TEST_F( Tainting, SET_HD_DIRTY ) {
     GEN_MOCK_OBJECT( mock );
 
+    EXPECT_CALL( mock, is_valid_disk_range(_,_) ).WillRepeatedly( Return(1) );
     CONTAMINATION_RECORD page[HD_L2_SIZE] = {};
     EXPECT_CALL( mock, alloc_hd_dirty_page() ).WillOnce(Return(page) );
     uint64_t const test_addr = 0x0000000000000000;
@@ -511,6 +550,7 @@ TEST_F( Tainting, SET_HD_DIRTY ) {
 TEST_F( Tainting, GET_HD_DIRTY ) {
     GEN_MOCK_OBJECT( mock );
     uint64_t const test_addr = 0x0000000000000000;
+    EXPECT_CALL( mock, is_valid_disk_range(_,_) ).WillRepeatedly( Return(1) );
 
     ASSERT_EQ( 0x0, get_hd_dirty(dc, test_addr) );
 
@@ -527,6 +567,7 @@ TEST_F( Tainting, GET_HD_DIRTY ) {
 
 TEST_F( Tainting, MEM_TO_HD ) {
     GEN_MOCK_OBJECT( mock );
+    EXPECT_CALL( mock, is_valid_mem_range(_,_) ).WillRepeatedly( Return(1) );
 
     uint64_t const tag = SHARE_VALUE_NOT_ZERO;
     uint64_t const hd_addr        = 0x0000000000000000;
@@ -535,6 +576,7 @@ TEST_F( Tainting, MEM_TO_HD ) {
     ASSERT_EQ( NULL, dc->hd_l1_dirty_tbl[HD_L1_INDEX(hd_addr)] )
         << "check HD clear before test";
 
+    EXPECT_CALL( mock, is_valid_disk_range(_,_) ).WillRepeatedly( Return(1) );
     CONTAMINATION_RECORD page[ HD_L2_SIZE ] = {};
     EXPECT_CALL( mock, alloc_hd_dirty_page() ).WillOnce( Return(page) );
 
@@ -566,6 +608,7 @@ TEST_F( Tainting, MEM_TO_HD ) {
 
 TEST_F( Tainting, HD_TO_MEM ) {
     GEN_MOCK_OBJECT( mock );
+    EXPECT_CALL( mock, is_valid_mem_range(_,_) ).WillRepeatedly( Return(1) );
 
     uint64_t const tag = SHARE_VALUE_NOT_ZERO;
     uint64_t const mem_addr = 0x0000000000000000;
@@ -574,6 +617,7 @@ TEST_F( Tainting, HD_TO_MEM ) {
     ASSERT_EQ( 0x0, get_mem_dirty(dc, mem_addr) )
         << "check MEM clear before test";
 
+    EXPECT_CALL( mock, is_valid_disk_range(_,_) ).WillRepeatedly( Return(1) );
     CONTAMINATION_RECORD page[HD_L2_SIZE] = {};
     EXPECT_CALL( mock, alloc_hd_dirty_page() ).WillOnce( Return(page) );
 
@@ -599,6 +643,21 @@ TEST_F( Tainting, HD_TO_MEM ) {
     ASSERT_EQ( tag, get_hd_dirty(dc, last_mem_addr) );
 }
 
+TEST_F (Tainting, INVALID_RANGE ) {
+    GEN_MOCK_OBJECT( mock );
+
+    uint64_t const tag = SHARE_VALUE_NOT_ZERO;
+    uint64_t const mem_addr = SHARE_VALUE_NOT_ZERO;
+    uint64_t const hd_addr  = SHARE_VALUE_NOT_ZERO;
+
+    ON_CALL( mock, is_valid_mem_range(_,_) ).WillByDefault( Return(1) );
+    ON_CALL( mock, is_valid_disk_range(_,_) ).WillByDefault( Return(0) );
+    copy_contamination_mem_hd( dc, mem_addr, hd_addr, 1 );
+
+    ON_CALL( mock, is_valid_mem_range(_,_) ).WillByDefault( Return(0) );
+    ON_CALL( mock, is_valid_disk_range(_,_) ).WillByDefault( Return(1) );
+    copy_contamination_mem_hd( dc, mem_addr, hd_addr, 1 );
+}
 TEST( Others, DIFT_SYNC) {
     GEN_MOCK_OBJECT( mock );
     InSequence dummy;
@@ -669,7 +728,7 @@ TEST( PregenedRoutine, CONTENT ) {
     EXPECT_CALL( mock, mprotect(_, _, _));
     // This test require human recognition due to the ad-hoc string format mapping
     memset( pre_generated_routine, 0, sizeof(pre_generated_routine) );
-    pre_generate_routine();
+    _pre_generate_routine();
 
     // Ordered by function pointer
     const char* func_name[] = {
@@ -691,6 +750,21 @@ TEST( PregenedRoutine, CONTENT ) {
         dump_func_insn( func_name[i], func_ptr[i] );
 }
 
+TEST( PregenedRoutine, MPROTECT_FAIL ) {
+    GEN_NICEMOCK_OBJECT( mock );
+
+    EXPECT_CALL( mock, gen_rt_get_next_enqptr() );
+    EXPECT_CALL( mock, gen_rt_finish_curr_block() );
+    EXPECT_CALL( mock, gen_rt_enqueue_one_rec() );
+    EXPECT_CALL( mock, gen_rt_enqueue_raddr() );
+    EXPECT_CALL( mock, gen_rt_enqueue_waddr() );
+    EXPECT_CALL( mock, mprotect(_, _, _)).WillOnce( Return(-1) );
+    EXPECT_CALL( mock, exit(1) ).WillOnce( Throw(1) );
+    // This test require human recognition due to the ad-hoc string format mapping
+    memset( pre_generated_routine, 0, sizeof(pre_generated_routine) );
+    ASSERT_ANY_THROW( {_pre_generate_routine();} );
+}
+
 ACTION_P(ExpectArg0Divisible, n) { EXPECT_EQ(0, (uint64_t)arg0%n); }
 ACTION_P(ExpectArg1Divisible, n) { EXPECT_EQ(0, (uint64_t)arg1%n); }
 class ParameterizedPagesize : public TestWithParam<int> {};
@@ -710,6 +784,376 @@ TEST_P( ParameterizedPagesize, MPROTECT ) {
             ExpectArg1Divisible(pagesize)
             ));
     // This test require human recognition due to the ad-hoc string format mapping
-    pre_generate_routine();
+    _pre_generate_routine();
 }
 INSTANTIATE_TEST_CASE_P( dummy, ParameterizedPagesize, Range(1, 5) );
+
+TEST( DiftUnitTest, MEM_RANGE ) {
+    phys_ram_size = 0x0100;
+    bool valid_mem_range = _is_valid_mem_range( 0x0, 0 );
+    ASSERT_EQ( true, valid_mem_range );
+
+    valid_mem_range = _is_valid_mem_range( 0x100, 0 );
+    ASSERT_EQ( true, valid_mem_range );
+
+    valid_mem_range = _is_valid_mem_range( 0x0, 0x101 );
+    ASSERT_EQ( false, valid_mem_range );
+
+    valid_mem_range = _is_valid_mem_range( 0x100, 0x1 );
+    ASSERT_EQ( false, valid_mem_range );
+
+    valid_mem_range = _is_valid_mem_range( 0x101, 0x1 );
+    ASSERT_EQ( false, valid_mem_range );
+}
+
+TEST( DiftUnitTest, HD_RANGE ) {
+    // HD_MAX_SIZE 0x0000001000000000
+    bool valid_disk_range = _is_valid_disk_range( 0x0, 0x0000001000000000 ) ;
+    ASSERT_EQ( true, valid_disk_range );
+
+    valid_disk_range = _is_valid_disk_range( 0x0000001000000000, 0x0 );
+    ASSERT_EQ( true, valid_disk_range );
+
+    valid_disk_range = _is_valid_disk_range( 0x0, 0x0000001000000001 );
+    ASSERT_EQ( false, valid_disk_range );
+
+    valid_disk_range = _is_valid_disk_range( 0x0000001000000000, 0x0000000000000001 );
+    ASSERT_EQ( false, valid_disk_range );
+
+    valid_disk_range = _is_valid_disk_range( 0x0000001000000001, 0x0 );
+    ASSERT_EQ( false, valid_disk_range );
+}
+
+
+TEST( DiftUnitTest, HD_DIRTY_PAGE ) {
+    GEN_MOCK_OBJECT( mock );
+    EXPECT_CALL(mock, calloc(_,_)).WillRepeatedly(Invoke(calloc));
+    CONTAMINATION_RECORD* rec = _alloc_hd_dirty_page();
+    int traversal, rec_size = 1 << HD_L2_INDEX_BITS;
+    for ( traversal = 0 ; traversal < rec_size ; traversal++ ) {
+        ASSERT_EQ( NULL, rec[traversal] ); // make sure rec is empty
+        ASSERT_EQ( sizeof(rec[traversal] ), sizeof(CONTAMINATION_RECORD) ); // make sure every rec's size is correct
+    } // for
+}
+
+
+TEST( DiftUnitTest, HD_DIRTY_PAGE_ERROR ) {
+    InSequence dummy;
+    GEN_MOCK_OBJECT( mock );
+    EXPECT_CALL(mock, calloc(_,_)).WillOnce(ReturnNull());
+    EXPECT_CALL(mock, dift_log(_)).Times(1);
+    EXPECT_CALL(mock, exit(1)).Times(1);
+
+    CONTAMINATION_RECORD* rec = _alloc_hd_dirty_page();
+    ASSERT_EQ( NULL, rec ); // make sure rec is empty
+}
+
+
+TEST( DiftUnitTest, DIFT_ENABLE ) {
+    bool temp = dift_is_enabled();
+    dift_enable();
+    ASSERT_EQ( true, dift_is_enabled() );
+    dift_enabled = temp;
+}
+
+TEST( DiftUnitTest, DIFT_DISABLE ) {
+    bool temp = dift_is_enabled();
+    dift_disable();
+    ASSERT_EQ( false, dift_is_enabled() );
+    dift_enabled = temp;
+}
+
+TEST( DiftUnitTest, DIFT_IS_ENABLED ) {
+    bool temp = dift_is_enabled();
+    dift_enable();
+    ASSERT_EQ( true, dift_is_enabled() );
+    dift_disable();
+    ASSERT_EQ( false, dift_is_enabled() );
+    dift_enabled = temp;
+}
+
+TEST( DiftUnitTest, DIFT_LOG_OUTPUT ) {
+    FILE *readLog;
+    const int length = 10;
+    int freadLen = 0;
+    char log[length];
+    bzero( log, length );
+
+    GEN_MOCK_OBJECT( mock );
+    EXPECT_CALL(mock, vfprintf(_,_,_)).WillOnce(Invoke(vfprintf));
+    EXPECT_CALL(mock, fflush(_)).WillOnce(Invoke(fflush));
+
+    dift_logfile = fopen( DIFT_LOG, "w+" );
+    int dift_log_code = _dift_log("Unit_Test");
+    fclose( dift_logfile );
+    readLog = fopen( "dift.log", "r" );
+    freadLen = fread( log, sizeof(char), 10, readLog );
+    fclose( readLog );
+    ASSERT_STREQ( log, "Unit_Test");
+    ASSERT_EQ( dift_log_code, freadLen );
+
+}
+
+TEST( DiftUnitTest, DIFT_LOG_SEQUENCE ) {
+    InSequence dummy;
+    GEN_MOCK_OBJECT( mock );
+    EXPECT_CALL(mock,dift_log(_)).WillRepeatedly(Invoke(_dift_log));
+    EXPECT_CALL(mock,vfprintf(_,_,_)).WillRepeatedly(Invoke(vfprintf));
+    EXPECT_CALL(mock,fflush(_)).Times(1);
+    dift_logfile = fopen( DIFT_LOG, "w+" );
+    int dift_log_code = _dift_log("");
+    fclose( dift_logfile );
+    ASSERT_EQ( dift_log_code, 0 );
+}
+
+TEST( DiftUnitTest, DIFT_LOG_NULL ) {
+    GEN_MOCK_OBJECT( mock );
+    EXPECT_CALL(mock, dift_log(_)).WillRepeatedly(Invoke(_dift_log));
+    EXPECT_CALL(mock, vfprintf(_,_,_)).Times(0);
+    EXPECT_CALL(mock, fflush(_)).Times(0);
+    dift_logfile = NULL;
+    int dift_log_code = _dift_log("");
+    ASSERT_EQ( dift_log_code, -1 );
+}
+
+TEST( DiftUnitTest, DIFT_START ) {
+    InSequence dummy;
+    phys_ram_size = 0x300000000;
+    GEN_MOCK_OBJECT( mock );
+    EXPECT_CALL(mock, fopen(_,_)).WillOnce(Return((FILE*)0x1));
+    EXPECT_CALL(mock, pre_generate_routine());
+    EXPECT_CALL(mock, init_queue());
+    EXPECT_CALL(mock, init_case_mapping());
+    EXPECT_CALL(mock, init_dift_context(_));
+    EXPECT_CALL(mock, pthread_create(_,_,_,_)).WillOnce(Return(0));
+
+    int dift_start_code = dift_start();
+    ASSERT_EQ( dift_start_code, DIFT_SUCCESS );
+}
+
+TEST( DiftUnitTest, DIFT_START_FOPEN_ERROR ) {
+    ::testing::internal::CaptureStderr();
+    char error_message[30];
+    bzero( error_message, 30 );
+
+    GEN_MOCK_OBJECT( mock );
+    EXPECT_CALL(mock, fopen(_,_)).WillOnce(ReturnNull());
+    EXPECT_CALL(mock, pre_generate_routine()).Times(0);
+    EXPECT_CALL(mock, init_queue()).Times(0);
+    EXPECT_CALL(mock, init_case_mapping()).Times(0);
+
+    int dift_start_code = dift_start();
+    ASSERT_EQ(dift_start_code, DIFT_ERR_FAIL );
+    strcpy( error_message, ::testing::internal::GetCapturedStderr().c_str() );
+    ASSERT_STREQ( error_message, "Fail to create DIFT log file\n" );
+}
+
+TEST( DiftUnitTest, DIFT_START_PTHREAD_ERROR ) {
+    char error_message[38];
+    FILE *readLog;
+    bzero( error_message, 38 );
+
+    GEN_MOCK_OBJECT( mock );
+    EXPECT_CALL(mock, fopen(_,_)).WillOnce(Invoke(fopen));
+    EXPECT_CALL(mock, pre_generate_routine());
+    EXPECT_CALL(mock, init_queue());
+    EXPECT_CALL(mock, init_case_mapping());
+    EXPECT_CALL(mock, init_dift_context(_));
+    EXPECT_CALL(mock, pthread_create(_,_,_,_)).WillOnce(Return(EAGAIN));
+    EXPECT_CALL(mock, dift_log(_)).WillOnce(Invoke(_dift_log));
+    EXPECT_CALL(mock, vfprintf(_,_,_)).WillOnce(Invoke(vfprintf));
+    EXPECT_CALL(mock, fflush(_)).WillOnce(Invoke(fflush));
+
+    int dift_start_code = dift_start();
+    ASSERT_EQ(dift_start_code, DIFT_ERR_FAIL );
+
+    readLog = fopen( "dift.log", "r" );
+    fread( error_message, sizeof(char), 38, readLog );
+    fclose( readLog );
+    ASSERT_STREQ( error_message, "Fail to startup DIFT analysis thread\n" );
+}
+
+TEST( DiftUnitTest, DIFT_COMTAMINATE_MEM_OR ) {
+    InSequence dummy;
+    phys_ram_size = 0x300000000;
+    CONTAMINATION_RECORD tag = 0x0;
+    uint64_t len_pt = 1, len_max = 0xffffffff, one = 0x0, two = 0xffffffff, three = 0x1fffffffe;
+    GEN_NICEMOCK_OBJECT( mock ); 
+    dift_record recTemp = { 0 }, recFirst = { 0 }, recSecond = { 0 };
+    recTemp.case_nb = REC_CONTAMINATE_MEM_OR;
+
+    *((uint64_t*)&recTemp) |= ((0x00000000000000ff & tag ) << 8 );
+    *((uint64_t*)&recTemp) |= ((0x00000000ffffffff & len_max ) << 16 ); 
+    memcpy( &recFirst, &recTemp, sizeof(recTemp)); 
+
+    *((uint64_t*)&recTemp) |= ((0x00000000000000ff & tag ) << 8 );
+    *((uint64_t*)&recTemp) |= ((0x00000000ffffffff & len_max ) << 16 );
+    memcpy( &recSecond, &recTemp, sizeof(recTemp));
+   
+    *((uint64_t*)&recTemp) |= ((0x00000000000000ff & tag ) << 8 );
+    *((uint64_t*)&recTemp) |= ((0x00000000ffffffff & len_pt ) << 16 );
+   
+    EXPECT_CALL(mock, fopen(_,_)).WillOnce(Invoke(fopen));
+    EXPECT_CALL(mock, getpagesize()).WillRepeatedly(Invoke(getpagesize));
+    EXPECT_CALL(mock, calloc(_,_)).WillRepeatedly(Invoke(calloc)); 
+    EXPECT_CALL(mock, is_valid_tag(_)).WillOnce(Invoke(_is_valid_tag));
+    EXPECT_CALL(mock, is_valid_mem_range(_,_)).WillOnce(Invoke(_is_valid_mem_range));
+    EXPECT_CALL(mock, dift_rec_enqueue(*((uint64_t*)&recFirst))).Times(1);
+    EXPECT_CALL(mock, dift_rec_enqueue(one)).Times(1);
+    EXPECT_CALL(mock, dift_rec_enqueue(*((uint64_t*)&recSecond))).Times(1);
+    EXPECT_CALL(mock, dift_rec_enqueue(two)).Times(1);
+    EXPECT_CALL(mock, dift_rec_enqueue(*((uint64_t*)&recTemp))).Times(1);
+    EXPECT_CALL(mock, dift_rec_enqueue(three)).Times(1);                     
+
+    dift_start();
+    int dift_code = dift_contaminate_memory_or(0x0, 0x1ffffffff, tag );
+    ASSERT_EQ( dift_code, 0 );
+}
+
+TEST( DiftUnitTest, DIFT_COMTAMINATE_MEM_AND ) {
+    InSequence dummy;
+    phys_ram_size = 0x300000000;
+    CONTAMINATION_RECORD tag = 0x0;
+    uint64_t len_pt = 1, len_max = 0xffffffff, one = 0x0, two = 0xffffffff, three = 0x1fffffffe;
+    GEN_NICEMOCK_OBJECT( mock ); 
+    dift_record recTemp = { 0 }, recFirst = { 0 }, recSecond = { 0 };
+    recTemp.case_nb = REC_CONTAMINATE_MEM_AND;
+
+    *((uint64_t*)&recTemp) |= ((0x00000000000000ff & tag ) << 8 );
+    *((uint64_t*)&recTemp) |= ((0x00000000ffffffff & len_max ) << 16 ); 
+    memcpy( &recFirst, &recTemp, sizeof(recTemp)); 
+
+    *((uint64_t*)&recTemp) |= ((0x00000000000000ff & tag ) << 8 );
+    *((uint64_t*)&recTemp) |= ((0x00000000ffffffff & len_max ) << 16 );
+    memcpy( &recSecond, &recTemp, sizeof(recTemp));
+   
+    *((uint64_t*)&recTemp) |= ((0x00000000000000ff & tag ) << 8 );
+    *((uint64_t*)&recTemp) |= ((0x00000000ffffffff & len_pt ) << 16 );
+  
+    EXPECT_CALL(mock, fopen(_,_)).WillOnce(Invoke(fopen)); 
+    EXPECT_CALL(mock, getpagesize()).WillRepeatedly(Invoke(getpagesize));
+    EXPECT_CALL(mock, calloc(_,_)).WillRepeatedly(Invoke(calloc)); 
+    EXPECT_CALL(mock, is_valid_tag(_)).WillOnce(Invoke(_is_valid_tag));
+    EXPECT_CALL(mock, is_valid_mem_range(_,_)).WillOnce(Invoke(_is_valid_mem_range));
+    EXPECT_CALL(mock, dift_rec_enqueue(*((uint64_t*)&recFirst))).Times(1);
+    EXPECT_CALL(mock, dift_rec_enqueue(one)).Times(1);
+    EXPECT_CALL(mock, dift_rec_enqueue(*((uint64_t*)&recSecond))).Times(1);
+    EXPECT_CALL(mock, dift_rec_enqueue(two)).Times(1);
+    EXPECT_CALL(mock, dift_rec_enqueue(*((uint64_t*)&recTemp))).Times(1);
+    EXPECT_CALL(mock, dift_rec_enqueue(three)).Times(1);                     
+
+    dift_start();
+    int dift_code = dift_contaminate_memory_and(0x0, 0x1ffffffff, tag );
+    ASSERT_EQ( dift_code, 0 );
+}
+  
+TEST( DiftUnitTest, DIFT_COMTAMINATE_HD_OR ) {
+    InSequence dummy;
+    phys_ram_size = 0x300000000;
+    CONTAMINATION_RECORD tag = 0x0;
+    const uint64_t len = 0x10, haddr = 0x0;
+    GEN_NICEMOCK_OBJECT( mock ); 
+    dift_record recTemp = { 0 };
+    recTemp.case_nb = REC_CONTAMINATE_HD_OR;
+    *((uint64_t*)&recTemp) |= ((0x00000000000000ff & tag ) << 8 );
+      
+    EXPECT_CALL(mock, fopen(_,_)).WillOnce(Invoke(fopen));
+    EXPECT_CALL(mock, getpagesize()).WillRepeatedly(Invoke(getpagesize));
+    EXPECT_CALL(mock, calloc(_,_)).WillRepeatedly(Invoke(calloc)); 
+    EXPECT_CALL(mock, is_valid_tag(_)).WillOnce(Invoke(_is_valid_tag));
+    EXPECT_CALL(mock, is_valid_disk_range(_,_)).WillOnce(Invoke(_is_valid_disk_range));
+    EXPECT_CALL(mock, dift_rec_enqueue(*((uint64_t*)&recTemp))).Times(1);
+    EXPECT_CALL(mock, dift_rec_enqueue(haddr)).Times(1);
+    EXPECT_CALL(mock, dift_rec_enqueue(len)).Times(1);    
+
+    dift_start();
+    int dift_code = dift_contaminate_disk_or(haddr, len, tag );
+    ASSERT_EQ( dift_code, 0 );
+}
+
+TEST( DiftUnitTest, DIFT_COMTAMINATE_HD_AND ) {
+    InSequence dummy;
+    phys_ram_size = 0x300000000;
+    CONTAMINATION_RECORD tag = 0x0;
+    const uint64_t len = 0x10, haddr = 0x0;
+    GEN_NICEMOCK_OBJECT( mock ); 
+    dift_record recTemp = { 0 };
+    recTemp.case_nb = REC_CONTAMINATE_HD_AND;
+    *((uint64_t*)&recTemp) |= ((0x00000000000000ff & tag ) << 8 );
+      
+    EXPECT_CALL(mock, fopen(_,_)).WillOnce(Invoke(fopen));
+    EXPECT_CALL(mock, getpagesize()).WillRepeatedly(Invoke(getpagesize));
+    EXPECT_CALL(mock, calloc(_,_)).WillRepeatedly(Invoke(calloc)); 
+    EXPECT_CALL(mock, is_valid_tag(_)).WillOnce(Invoke(_is_valid_tag));
+    EXPECT_CALL(mock, is_valid_disk_range(_,_)).WillOnce(Invoke(_is_valid_disk_range));
+    EXPECT_CALL(mock, dift_rec_enqueue(*((uint64_t*)&recTemp))).Times(1);
+    EXPECT_CALL(mock, dift_rec_enqueue(haddr)).Times(1);
+    EXPECT_CALL(mock, dift_rec_enqueue(len)).Times(1);    
+
+    dift_start();
+    int dift_code = dift_contaminate_disk_and(haddr, len, tag );
+    ASSERT_EQ( dift_code, 0 );
+}
+
+TEST( DiftUnitTest, DIFT_COMTAMINATE_MEM_OR_IS_VALID_TAG_ERROR ) {
+    phys_ram_size = 0x100;
+    int dift_code = 0;
+    GEN_MOCK_OBJECT( mock );
+    EXPECT_CALL(mock, calloc(_,_)).WillRepeatedly(Invoke(calloc));
+    EXPECT_CALL(mock, getpagesize()).WillRepeatedly(Invoke(getpagesize));
+    EXPECT_CALL(mock, dift_rec_enqueue(_)).Times(0);
+    EXPECT_CALL(mock, is_valid_tag(_)).WillRepeatedly(Return(false));
+    EXPECT_CALL(mock, is_valid_mem_range(_,_)).Times(0);
+    EXPECT_CALL(mock, is_valid_disk_range(_,_)).Times(0);
+    dift_code = dift_contaminate_memory_or(0x0,99999, 0x0);
+    ASSERT_EQ( dift_code, 2 );
+    dift_code = 0;
+
+    dift_code = dift_contaminate_memory_and(0x0,99999, 0x0);
+    ASSERT_EQ( dift_code, 2 );
+    dift_code = 0;
+
+    dift_code = dift_contaminate_disk_or(0x0,99999, 0x0);
+    ASSERT_EQ( dift_code, 2 );
+    dift_code = 0;
+
+    dift_code = dift_contaminate_disk_and(0x0,99999, 0x0);
+    ASSERT_EQ( dift_code, 2 );
+}
+
+
+TEST( DiftUnitTest, DIFT_COMTAMINATE_IS_VALID_MEM_ERROR ) {
+    phys_ram_size = 0x100;
+    int dift_code = 0;
+    GEN_MOCK_OBJECT( mock );
+    EXPECT_CALL(mock, calloc(_,_)).WillRepeatedly(Invoke(calloc));
+    EXPECT_CALL(mock, getpagesize()).WillRepeatedly(Invoke(getpagesize));
+    EXPECT_CALL(mock, dift_rec_enqueue(_)).Times(0);
+    EXPECT_CALL(mock, is_valid_tag(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(mock, is_valid_mem_range(_,_)).WillRepeatedly(Return(false));
+    dift_code = dift_contaminate_memory_or(0x0, 99999, 0x0);
+    ASSERT_EQ( dift_code, 1 );  
+    dift_code = 0;    
+
+    dift_code = dift_contaminate_memory_and(0x0, 9999, 0x0);
+    ASSERT_EQ( dift_code, 1 );
+    dift_code = 0;
+}
+
+TEST( DiftUnitTest, DIFT_COMTAMINATE_IS_VALID_HD_ERROR ) {
+    phys_ram_size = 0x100;
+    int dift_code = 0;
+    GEN_MOCK_OBJECT( mock );
+    EXPECT_CALL(mock, calloc(_,_)).WillRepeatedly(Invoke(calloc));
+    EXPECT_CALL(mock, getpagesize()).WillRepeatedly(Invoke(getpagesize));
+    EXPECT_CALL(mock, dift_rec_enqueue(_)).Times(0);
+    EXPECT_CALL(mock, is_valid_tag(_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(mock, is_valid_disk_range(_,_)).WillRepeatedly(Return(false)); 
+
+    dift_code = dift_contaminate_disk_or(0x0, 9999, 0x0);
+    ASSERT_EQ( dift_code, 1 );
+    dift_code = 0;
+
+    dift_code = dift_contaminate_disk_and(0x0, 9999, 0x0);
+    ASSERT_EQ( dift_code, 1 );
+}
