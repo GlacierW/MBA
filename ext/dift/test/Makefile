@@ -21,5 +21,5 @@ $(BIN): $(OBJ)
 gtest_main.o: gtest_main.cc
 	$(CPP) -c gtest_main.cc -o gtest_main.o $(CXXFLAGS)
 
-dift_unittest.o: dift_unittest.cc
+dift_unittest.o: test.h ../dift.c dift_unittest.cc
 	$(CPP) -c dift_unittest.cc -o dift_unittest.o $(CXXFLAGS)

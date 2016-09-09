@@ -39,6 +39,15 @@
 
 #include "dift.h"
 
+#if defined(CONFIG_DIFT_TEST)
+#include "test/test.h"
+/// Change name to avoid macros in test.h from expanding.
+/// Refer to _dift_log to call original dift_log in tests.
+#define _MOCKABLE(x) _##x
+#else
+#define _MOCKABLE(x) x
+#endif
+
 #define likely(x)   __builtin_expect(!!(x), 1)
 #define unlikely(x) __builtin_expect(!!(x), 0)
 
@@ -321,7 +330,7 @@ const char* XMM_NAME[] = {
 };
 
 // Pre-generate routine for DIFT TCG usage
-static void gen_rt_finish_curr_block( void ) {
+static void _MOCKABLE(gen_rt_finish_curr_block)( void ) {
     
     uint8_t* s;
 
@@ -362,7 +371,7 @@ static void gen_rt_finish_curr_block( void ) {
     out8(s, 0xc3);
 }
 
-static void gen_rt_get_next_enqptr( void ) {
+static void _MOCKABLE(gen_rt_get_next_enqptr)( void ) {
 
     uint8_t* s;
 
@@ -450,7 +459,7 @@ static void gen_rt_get_next_enqptr( void ) {
     out8(s, 0xc3);
 }
 
-static void gen_rt_enqueue_one_rec( void ) {
+static void _MOCKABLE(gen_rt_enqueue_one_rec)( void ) {
 
     uint8_t* s;
     uint8_t* label2_ptr;
@@ -495,7 +504,7 @@ static void gen_rt_enqueue_one_rec( void ) {
     out8(s, 0xc3);      // ret
 }
 
-static void gen_rt_enqueue_raddr( void ) {
+static void _MOCKABLE(gen_rt_enqueue_raddr)( void ) {
 
     uint8_t* s;
     uint8_t* label2_ptr;
@@ -556,7 +565,7 @@ static void gen_rt_enqueue_raddr( void ) {
     out8(s, 0xc3);      // ret
 }
 
-static void gen_rt_enqueue_waddr( void ) {
+static void _MOCKABLE(gen_rt_enqueue_waddr)( void ) {
     
     uint8_t* s;
     uint8_t* label2_ptr;
@@ -618,10 +627,11 @@ static void gen_rt_enqueue_waddr( void ) {
 }
 
 // DIFT Initialization 
-static void pre_generate_routine( void ) {
+static void _MOCKABLE(pre_generate_routine)( void ) {
 
     uintptr_t start, end;
     uint64_t page_size;
+    int result;
 
     gen_rt_finish_curr_block();
     gen_rt_get_next_enqptr();
@@ -647,11 +657,17 @@ static void pre_generate_routine( void ) {
     end += page_size - 1;
     end &= ~(page_size - 1);
 
-    mprotect((void*)start, end - start,
+    result = mprotect((void*)start, end - start,
             PROT_READ | PROT_WRITE | PROT_EXEC);
+    if (result != 0) {
+#if defined(CONFIG_DIFT_DEBUG)
+        dift_log( "mprotect failed\n" );
+#endif
+        exit(1);
+    }
 }
 
-static void init_queue( void ) {
+static void _MOCKABLE(init_queue)( void ) {
 
     int i;
     for( i = 0; i < Q_CHUNKS_SIZE; ++i ) {
@@ -667,7 +683,7 @@ static void init_queue( void ) {
     prev_head = 0;
 }
 
-static void init_case_mapping( void ) {
+static void _MOCKABLE(init_case_mapping)( void ) {
     uint32_t j;
     uint16_t i;
     for(j = 0 ; j < sizeof(case_mapping) ; j++)
@@ -676,7 +692,7 @@ static void init_case_mapping( void ) {
         case_mapping[case_list[i]] = i;
 }
 
-static void init_dift_context( dift_context *dc ) {
+static void _MOCKABLE(init_dift_context)( dift_context *dc ) {
 
     bzero( dc, sizeof(dift_context) );
     
@@ -708,7 +724,7 @@ static void init_dift_context( dift_context *dc ) {
 }
 
 // DIFT Private API - Queue manipulation
-static uint64_t* next_block( dift_context *dc ) {
+static void _MOCKABLE(next_block)( dift_context *dc ) {
 
     q_chunks_flag[dc->prev_tail] = CHUNK_AVAILABLE;
     while(unlikely(q_chunks_flag[dc->tail] != CHUNK_FILLED))
@@ -722,7 +738,6 @@ static uint64_t* next_block( dift_context *dc ) {
     dc->deqptr = q_chunks_ptr[dc->tail];
     dc->prev_tail = dc->tail;
     dc->tail = (dc->tail + 1) % Q_CHUNKS_SIZE;
-    return dc->deqptr;
 }
 
 static uint64_t rec_dequeue( dift_context* dc ) {
@@ -737,7 +752,7 @@ static uint64_t rec_dequeue( dift_context* dc ) {
     return ret;
 }
 
-static void kick_enqptr(void) {
+static void _MOCKABLE(kick_enqptr)(void) {
 
     if(((uint64_t)enqptr & ~CHUNK_BITSIZEMASK) == 0)
         return;
@@ -757,12 +772,25 @@ static void kick_enqptr(void) {
     head = (head + 1) % Q_CHUNKS_SIZE;
 }
 
-static void wait_dift_analysis( void ) { 
+static void _MOCKABLE(wait_dift_analysis)( void ) { 
     while( !dift_thread_ok_signal );
 }
 
+static int _MOCKABLE(is_valid_mem_range)( uint64_t addr, uint64_t len ) {
+
+    if( phys_ram_size < addr || phys_ram_size - addr < len )
+        return false;
+    return true;
+}
 // DIFT Private API - Memory taint operation
 static inline void set_mem_dirty( dift_context* dc, uint64_t addr, CONTAMINATION_RECORD contamination, int is_append ) {
+
+    if( !is_valid_mem_range(addr, 1) ) {
+#if defined(CONFIG_DIFT_DEBUG)
+        dift_log( "set_mem_dirty: invalid address" );
+#endif
+        return;
+    }
 
     if( is_append )
         dc->mem_dirty_tbl[addr] |= contamination;
@@ -771,15 +799,29 @@ static inline void set_mem_dirty( dift_context* dc, uint64_t addr, CONTAMINATION
 }
 
 static inline void and_mem_dirty( dift_context* dc, uint64_t addr, CONTAMINATION_RECORD contamination ) {
+    if( !is_valid_mem_range(addr, 1) ) {
+#if defined(CONFIG_DIFT_DEBUG)
+        dift_log( "and_mem_dirty: invalid address" );
+#endif
+        return;
+    }
+
     dc->mem_dirty_tbl[addr] &= contamination;
 }
 
+
 static inline CONTAMINATION_RECORD get_mem_dirty( dift_context* dc, uint64_t addr ) { 
+    if( !is_valid_mem_range(addr, 1) ) {
+#if defined(CONFIG_DIFT_DEBUG)
+        dift_log( "get_mem_dirty: invalid address" );
+#endif
+        return 0;
+    }
     return dc->mem_dirty_tbl[addr];
 }
 
 // DIFT Private API - Disk taint operation
-static CONTAMINATION_RECORD* alloc_hd_dirty_page( void ) {
+static CONTAMINATION_RECORD* _MOCKABLE(alloc_hd_dirty_page)( void ) {
  
     CONTAMINATION_RECORD* rec = (CONTAMINATION_RECORD*)calloc( (1 << HD_L2_INDEX_BITS), sizeof(CONTAMINATION_RECORD) );
 
@@ -791,7 +833,21 @@ static CONTAMINATION_RECORD* alloc_hd_dirty_page( void ) {
     return rec;
 }
 
+static int _MOCKABLE(is_valid_disk_range)( uint64_t haddr, uint64_t len ) {
+
+    if( HD_MAX_SIZE < haddr || HD_MAX_SIZE - haddr < len )
+        return false;
+    return true;
+}
+
 static void set_hd_dirty_or( dift_context* dc, uint64_t hdaddr, CONTAMINATION_RECORD contamination ) {
+
+    if( !is_valid_disk_range(hdaddr, 1) ) {
+#if defined(CONFIG_DIFT_DEBUG)
+        dift_log( "set_hd_dirty_or: invalid address" );
+#endif
+        return;
+    }
 
     if( contamination == 0 )
         return;
@@ -804,6 +860,13 @@ static void set_hd_dirty_or( dift_context* dc, uint64_t hdaddr, CONTAMINATION_RE
 
 static void set_hd_dirty_and( dift_context* dc, uint64_t hdaddr, CONTAMINATION_RECORD contamination ) {
 
+    if( !is_valid_disk_range(hdaddr, 1) ) {
+#if defined(CONFIG_DIFT_DEBUG)
+        dift_log( "set_hd_dirty_and: invalid address" );
+#endif
+        return;
+    }
+
     if( dc->hd_l1_dirty_tbl[HD_L1_INDEX(hdaddr)] == NULL ) 
         return;
 
@@ -814,6 +877,13 @@ static CONTAMINATION_RECORD get_hd_dirty( dift_context* dc, uint64_t hdaddr ) {
     
     CONTAMINATION_RECORD* hd_l2_dirty_tbl = NULL;
 
+    if( !is_valid_disk_range(hdaddr, 1) ) {
+#if defined(CONFIG_DIFT_DEBUG)
+        dift_log( "get_hd_dirty: invalid address" );
+#endif
+        return 0;
+    }
+
     if( (hd_l2_dirty_tbl = dc->hd_l1_dirty_tbl[HD_L1_INDEX(hdaddr)]) == NULL )
         return 0;
     return hd_l2_dirty_tbl[HD_L2_INDEX(hdaddr)];
@@ -823,6 +893,15 @@ static CONTAMINATION_RECORD get_hd_dirty( dift_context* dc, uint64_t hdaddr ) {
 static void copy_contamination_hd_mem( dift_context* dc, uint64_t hdaddr, uint64_t ra, uint64_t len ) {
 
     uint64_t progress = ((hdaddr + (1 << HD_L2_INDEX_BITS)) & HD_L2_INDEX_MASK) - hdaddr;
+
+    if( !is_valid_mem_range(ra, len)
+        || !is_valid_disk_range(hdaddr, len) ) {
+#if defined(CONFIG_DIFT_DEBUG)
+        dift_log( "copy_contamination_hd_mem: invalid range" );
+#endif
+        return;
+    }
+
 
     while( len ) {
         
@@ -847,6 +926,14 @@ static void copy_contamination_hd_mem( dift_context* dc, uint64_t hdaddr, uint64
 static void copy_contamination_mem_hd( dift_context* dc, uint64_t wa, uint64_t hdaddr, uint64_t len ) {
     
     uint64_t progress = ((hdaddr + (1 << HD_L2_INDEX_BITS)) & HD_L2_INDEX_MASK) - hdaddr;
+
+    if( !is_valid_mem_range(wa, len)
+        || !is_valid_disk_range(hdaddr, len) ) {
+#if defined(CONFIG_DIFT_DEBUG)
+        dift_log( "copy_contamination_mem_hd: invalid range" );
+#endif
+        return;
+    }
 
     while( len ) {
 
@@ -986,7 +1073,7 @@ static void* analysis_mainloop( void* arg ) {
 }
 
 // DIFT Private API - taint operand validity check
-static int is_valid_tag( const CONTAMINATION_RECORD tag ) {
+static int _MOCKABLE(is_valid_tag)( const CONTAMINATION_RECORD tag ) {
 
     CONTAMINATION_RECORD mask = 0x7f;
 
@@ -996,24 +1083,8 @@ static int is_valid_tag( const CONTAMINATION_RECORD tag ) {
     return true;
 }
 
-static int is_valid_mem_range( uint64_t addr, uint64_t len ) {
-
-    if( phys_ram_size - addr < len )
-        return false;
-    return true;
-}
-
-static int is_valid_disk_range( uint64_t haddr, uint64_t len ) {
-
-    if( HD_MAX_SIZE - haddr < len )
-        return false;
-    return true;
-}
-
-
 // DIFT Public API - All of the public APIs are named with the prefix "dift_"
-int dift_log( const char* fmt, ... ) {
-
+int _MOCKABLE(dift_log)( const char* fmt, ... ) {
     int ret = -1;
 
     va_list ap;
@@ -1028,7 +1099,7 @@ int dift_log( const char* fmt, ... ) {
     return ret;
 }
 
-void dift_rec_enqueue( uint64_t data_in ) {
+void _MOCKABLE(dift_rec_enqueue)( uint64_t data_in ) {
 
     *(enqptr++) = data_in;
 
@@ -1138,7 +1209,7 @@ int dift_contaminate_memory_or( uint64_t addr, uint64_t len, CONTAMINATION_RECOR
         len  -= len_pt;
     }
 
-    return (len == 0)? DIFT_SUCCESS : DIFT_ERR_FAIL;
+    return DIFT_SUCCESS;
 }
 
 int dift_contaminate_memory_and( uint64_t addr, uint64_t len, CONTAMINATION_RECORD tag ) {
@@ -1169,7 +1240,7 @@ int dift_contaminate_memory_and( uint64_t addr, uint64_t len, CONTAMINATION_RECO
         len  -= len_pt;
     }
 
-    return (len == 0)? DIFT_SUCCESS : DIFT_ERR_FAIL;
+    return DIFT_SUCCESS;
 }
 
 int dift_contaminate_disk_or( uint64_t haddr, uint64_t len, CONTAMINATION_RECORD tag ) {
