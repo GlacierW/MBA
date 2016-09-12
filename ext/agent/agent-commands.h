@@ -27,11 +27,6 @@ void do_win_impo(struct Monitor *mon, const struct QDict *qdict);
 void do_win_expo(struct Monitor *mon, const struct QDict *qdict);
 void do_win_exec(struct Monitor *mon, const struct QDict *qdict);
 void do_win_invo(struct Monitor *mon, const struct QDict *qdict);
-<<<<<<< HEAD
-void do_win_init(struct Monitor *mon, const struct QDict *qdict);
-void do_win_stat(struct Monitor *mon, const struct QDict *qdict);
-=======
 void do_win_logf(struct Monitor *mon, const struct QDict *qdict);
 void do_win_init(struct Monitor *mon, const struct QDict *qdict);
->>>>>>> 75eb4731ce6ee01bcc4155e74db166a385f7a5c0
 #endif

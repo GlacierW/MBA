@@ -47,5 +47,13 @@ enum cmd_type {
     MBA_CMD_LOGF        // 5 : Command begging with 'logf' from MBA     // log file
 };
 
+//common return value
+enum MBA_AGENT_RETURN{
+    AGENT_RET_SUCCESS, 
+    AGENT_RET_FAIL
+};
+
+typedef enum MBA_AGENT_RETURN MBA_AGENT_RETURN;
+
 #endif
 

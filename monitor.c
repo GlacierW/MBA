@@ -86,10 +86,7 @@
 #endif
 
 #if defined(CONFIG_AGENT)
-<<<<<<< HEAD
-=======
 #include "ext/agent/agent.h"
->>>>>>> 75eb4731ce6ee01bcc4155e74db166a385f7a5c0
 #include "ext/agent/agent-commands.h"
 #endif
 

@@ -183,8 +183,6 @@ endif
 
 ifdef CONFIG_AGENT
 all-obj-y += ../ext/agent/agent-commands.o
-<<<<<<< HEAD
-=======
 all-obj-y += ../ext/agent/agent.o
 endif
 
@@ -192,7 +190,6 @@ ifdef CONFIG_MEMFRS
 all-obj-y += ../ext/memfrs/memfrs-commands.o
 all-obj-y += ../ext/memfrs/memfrs.o
 ../ext/memfrs/memfrs.o-cflags := -D__STDC_VERSION__=199901 -I../json-c/
->>>>>>> 75eb4731ce6ee01bcc4155e74db166a385f7a5c0
 endif
 
 ifdef CONFIG_TSK
