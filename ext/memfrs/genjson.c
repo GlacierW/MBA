@@ -24,7 +24,7 @@
 #include <stdbool.h>
 
 #include "json.h"
-#include "parse_flags.h"
+//#include "parse_flags.h"
 
 #ifdef TEST_FORMATTED
 #define json_object_to_json_string(obj) json_object_to_json_string_ext(obj,sflags)
@@ -64,7 +64,8 @@ int addFieldToStruct(json_object *parent_obj, char* field_name, char* field_type
 int main(int argc, char **argv)
 {
 	json_object *tyde_definition, *kpcr, *kthread, *kprocess, *kprcb;
-        json_object  *eprocess, *list_entry, *peb, *parameter;
+        json_object  *eprocess, *list_entry, *peb, *parameter, *mmvad_short;
+        json_object *rtl_node;
 #ifdef TEST_FORMATTED
 	int sflags = 0;
 #endif
@@ -80,51 +81,97 @@ int main(int argc, char **argv)
         // =========== _KPCR =================================
         kpcr = json_object_new_object();
 
-        //int addMemberToDS(json_object *parent_obj, char* member_name, char* member_type, int offset, int size, bool is_pointer)
-        addMemberToDS(kpcr, "Self", "_KPCR", 0x18, 8, true);
-        addMemberToDS(kpcr, "Prcb", "_KPRCB", 0x180, 0x6900, false);
+        //int addFieldToStruct(json_object *parent_obj, char* member_name, char* member_type, int offset, int size, bool is_pointer)
+        addFieldToStruct(kpcr, "Self", "_KPCR", 0x18, 8, true);
+        addFieldToStruct(kpcr, "Prcb", "_KPRCB", 0x180, 0x6900, false);
         json_object_object_add(tyde_definition, "_KPCR", kpcr);
 
         // =========== _KPRCB =================================
         kprcb = json_object_new_object();
-        addMemberToDS(kprcb, "CurrentThread", "_KTHREAD", 0x8, 0x8, true);        
+        addFieldToStruct(kprcb, "CurrentThread", "_KTHREAD", 0x8, 0x8, true);        
         json_object_object_add(tyde_definition, "_KPRCB", kprcb);
 
         // =========== _KTHREAD ===============================
         kthread = json_object_new_object();
-        addMemberToDS(kthread, "PROCESS", "_EPROCESS", 0x220, 0x8, true); 
+        addFieldToStruct(kthread, "Process", "_EPROCESS", 0x220, 0x8, true); 
         json_object_object_add(tyde_definition, "_KTHREAD", kthread);
 
         // =========== _EPROCESS ==============================
 
         eprocess = json_object_new_object();
-        addMemberToDS(eprocess, "Pcb", "_KPROCESS", 0x00, 0x2d8,  false);
-        addMemberToDS(eprocess, "ActiveProcessLinks", "_LIST_ENTRY", 0x2f0, 0x10,  false);
-        addMemberToDS(eprocess, "Peb", "_PEB", 0x3f8, 0x8,  false);
-        addMemberToDS(eprocess, "ImageFileName", "UChar[15]", 0x448, 0xf,  false);
+        addFieldToStruct(eprocess, "Pcb", "_KPROCESS", 0x00, 0x2d8,  false);
+        addFieldToStruct(eprocess, "ActiveProcessLinks", "_LIST_ENTRY", 0x2f0, 0x10,  false);
+        addFieldToStruct(eprocess, "Peb", "_PEB", 0x3f8, 0x8,  false);
+        addFieldToStruct(eprocess, "ImageFileName", "UChar[15]", 0x448, 0xf,  false);
+        addFieldToStruct(eprocess, "VadRoot", "_RTL_AVL_TREE", 0x608, 0x8,  true);
         json_object_object_add(tyde_definition, "_EPROCESS", eprocess);
 
         // =========== _KPROCESS ==============================
         kprocess = json_object_new_object();
-        addMemberToDS(kprocess, "DirectoryTableBase", "Uint8B", 0x28, 0x8, true);
+        addFieldToStruct(kprocess, "DirectoryTableBase", "Uint8B", 0x28, 0x8, true);
         json_object_object_add(tyde_definition, "_KPROCESS", kprocess);
 
         // =========== _LIST_ENTRY =============================
         list_entry = json_object_new_object();
-        addMemberToDS(list_entry, "Flink", "_LIST_ENTRY", 0x0, 0x8, true);
-        addMemberToDS(list_entry, "Blink", "_LIST_ENTRY", 0x8, 0x8, true);
+        addFieldToStruct(list_entry, "Flink", "_LIST_ENTRY", 0x0, 0x8, true);
+        addFieldToStruct(list_entry, "Blink", "_LIST_ENTRY", 0x8, 0x8, true);
         json_object_object_add(tyde_definition, "_LIST_ENTRY", list_entry);
 
         // =========== _PEB ===================================
         peb = json_object_new_object();
-        addMemberToDS(peb, "ProcessParameters", "_RTL_USER_PROCESS_PARAMETERS", 0x20, 0x8, true);
+        addFieldToStruct(peb, "ProcessParameters", "_RTL_USER_PROCESS_PARAMETERS", 0x20, 0x8, true);
         json_object_object_add(tyde_definition, "_PEB", peb);
 
-        // =========== "_RTL_USER_PROCESS_PARAMETERS" =========
-        parameter = json_object_new_object();
-        addMemberToDS(parameter, "")
+        // =========== "_MMVAD_SHORT ==========================
+        mmvad_short = json_object_new_object();
+        addFieldToStruct( mmvad_short, "VadNode", "_RTL_BALANCED_NODE", 0x0, 0x18, false);
+        addFieldToStruct( mmvad_short, "StartingVpn", "Uint4B", 0x18, 0x4, false);
+        addFieldToStruct( mmvad_short, "EndingVpn", "Uint4B", 0x1c, 0x4, false);
+        addFieldToStruct( mmvad_short, "StartingVpnHigh", "UChar", 0x20, 0x1, false);
+        addFieldToStruct( mmvad_short, "EndingVpnHigh", "UChar", 0x21, 0x1, false);
+        addFieldToStruct( mmvad_short, "u", "_MMVAD_FLAGS", 0x30, 0x4, false);
+        json_object_object_add(tyde_definition, "_MMVAD_SHORT", mmvad_short);  
 
+        //json_object *mmvad_flag = json_object_new_object();
+        
 
+  
+        json_object *mmvad = json_object_new_object();
+        addFieldToStruct( mmvad, "Subsection", "_SUBSECTION", 0x48, 0x8, true);
+        json_object_object_add(tyde_definition, "_MMVAD", mmvad);
+
+        json_object *subsection = json_object_new_object();
+        addFieldToStruct( subsection, "ControlArea", "_CONTROL_AREA", 0x0, 0x8, true);
+        json_object_object_add(tyde_definition, "_SUBSECTION", subsection);
+        
+        json_object *control_area = json_object_new_object();
+        addFieldToStruct( control_area, "FilePointer", "_EX_FAST_REF", 0x40, 0x8, true);
+        json_object_object_add(tyde_definition, "_CONTROL_AREA", control_area);
+
+        json_object *file_oject = json_object_new_object();
+        addFieldToStruct( file_oject, "FileName", "_UNICODE_STRING", 0x58, 0x10, true);
+        json_object_object_add(tyde_definition, "_FILE_OBJECT", file_oject);
+
+        json_object *unicode_str = json_object_new_object();
+        addFieldToStruct( unicode_str, "Length", "Uint2B", 0x0, 0x2, false);
+        addFieldToStruct( unicode_str, "MaximumLength", "Uint2B", 0x0, 0x2, false);
+        addFieldToStruct( unicode_str, "Buffer", "Ptr64 Uint2B", 0x8, 0x8, true);
+        json_object_object_add(tyde_definition, "_UNICODE_STRING", unicode_str);
+       
+        json_object *pool_header = json_object_new_object();
+        addFieldToStruct( pool_header, "PoolTag", "Uint4B",  0x4, 0x4, false);
+        json_object_object_add(tyde_definition, "_POOL_HEADER", pool_header);
+    
+        json_object *ldr_data = json_object_new_object();
+        addFieldToStruct( ldr_data, "FullDllName", "_UNICODE_STRING", 0x48, 0x10, false );
+        addFieldToStruct( ldr_data, "BaseDllName", "_UNICODE_STRING", 0x58, 0x10, false );
+        json_object_object_add(tyde_definition, "_LDR_DATA_TABLE_ENTRY", ldr_data);
+
+        // ========== "_RTL_BALANCED_NODE ==================== 
+        rtl_node = json_object_new_object();
+        addFieldToStruct( rtl_node, "Left", "_RTL_BALANCED_NODE", 0x0, 0x8, true);
+        addFieldToStruct( rtl_node, "Right", "_RTL_BALANCED_NODE", 0x8, 0x8, true);
+        json_object_object_add(tyde_definition, "_RTL_BALANCED_NODE", rtl_node);
 
         printf("my_object.to_string()=%s\n", json_object_to_json_string(tyde_definition));
 
@@ -135,13 +182,9 @@ int main(int argc, char **argv)
         json_object_object_get_ex(tyde_definition, "_KPCR", &target);
         printf("my_object.to_string()=%s\n", json_object_to_json_string(target));
 
-
-
         json_object_put(kpcr);
         
         json_object_put(tyde_definition);
-        
-
 
 	return 0;
 }

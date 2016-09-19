@@ -1,3 +1,25 @@
+/*
+MBA Stream File Parser Implementation.
+
+This file is part of MBA PDB Parser, used to parse stream file.
+This PDB parser is modified from RADARE2's repository.
+Instead of using radare's API, we replace it with ut-serial library.
+
+Copyright (c)   2016 ChongKuan Chen
+
+This PDB Parser is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Foobar is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,8 +56,6 @@ static void stream_file_read_pages(R_STREAM_FILE *stream_file, int start_indx,
 {
 	int i;
 	int page_offset;
-//	int tmp;
-//	char buffer[1024];
 
 	if ((end_indx - start_indx) > stream_file->end)
 	{
@@ -59,7 +79,6 @@ void stream_file_read(R_STREAM_FILE *stream_file, int size, char *res)
 	char *pdata = 0;
 	char *tmp;
 
-        //printf("stream_file pos %d\n", stream_file->pos);
 	if (size == -1) {
 		pdata = (char *) malloc(stream_file->pages_amount * stream_file->page_size);
 		GET_PAGE(pn_start, off_start, stream_file->pos, stream_file->page_size);
@@ -121,7 +140,5 @@ void stream_file_get_size(R_STREAM_FILE *stream_file, int *data_size)
 	int pn_start = 0, off_start = 0;
 	GET_PAGE(pn_start, off_start, stream_file->pos, stream_file->page_size);
 	//(void)pn_start; // hack for remove unused warning
-        printf("pn_start: %x off_start %x\n", pn_start, off_start); 
 	*data_size = stream_file->end - off_start;
-        printf("data size = %02x\n", *data_size);
 }

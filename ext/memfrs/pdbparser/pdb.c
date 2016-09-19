@@ -1,3 +1,25 @@
+/*
+This file is part of MBA PDB Parser.
+MBA PDB Parser Implementation.
+This PDB parser is modified from RADARE2's repository.
+Instead of using radare's API, we replace it with ut-serial library.
+
+Copyright (c)   2016 ChongKuan Chen
+
+This PDB Parser is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Foobar is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -43,8 +65,23 @@ int addFieldToStruct(json_object *parent_obj, char* field_name, char* field_type
 
     json_object_object_add( parent_obj, field_name, field_info);
 
-    printf("to_string()=%s\n", json_object_to_json_string(parent_obj));
 }
+
+
+int addGlobalVar(json_object *parent_obj, char* name, int offset, int size, char* section_name)
+{
+    json_object *var_info;
+    var_info = json_object_new_array();
+
+    printf("%s\n\n", name);
+    //json_object_array_add( field_info, json_object_new_string(field_type));
+    json_object_array_add( var_info, json_object_new_int(offset));
+    json_object_array_add( var_info, json_object_new_int(size));
+    json_object_array_add( var_info, json_object_new_string(section_name));
+
+    json_object_object_add( parent_obj, name, var_info);
+}
+
 
 typedef void (*parse_stream_)(void *stream, R_STREAM_FILE *stream_file);
 
@@ -79,10 +116,7 @@ int alloc_format_flag_and_member_fields(UT_array *ptmp,
 	STypeInfo *it2 = NULL;
 	int size = 0;
 
-	//it2 = r_list_iterator(ptmp);
-	//while (r_list_iter_next(it2)) {
         while( (it2=(STypeInfo*)utarray_next(ptmp,it2))){
-		//(void)r_list_iter_get(it2);
 		*members_amount = *members_amount + 1;
 	}
 
@@ -123,218 +157,10 @@ pdb_streams_element* utlist_get_n(pdb_streams_element* plist, int idx)
         int i = 1;
         pdb_streams_element* elt =NULL;
         DL_FOREACH(plist,elt){
-            //printf("%d ", i);
             if(i==idx)
                 return elt->pdb_stream;
             i++;
         }
-}
-
-void print_types(R_PDB *pdb, int mode) {
-	ELeafType lt = eLF_MAX;
-	char *command_field = 0;
-	char *name_field = 0;
-	char *flags_format_field = 0; // format for struct
-	char **members_name_field = 0;
-	char *type = 0;
-	int members_amount = 0;
-	int i = 0;
-	int pos = 0;
-	char sym = ' ';
-	int is_first = 1;
-	char *name = NULL;
-	int val = 0;
-	int offset = 0;
-	SType *t = 0;
-        SType *it = NULL;
-	STypeInfo *tf = NULL;
-        STypeInfo *it2;
-	//RListIter *it = 0, *it2 = 0;
-	pdb_streams_element *plist = pdb->pdb_streams;
-        //*ptmp = NULL;
-        UT_array *ptmp = NULL;
-	//STpiStream *tpi_stream = r_list_get_n (plist, ePDB_STREAM_TPI);
-        //STpiStream *tpi_stream = (STpiStream *)utlist_get_n(plist, ePDB_STREAM_TPI);
-        //printf("print_types  ====================================\n");
-        //printf("pdb %p\n", pdb);
-
-        STpiStream *tpi_stream = (STpiStream *)utlist_get_n(plist, ePDB_STREAM_TPI);
-
-	if (!tpi_stream) {
-		printf ("there is no tpi stream in current pdb\n");
-		return;
-	}
-
-	if (mode == 'j') {
-		printf("{\"%s\":[", "types");
-	}
-
-	//it = r_list_iterator(tpi_stream->types);
-	//while (r_list_iter_next(it)) {
-        while((it=(SType *)utarray_next(tpi_stream->types,it))){
-		pos = 0;
-		i = 0;
-		members_amount = 0;
-		val = 0;
-		//t = (SType *) r_list_iter_get(it);
-                t = it;
-		tf = &t->type_data;
-		lt = tf->leaf_type;
-		if ((tf->leaf_type == eLF_STRUCTURE) || (tf->leaf_type == eLF_UNION)
-			|| (tf->leaf_type == eLF_ENUM)) {
-
-			if (tf->is_fwdref) {
-				tf->is_fwdref(tf, &val);
-				if (val == 1) {
-					continue;
-				}
-			}
-
-			if ((mode == 8) && (is_first == 0)) {
-				printf(",");
-			}
-
-			is_first = 0;
-
-			if (tf->get_name)
-				tf->get_name(tf, &name);
-			// val for STRUCT or UNION mean size
-			if (tf->get_val)
-				tf->get_val(tf, &val);
-			if (tf->get_members)
-				tf->get_members(tf, (void*)&ptmp);
-			printf ("%s: size 0x%x\n", name, val);
-                         
-			switch (mode) {
-			case 'd': printf ("%s: size 0x%x\n", name, val); break;
-			case 'r':
-				build_command_field (lt, &command_field);
-				build_name_field (name, &name_field);
-				if (!alloc_format_flag_and_member_fields(ptmp,
-							&flags_format_field,
-							&members_amount,
-							&members_name_field)) {
-					goto err;
-				}
-				break;
-			case 'j':
-				switch (lt) {
-				case eLF_ENUM:
-					printf("{\"type\":\"%s\", \"name\":\"%s\",\"%s\":[",
-								"enum", name , "enums");
-					break;
-				case eLF_STRUCTURE:
-				case eLF_UNION:
-					printf("{\"type\":\"%s\",\"name\":\"%s\",\"%s\":[",
-								"structure", name, "members");
-					break;
-				default:
-					continue;
-				}
-
-				break;
-			}
-                        
-			//it2 = r_list_iterator(ptmp);
-			//while (r_list_iter_next(it2)) {
-                        it2 = NULL;
-                        while(ptmp!=NULL && ( it2=(STypeInfo *)utarray_next(ptmp,it2))){
-                                //printf("testtesttesttest\n");
-				if ((mode == 'j') && (i)) {
-					printf(",");
-				}
-
-				//tf = (STypeInfo *) r_list_iter_get(it2);
-                                tf = it2;
-				if (tf->get_name)
-					tf->get_name(tf, &name);
-				if (tf->get_val)
-					tf->get_val(tf, &offset);
-				else
-					offset = 0;
-				if (tf->get_print_type)
-					tf->get_print_type(tf, &type);
-				switch (mode) {
-				case 'd':
-					printf ("  0x%x: %s type:", offset, name);
-					printf ("%s\n", type);
-					break;
-				case 'r':
-					/*if (!build_flags_format_and_members_field(pdb, lt, name, type,
-															i, &pos, offset,
-															flags_format_field,
-															members_name_field)) {
-						R_FREE(type);
-						goto err;
-					}
-					break;
-                                        */
-				case 'j': // JSON
-					switch (lt) {
-					case eLF_ENUM:
-						printf("{\"%s\":\"%s\",\"%s\":%d}",
-									"enum_name", name, "enum_val", offset);
-						break;
-					case eLF_STRUCTURE:
-					case eLF_UNION:
-						printf("{\"%s\":\"%s\",\"%s\":\"%s\",\"%s\":%d}",
-									"member_type", type + strlen("(member)") + 1,
-									"member_name", name, "offset", offset);
-						break;
-					default:
-						break;
-					}
-					break;
-				}
-
-				free(type);
-				i++;
-			}
-                        
-
-			if (mode == 'r') {
-				printf("%s %s ", command_field, name_field);
-				if (lt != eLF_ENUM) {
-					printf("%s ", flags_format_field);
-				} else {
-					printf("%c ", '{');
-				}
-
-				sym = (lt == eLF_ENUM) ? ',' : ' ';
-				for (i = 0; i < members_amount; i++) {
-					printf("%s", members_name_field[i]);
-					if ((i + 1) != members_amount) {
-						printf("%c", sym);
-					}
-				}
-
-				if (lt == eLF_ENUM) {
-					printf(" };\"\n");
-				} else {
-					printf("\n");
-				}
-			}
-
-			if (mode == 'j') {
-				printf("]}");
-			}
-
-err:
-			if (mode == 'r') {
-				free(command_field);
-				free(name_field);
-				free(flags_format_field);
-				for (i = 0; i < members_amount; i++) {
-					free(members_name_field[i]);
-				}
-				free(members_name_field);
-			}
-		}
-	}
-
-	if (mode == 'j') {
-		printf("]}");
-	}
 }
 
 //Currently, only structures are dump
@@ -361,7 +187,6 @@ void dump_json(R_PDB *pdb) {
 	pdb_streams_element *plist = pdb->pdb_streams;
         UT_array *ptmp = NULL;
   
-        //json 
         json_object *tyde_definition = NULL;
         json_object *jobj = NULL;
 
@@ -407,7 +232,6 @@ void dump_json(R_PDB *pdb) {
 				tf->get_val(tf, &val);
 			if (tf->get_members)
 				tf->get_members(tf, (void*)&ptmp);
-			printf ("%s: size 0x%x\n", type_name, val);
                          
                         
                         it2 = NULL;
@@ -415,16 +239,8 @@ void dump_json(R_PDB *pdb) {
                         offset = -1;
                         while(ptmp!=NULL && ( it2=(STypeInfo *)utarray_next(ptmp,it2))){
                                 int index;
-                                //int prev_off;
                                 STypeInfo* tmp;
                                 SType* stype;
-                                //calculate previous size
-                                //if(tf == NULL)
-                                //    prev_off = 0;
-                                //if (tf->get_val)
-                                //        tf->get_val(tf, &prev_off);
-                                //else
-                                //prev_off = offset;
          
                                 tf = it2;
 				if (tf->get_name)
@@ -435,34 +251,15 @@ void dump_json(R_PDB *pdb) {
 					offset = 0;
 				if (tf->get_print_type)
 					tf->get_print_type(tf, &type);
-                                //if(prev_off != -1)
-                                //        printf ("size-- %x\n", offset - prev_off);
-				printf ("  0x%x: %s , type:", offset, name);
-				printf ("%s ", type);
-                                //GET TYPE 
-                                //tmp = it2;                               
-                                //if(tmp->get_index){
-                                //    index = tmp->get_index(tmp, (void**)&stype);
-                                //    if(stype){
-                                //        printf("stype %x %x\n", stype->tpi_idx, stype->length);
-                                //        printf("stype->info %x\n", stype->type_data.leaf_type);
-                                //    } 
-                                //}
-				//free(type);
-
-                                //int addFieldToStruct(json_object *parent_obj, char* member_name, char* member_type, int offset, int size, bool is_pointer)
 				
                                 addFieldToStruct(jobj, name, type, offset, 0, false);
                                 i++;
 			}
-                        printf ("size- %x\n", val - offset);
+                        //printf ("size- %x\n", val - offset);
                        
                         //filter
-                        printf( "Add to json %s\n", type_name);
+                        //printf( "Add to json %s\n", type_name);
                         json_object_object_add(tyde_definition, type_name, jobj);
-                        //json_object_to_file("type_definition.json", tyde_definition);
-                        
-
                  }
         } // end of while
         json_object_to_file("type_definition.json", tyde_definition);
@@ -476,12 +273,10 @@ void dump_gvar_json(R_PDB *pdb)
 	SPEStream *pe_stream = 0;
 	SGlobal *gdata = 0;
         sstream_parse_func_element *it=NULL;
+        
+        json_object *global_var = json_object_new_object();
 
-        //l = pdb->pdb_streams2;
-	//it = r_list_iterator (l);
-	//while (r_list_iter_next (it)) {
         DL_FOREACH(pdb->pdb_streams2 , it){
-		//tmp = (SStreamParseFunc *) r_list_iter_get(it);
                 tmp = it->sstream_parse_func;
 		switch (tmp->type) {
 		case ePDB_STREAM_SECT__HDR_ORIG:
@@ -501,7 +296,6 @@ void dump_gvar_json(R_PDB *pdb)
 		}
 	}
 
-        printf("sctns_orig %d, sctns %d, omap %d, gsym %d\n", sctns_orig, sctns, omap, gsym);
         if (!gsym) {
 		printf ("there is no global symbols in current pdb\n");
 		return;
@@ -516,18 +310,15 @@ void dump_gvar_json(R_PDB *pdb)
 		pe_stream = (SPEStream *) sctns->stream;
 	}
 
-        //it = r_list_iterator(gsym_data_stream->globals_list);
-	//while (r_list_iter_next(it)) {
-        //        gdata = (SGlobal *) r_list_iter_get(it);
         DL_FOREACH(gsym_data_stream->globals_list, gdata){
-                //sctn_header = r_list_get_n(pe_stream->sections_hdrs, (gdata->segment -1));
                 sctn_header = utarray_eltptr(pe_stream->sections_hdrs, (gdata->segment -1));
                 if (sctn_header) {
 			char *name = gdata->name.name;
-                        //printf("%x\n", sctn_header->virtual_address);
                         printf("name found: %s %x %d %s\n", name, sctn_header->virtual_address+gdata->offset, gdata->symtype, sctn_header->name);
+                        addGlobalVar( global_var, name, sctn_header->virtual_address+gdata->offset, gdata->symtype, sctn_header->name);
                 }
         }
+        json_object_to_file("global_variable.json", global_var);
 }
 
 int init_pdb_parser(R_PDB *pdb, const char *filename) {
@@ -539,13 +330,9 @@ int init_pdb_parser(R_PDB *pdb, const char *filename) {
 		goto error;
 	}
 	
-        //if (!printf)
-	//	printf = (PrintfCallback)printf;
 
-//	pdb->buf = r_buf_new_slurp (filename);
         pdb->fp = fopen (filename, "rb");
 
-//	pdb->fp = r_sandbox_fopen (filename, "rb");
 	if (!pdb->fp) {
 		printf ("file %s can not be open\n", filename);
 		goto error;
@@ -557,33 +344,25 @@ int init_pdb_parser(R_PDB *pdb, const char *filename) {
 		goto error;
 	}
 
-	//bytes_read = r_buf_read(pdb->buf, (unsigned char *)signature, PDB7_SIGNATURE_LEN);
         bytes_read = fread(signature, PDB7_SIGNATURE_LEN, 1, pdb->fp);
         bytes_read *= PDB7_SIGNATURE_LEN;
-        printf("%s size:%d read:%d\n", signature, PDB7_SIGNATURE_LEN, bytes_read);
 
 	if (bytes_read != PDB7_SIGNATURE_LEN) {
 		printf("file reading error\n");
 		goto error;
 	}
 
-	//r_buf_seek(pdb->buf, 0, 0);
         fseek(pdb->fp, 0, SEEK_SET);
 
 	if (!memcmp (signature, PDB7_SIGNATURE, PDB7_SIGNATURE_LEN)) {
-		//pdb->pdb_parse = pdb7_parse;
 	} else {
 		goto error;
 	}
 
 	free(signature);
 
-	//pdb->pdb_streams = r_list_new ();
         pdb->pdb_streams = NULL;
-	//pdb->stream_map = 0;
-	//pdb->finish_pdb_parse = finish_pdb_parse;
-	pdb->print_types = print_types;
-	//pdb->print_gvars = print_gvars;
+	//pdb->print_types = print_types;
 	printf("init_pdb_parser() finish with success\n");
 	return 1;
 
@@ -638,7 +417,6 @@ int init_pdb7_root_stream(R_PDB *pdb, int *root_page_list, int pages_amount,
 
 	R_PDB7_ROOT_STREAM *root_stream7;
 
-	//pdb->root_stream = R_NEW0 (R_PDB7_ROOT_STREAM);
         pdb->root_stream = (R_PDB7_ROOT_STREAM*)calloc(1,sizeof(R_PDB7_ROOT_STREAM));
 	init_r_pdb_stream(&pdb->root_stream->pdb_stream, pdb->fp, root_page_list, pages_amount,
 					  indx, root_size, page_size);
@@ -648,7 +426,6 @@ int init_pdb7_root_stream(R_PDB *pdb, int *root_page_list, int pages_amount,
 	pdb_stream = &(root_stream7->pdb_stream);
 
 	stream_file_get_size (&pdb_stream->stream_file, &data_size);
-        printf("size in hex %x\n", data_size);
         
 	data = (char *) calloc (1, data_size);
 	stream_file_get_data(&pdb_stream->stream_file, data);
@@ -658,7 +435,6 @@ int init_pdb7_root_stream(R_PDB *pdb, int *root_page_list, int pages_amount,
 	tmp_data += 4;
 
 	root_stream7->num_streams = num_streams;
-        printf("num_stream %d\n", root_stream7->num_streams);
 	tmp_data_max_size = (data_size - (num_streams * 4 - 4));
 	data_end = data + tmp_data_max_size;
         
@@ -691,19 +467,13 @@ int init_pdb7_root_stream(R_PDB *pdb, int *root_page_list, int pages_amount,
 	}
         
 	tmp_data = ((char *)data + num_streams * 4 + 4);
-	//root_stream7->streams_list = r_list_new();
         root_stream7->streams_list = NULL;
         
-	//RList *pList = root_stream7->streams_list;
-        //element* pList = root_stream7->streams_list; 
         SPage* pList = root_stream7->streams_list;
-
         
 	SPage *page = 0;
 	for (i = 0; i < num_streams; i++) {
-                
 		num_pages = count_pages (sizes[i], page_size);
-
 		if ((pos + num_pages) > tmp_data_max_size) {
 			free(data);
 			free(sizes);
@@ -715,7 +485,6 @@ int init_pdb7_root_stream(R_PDB *pdb, int *root_page_list, int pages_amount,
 		// TODO: cache that num_pages * 4, its used 4 times
 		tmp = (char *) calloc (num_pages, 4);
 		memset(tmp, 0, num_pages * 4);
-		//page = R_NEW0 (SPage);
                 page = (SPage*) calloc(1, sizeof(SPage));
                 printf("%d num_pages %d\n", i, num_pages); 
 		if (num_pages != 0) {
@@ -739,17 +508,15 @@ int init_pdb7_root_stream(R_PDB *pdb, int *root_page_list, int pages_amount,
 			free(tmp);
 		}
                 
-		//r_list_append (pList, page);
                 DL_APPEND(root_stream7->streams_list, page);
                 
 	}
          
-        DL_FOREACH(root_stream7->streams_list, page) printf("%d ,", page->num_pages);
-        printf("\n");
+        //DL_FOREACH(root_stream7->streams_list, page) printf("%d ,", page->num_pages);
+        //printf("\n");
 	free (sizes);
 	free (data);
         
-	printf("init_pdb7_root_stream()\n");
 	return 1;
 }
 
@@ -758,34 +525,26 @@ void parse_pdb_info_stream(void *parsed_pdb_stream, R_STREAM_FILE *stream) {
 
 	tmp->names = 0;
 
-	stream_file_read (stream, 4, (char *)&tmp->/*data.*/version);
-	stream_file_read (stream, 4, (char *)&tmp->/*data.*/time_date_stamp);
-	stream_file_read (stream, 4, (char *)&tmp->/*data.*/age);
-	stream_file_read (stream, 4, (char *)&tmp->/*data.*/guid.data1);
-	stream_file_read (stream, 2, (char *)&tmp->/*data.*/guid.data2);
-	stream_file_read (stream, 2, (char *)&tmp->/*data.*/guid.data3);
-	stream_file_read (stream, 8, (char *)&tmp->/*data.*/guid.data4);
-	stream_file_read (stream, 4, (char *)&tmp->/*data.*/cb_names);
+	stream_file_read (stream, 4, (char *)&tmp->version);
+	stream_file_read (stream, 4, (char *)&tmp->time_date_stamp);
+	stream_file_read (stream, 4, (char *)&tmp->age);
+	stream_file_read (stream, 4, (char *)&tmp->guid.data1);
+	stream_file_read (stream, 2, (char *)&tmp->guid.data2);
+	stream_file_read (stream, 2, (char *)&tmp->guid.data3);
+	stream_file_read (stream, 8, (char *)&tmp->guid.data4);
+	stream_file_read (stream, 4, (char *)&tmp->cb_names);
 
-	tmp->/*data.*/names = (char *) calloc(1, tmp->/*data.*/cb_names);
-	stream_file_read (stream, tmp->/*data.*/cb_names, tmp->/*data.*/names);
+	tmp->names = (char *) calloc(1, tmp->cb_names);
+	stream_file_read (stream, tmp->cb_names, tmp->names);
 }
 
 static void find_indx_in_list(sstream_parse_func_element *l, int index, SStreamParseFunc **res) {
-	//SStreamParseFunc *stream_parse_func = NULL;
         sstream_parse_func_element *stream_parse_func = NULL;
-	//RListIter *it = 0;
 
 	*res = 0;
-	//it = r_list_iterator(l);
-	//while (r_list_iter_next(it)) {
-        printf("start search %p\n", l);
         DL_FOREACH( l, stream_parse_func){
-		//stream_parse_func = (SStreamParseFunc *) r_list_iter_get(it);
-                printf("this stream %d\n", ((SStreamParseFunc*)(stream_parse_func->sstream_parse_func))->indx);
 		if (index == ((SStreamParseFunc*)(stream_parse_func->sstream_parse_func))->indx) {
 			*res = stream_parse_func->sstream_parse_func;
-                        printf("%d index found\n", index);
 			return;
 		}
 	}
@@ -811,7 +570,6 @@ static void find_indx_in_list(sstream_parse_func_element *l, int index, SStreamP
                 sstream_parse_func_element* sstream_parse_ele = (sstream_parse_func_element*)calloc(1, sizeof(sstream_parse_func_element));\
                 sstream_parse_ele->sstream_parse_func = stream_parse_func;\
                 DL_APPEND(list, sstream_parse_ele);\
-                printf("add stream %d\n", stream_parse_func->indx);\
 	} \
 }
 
@@ -823,16 +581,12 @@ ele = (pdb_streams_element*)calloc(1, sizeof(pdb_streams_element));
 
 //static void fill_list_for_stream_parsing(RList *l, SDbiStream *dbi_stream) {
 static void fill_list_for_stream_parsing(sstream_parse_func_element **l, SDbiStream *dbi_stream) {
-    printf("[fill_list_for_stream_parsing] %d\n", dbi_stream->dbi_header.symrecStream);
     ADD_INDX_TO_LIST(*l, dbi_stream->dbi_header.symrecStream, sizeof(SGDATAStream),
 			ePDB_STREAM_GSYM, free_gdata_stream, parse_gdata_stream);
-    printf("[fill_list_for_stream_parsing] %d %d\n", dbi_stream->dbg_header.sn_section_hdr, dbi_stream->dbg_header.sn_section_hdr_orig);
     ADD_INDX_TO_LIST(*l, dbi_stream->dbg_header.sn_section_hdr, sizeof(SPEStream),
 					 ePDB_STREAM_SECT_HDR, free_pe_stream, parse_pe_stream);
     ADD_INDX_TO_LIST(*l, dbi_stream->dbg_header.sn_section_hdr_orig, sizeof(SPEStream),
 					 ePDB_STREAM_SECT__HDR_ORIG, free_pe_stream, parse_pe_stream);
-    printf("[fill_list_for_stream_parsing] %d %d\n", dbi_stream->dbg_header.sn_omap_to_src, dbi_stream->dbg_header.sn_omap_from_src);
-
     ADD_INDX_TO_LIST(*l, dbi_stream->dbg_header.sn_omap_to_src, sizeof(SOmapStream),
 					 ePDB_STREAM_OMAP_TO_SRC, free_omap_stream, parse_omap_stream);
     ADD_INDX_TO_LIST(*l, dbi_stream->dbg_header.sn_omap_from_src, sizeof(SOmapStream),
@@ -842,29 +596,18 @@ static void fill_list_for_stream_parsing(sstream_parse_func_element **l, SDbiStr
 int pdb_read_root(R_PDB *pdb) {
 	int i = 0;
 
-	//RList *pList = pdb->pdb_streams;
         pdb->pdb_streams = NULL;
 	R_PDB7_ROOT_STREAM *root_stream = pdb->root_stream;
 	R_PDB_STREAM *pdb_stream = 0;
 	SPDBInfoStream *pdb_info_stream = 0;
 	STpiStream *tpi_stream = 0;
 	R_STREAM_FILE stream_file;
-	//RListIter *it;
 	SPage *page = 0;
 	SStreamParseFunc *stream_parse_func = 0;
         pdb_streams_element *it;
         pdb_streams_element* ele;
 
-        printf("pdb_read_root\n");
-        printf("pdb %p\n", pdb);
-        printf("%p\n", root_stream->streams_list);
-
-
-
         DL_FOREACH(root_stream->streams_list, page){
-	//it = r_list_iterator(root_stream->streams_list);
-	//while (r_list_iter_next(it)) {
-	//	page = (SPage*) r_list_iter_get(it);
                 stream_parse_func = 0;
 		init_r_stream_file(&stream_file, pdb->fp, (int *)page->stream_pages,
 						   page->num_pages/*root_stream->pdb_stream.pages_amount*/,
@@ -875,7 +618,6 @@ int pdb_read_root(R_PDB *pdb) {
 		//TODO: rewrite for style like for streams from dbg stream
 		//      look default
 		case ePDB_STREAM_PDB:
-			//pdb_info_stream = R_NEW0 (SPDBInfoStream);
                         pdb_info_stream = (SPDBInfoStream*)calloc(1, sizeof(SPDBInfoStream));
 			
                         if (!pdb_info_stream) return 0;
@@ -883,14 +625,11 @@ int pdb_read_root(R_PDB *pdb) {
                         //pdb_info_stream->free_ = free_info_stream;
 			
                         parse_pdb_info_stream(pdb_info_stream, &stream_file);
-			//r_list_append(pList, pdb_info_stream);
                         ele = (pdb_streams_element*)calloc(1, sizeof(pdb_streams_element));
                         ele->pdb_stream = pdb_info_stream;
                         DL_APPEND(pdb->pdb_streams, ele);
 			break;
 		case ePDB_STREAM_TPI:
-                         
-			//tpi_stream = R_NEW0 (STpiStream);
                         tpi_stream = (STpiStream*)calloc(1, sizeof(STpiStream));
 
 			if (!tpi_stream) return 0;
@@ -899,7 +638,6 @@ int pdb_read_root(R_PDB *pdb) {
 				free (tpi_stream);
 				return 0;
 			}
-			//r_list_append(pList, tpi_stream);
                         ele = (pdb_streams_element*)calloc(1, sizeof(pdb_streams_element));
                         ele->pdb_stream = tpi_stream;
                         DL_APPEND(pdb->pdb_streams, ele);
@@ -908,32 +646,23 @@ int pdb_read_root(R_PDB *pdb) {
 			break;
 		case ePDB_STREAM_DBI:
 		{
-                        
-			//SDbiStream *dbi_stream = R_NEW0 (SDbiStream);
                         SDbiStream *dbi_stream = (SDbiStream*)calloc(1,sizeof(SDbiStream));
 			init_dbi_stream(dbi_stream);
                         
 			parse_dbi_stream(dbi_stream, &stream_file);
 			
-                        //r_list_append(pList, dbi_stream);
                         ele = (pdb_streams_element*)calloc(1, sizeof(pdb_streams_element));
                         ele->pdb_stream = dbi_stream;
                         DL_APPEND(pdb->pdb_streams, ele);
 
-                        /* 
-			pdb->pdb_streams2 = r_list_new();
-			fill_list_for_stream_parsing(pdb->pdb_streams2, dbi_stream);
-                        */
                         pdb->pdb_streams2 = NULL;
                         fill_list_for_stream_parsing(&(pdb->pdb_streams2), dbi_stream);
 			break;
 		}
 		default:
-                        printf("Try to find %d stream\n", i);
 			find_indx_in_list(pdb->pdb_streams2, i, &stream_parse_func);
 			
                         if (stream_parse_func) {
-                                printf("stream parse func found!!!!!\n");
 				if (stream_parse_func->parse_stream) {
 					stream_parse_func->parse_stream(stream_parse_func->stream,
 													&stream_file);
@@ -958,15 +687,8 @@ int pdb_read_root(R_PDB *pdb) {
 		}
 
 		i++;
-                printf("%d\n", i);
         }
     
-        printf("test pdb stream\n");
-        DL_FOREACH(pdb->pdb_streams,it)
-        {
-            printf("%p\n", it );
-        }
-
 	return 1;
 }
 
@@ -988,8 +710,6 @@ int pdb7_parse(R_PDB *pdb) {
 	void *p_tmp;
 	int i = 0;
 
-	//bytes_read = r_buf_read(pdb->buf, (unsigned char *)signature, PDB7_SIGNATURE_LEN);
-        printf("fp %p\n", &pdb);
         bytes_read = fread(signature, PDB7_SIGNATURE_LEN, 1, pdb->fp);
         bytes_read *= PDB7_SIGNATURE_LEN;
 
@@ -998,17 +718,6 @@ int pdb7_parse(R_PDB *pdb) {
 		goto error;
 	}
 
-	/*if (!read_int_var ("page_size", &page_size, pdb))
-		goto error;
-	if (!read_int_var ("alloc_tbl_ptr", &alloc_tbl_ptr, pdb))
-		goto error;
-	if (!read_int_var ("num_file_pages", &num_file_pages, pdb))
-		goto error;
-	if (!read_int_var ("root_size", &root_size, pdb))
-		goto error;
-	if (!read_int_var("reserved", &reserved, pdb))
-		goto error;
-        */
         fread(&page_size, 4, 1, pdb->fp);
         fread(&alloc_tbl_ptr, 4, 1, pdb->fp);
         fread(&num_file_pages, 4, 1, pdb->fp);
@@ -1030,11 +739,7 @@ int pdb7_parse(R_PDB *pdb) {
 		goto error;
 	}
 
-//	bytes_read = fread(root_index_pages, 4, num_root_index_pages, pdb->fp);
-	//bytes_read = r_buf_read(pdb->buf, (unsigned char *)root_index_pages, 4 * num_root_index_pages);
-	//fread(root_index_pages, 4, num_root_index_pages, pdb->fp);
         bytes_read = fread(root_index_pages, 4, num_root_index_pages, pdb->fp);
-        printf("%d\n", bytes_read);
         
 	if (4*bytes_read != 4 * num_root_index_pages) {
 		printf ("error while reading root_index_pages\n");
@@ -1049,9 +754,7 @@ int pdb7_parse(R_PDB *pdb) {
 
 	p_tmp = root_page_data;
 	for (i = 0; i < num_root_index_pages; i++) {
-		//r_buf_seek(pdb->buf, root_index_pages[i] * page_size, 0);
                 fseek ( pdb->fp , root_index_pages[i] * page_size , SEEK_SET );
-		//r_buf_read(pdb->buf, p_tmp, page_size);
                 fread(p_tmp, page_size, 1, pdb->fp );
 		p_tmp = (char *)p_tmp + page_size;
 	}
@@ -1068,8 +771,6 @@ int pdb7_parse(R_PDB *pdb) {
 		p_tmp = (int *)p_tmp + 1;
 	}
 
-	//pdb->pdb_streams2 = 0;
-        
 	if (!init_pdb7_root_stream (pdb, root_page_list, num_root_pages,
 			ePDB_STREAM_ROOT, root_size, page_size)) {
 		printf ("root stream has not initialized\n");

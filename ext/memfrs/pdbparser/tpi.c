@@ -1,3 +1,25 @@
+/*
+MBA PDB TPI Parser Implementation.
+
+This file is part of MBA PDB Parser.
+This PDB parser is modified from RADARE2's repository.
+Instead of using radare's API, we replace it with ut-serial library.
+
+Copyright (c)   2016 ChongKuan Chen
+
+This PDB Parser is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Foobar is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -456,7 +478,6 @@ void get_struct_class_members(void *type, void **list)
 	} else {
 		SType *tmp = 0;
 		indx = lf->field_list - base_idx;
-		//tmp = (SType *)r_list_get_n(p_types_list, indx);
                 tmp = (SType *)utarray_eltptr(p_types_list, indx);
 		lf_fieldlist = (SLF_FIELDLIST *) tmp->type_data.type_info;
 		*l = lf_fieldlist->substructs;
@@ -473,7 +494,6 @@ int get_class_struct_derived(void *type, void **ret_type)
 		*ret_type = 0;
 	} else {
 		curr_idx -= base_idx;
-		//*ret_type = r_list_get_n(p_types_list, curr_idx);
                 *ret_type = (SType *)utarray_eltptr(p_types_list, curr_idx);
 	}
 
@@ -490,7 +510,6 @@ int get_class_struct_vshape(void *type, void **ret_type)
 		*ret_type = 0;
 	} else {
 		curr_idx -= base_idx;
-		//*ret_type = r_list_get_n(p_types_list, curr_idx);
                 *ret_type = (SType *)utarray_eltptr(p_types_list, curr_idx);
 	}
 
@@ -557,7 +576,6 @@ int get_pointer_utype(void *type, void **ret_type)
 		*ret_type = 0;
 	} else {
 		curr_idx -= base_idx;
-		//*ret_type = r_list_get_n(p_types_list, curr_idx);
                 *ret_type = (SType *)utarray_eltptr(p_types_list, curr_idx);
 	}
 
@@ -1482,7 +1500,7 @@ void init_stype_info(STypeInfo *type_info)
 	type_info->is_fwdref = 0;
 	type_info->get_print_type = 0;
 
-        printf("eLF type: %d\n", type_info->leaf_type);
+        //printf("eLF type: %d\n", type_info->leaf_type);
 
 	switch (type_info->leaf_type) {
 	case eLF_FIELDLIST:

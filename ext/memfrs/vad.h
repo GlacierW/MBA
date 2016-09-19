@@ -81,6 +81,6 @@ static int const MmProtectToValue[32] = {
         PAGE_WRITECOMBINE | PAGE_EXECUTE_WRITECOPY
 };
 
-extern int parse_mmvad_node(uint64_t mmvad_ptr, CPUState *cpu);
-extern void traverse_vad_tree(uint64_t eprocess_ptr, CPUState *cpu);
+int parse_mmvad_node(uint64_t mmvad_ptr, CPUState *cpu);
+extern void memfrs_traverse_vad_tree(uint64_t eprocess_ptr, CPUState *cpu);
 #endif

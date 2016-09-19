@@ -1,17 +1,39 @@
-#include <stdio.h>
+/*
+MBA PDB Parser Implementation.
 
+This file is part of MBA PDB Parser.
+This PDB parser is modified from RADARE2's repository.
+Instead of using radare's API, we replace it with ut-serial library.
+
+Copyright (c)   2016 ChongKuan Chen
+
+This PDB Parser is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Foobar is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+
+#include <stdio.h>
 #include "pdb.h"
 
-//static int bin_pdb(RCore *core, int mode) 
 int main(int argc, char *argv[])
 {
     R_PDB pdb = {0};
-    printf("pdb %p\n", &pdb);
     init_pdb_parser(&pdb, argv[1]);
-    printf("pdbi2 %p\n", &pdb);
+    printf("Start parsing pdb file\n");
     pdb7_parse(&pdb);
-    //print_types(&pdb, 'j');    
+    printf("Dumping structure information\n");    
     dump_json(&pdb);
+    printf("Dumping global offset information\n");
     dump_gvar_json(&pdb);
 }
 

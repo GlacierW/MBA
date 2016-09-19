@@ -25,7 +25,7 @@
 #define SIZE_OF_POOL_HEADER 0x10
 
 /*********************************************************************************
-void scan_module(CPUState *cpu)
+void memfrs_scan_module(CPUState *cpu)
 
 Scan the whole physical memory for MmLd Module tag, and list all the module name
 in atdout.
@@ -34,7 +34,7 @@ INPUT:  CPUState *cpu            pointer to current cpu
 
 OUTPUT: void                     
 **********************************************************************************/
-void scan_module(CPUState *cpu)
+void memfrs_scan_module(CPUState *cpu)
 {
     uint64_t i ;
     uint8_t* module_tag = (uint8_t*)malloc(strlen(POOL_TAG_MODULE));

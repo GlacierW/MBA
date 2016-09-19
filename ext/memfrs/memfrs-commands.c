@@ -64,14 +64,14 @@ void do_scan_kernel(Monitor *mon, const QDict *qdict)
     CPUState *thiscpu=NULL;
     uint64_t base = 0;
 
-    if( (base = get_nt_kernel_base()) != 0)
+    if( (base = memfrs_get_nt_kernel_base()) != 0)
     {
         monitor_printf(mon, "Kernel already find at %"PRIx64"\n", base); 
         return;
     }
     thiscpu = ENV_GET_CPU((CPUArchState*)mba_mon_get_cpu());
  
-    base = find_nt_kernel_base(thiscpu);
+    base = memfrs_find_nt_kernel_base(thiscpu);
     if(base != 0)
         monitor_printf(mon, "Kernel found %"PRIx64"\n", base);
     else
@@ -199,7 +199,7 @@ void do_traverse_vad(Monitor *mon, const QDict *qdict)
         break;
     }
 
-    traverse_vad_tree(eprocess_ptr ,  thiscpu);
+    memfrs_traverse_vad_tree(eprocess_ptr ,  thiscpu);
 }
 
 #define MAXMEM 0x80000000
@@ -235,7 +235,8 @@ void do_module_list(Monitor *mon, const QDict *qdict)
             monitor_printf(mon, "\n");
         }
     }*/
-    scan_module(cpu); 
+    memfrs_scan_module(cpu); 
+
 }
 
 

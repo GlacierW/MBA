@@ -184,7 +184,7 @@ int parse_mmvad_node(uint64_t mmvad_ptr, CPUState *cpu)
 UT_icd vad_adr_icd = {sizeof(uint64_t), NULL, NULL, NULL };
 
 /*********************************************************************************
-void traverse_vad_tree(uint64_t eprocess_ptr, CPUState *cpu)
+void memfrs_traverse_vad_tree(uint64_t eprocess_ptr, CPUState *cpu)
 
 1. Get vad root node by the eprocess_ptr
 2. Traversal vad tree, which is AVL tree
@@ -194,7 +194,7 @@ INPUT: uint64_t eprocess_ptr    the virtual address to the eprocess structure
 
 OUTPUT: void
 **********************************************************************************/
-void traverse_vad_tree(uint64_t eprocess_ptr, CPUState *cpu)
+void memfrs_traverse_vad_tree(uint64_t eprocess_ptr, CPUState *cpu)
 {
     int offset_vadroot_to_eprocess = 0;
     int offset_left_to_vadnode = 0;

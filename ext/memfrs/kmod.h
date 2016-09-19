@@ -26,6 +26,6 @@
 #define HARDCODE_POOL_HEADER_SIZE 0x10
 #define SIZEOFUNICODESTRING 0x10
 
-extern void scan_module(CPUState *cpu);
+extern void memfrs_scan_module(CPUState *cpu);
 
 #endif

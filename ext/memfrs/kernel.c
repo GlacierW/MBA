@@ -14,7 +14,7 @@
 
 uint64_t nt_kernel_base = 0;
 
-uint64_t find_nt_kernel_base(CPUState* cpu)
+uint64_t memfrs_find_nt_kernel_base(CPUState* cpu)
 {
     
     uint64_t i, j, x;
@@ -57,8 +57,10 @@ uint64_t find_nt_kernel_base(CPUState* cpu)
     return nt_kernel_base;
 }
 
-uint64_t get_nt_kernel_base(void)
+uint64_t memfrs_get_nt_kernel_base(void)
 {
+    //if(nt_kernel_base==0)
+    //    nt_kernel_base = find_nt_kernel_base(cpu);
     return nt_kernel_base;
 }
 
