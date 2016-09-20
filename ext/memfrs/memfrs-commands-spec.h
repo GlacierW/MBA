@@ -79,4 +79,17 @@
         .help       = "scan for the kernel module",
         .mhandler.cmd = do_module_list,
 },
-
+{
+        .name = "load_global_variable",
+        .args_type  = "gvar_db:s",
+        .params     = "gvar_db",
+        .help       = "loading global variable information",
+        .mhandler.cmd = do_load_global_variable,
+},
+{
+        .name = "get_gvar_vmem",
+        .args_type  = "gvar:s",
+        .params     = "gvar",
+        .help       = "get the virtual memory address of the global variable/symbol",
+        .mhandler.cmd = do_get_gvar_vmem,
+},

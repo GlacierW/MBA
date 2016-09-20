@@ -31,6 +31,7 @@
 /* Global Variable */
 uint64_t g_kpcr_ptr = 0;
 json_object *g_struct_info = NULL;
+json_object *g_globalvar_info = NULL;
 
 
 bool memfrs_check_struct_info(void)
@@ -538,3 +539,58 @@ void parse_unicode_str(uint8_t* ustr, CPUState *cpu)
     printf("Filename %s\n", str);
 }
 
+/*******************************************************************
+int memfrs_load_structs( const char* gvar_filename)
+
+Load the global variable information into g_globalvar_info.
+
+INPUT:     const char* gvar_filename,  the filename of json global variable database
+OUTPUT:    int,                        return 0 if sucess, and not 0 otherwise
+
+*******************************************************************/
+int memfrs_load_globalvar( const char* gvar_filename)
+{
+    g_globalvar_info = json_object_from_file(gvar_filename);
+    return 0;
+}
+
+/*******************************************************************
+json_object* memfrs_q_globalvar(const char* gvar_name)
+
+query the global variable's info via given variable name
+
+INPUT:    const char* gvar_name,  the name of interesting global symbol
+OUTPUT:   json_object*,         json object representation of the target global var
+
+*******************************************************************/
+json_object* memfrs_q_globalvar(const char* gvar_name)
+{
+    json_object* target = NULL;
+
+    // Query global structure info with structure name ds_name
+    // Restore the query result into target json_object 
+    json_object_object_get_ex(g_globalvar_info, gvar_name, &target);
+
+    if(target==NULL)
+        printf("%s not found\n", gvar_name);
+    return target;
+}
+
+/*******************************************************************
+uint64_t memfrs_gvar_offset(json_object* gvarobj)
+
+Get the virtual address of specific global variable, which is in
+json_object format. 
+
+memfrs_q_globalvar should be invoked first to get the json_object.
+
+INPUT:    json_object* gvarobj  the json obj of interesting global symbol
+OUTPUT:   uint64_t              the virtual address of specific global variable
+
+*******************************************************************/
+uint64_t memfrs_gvar_offset(json_object* gvarobj)
+{
+    json_object* tmp_jobject = json_object_array_get_idx(gvarobj, 0);
+    uint64_t offset = json_object_get_int(tmp_jobject);
+    return offset;
+}

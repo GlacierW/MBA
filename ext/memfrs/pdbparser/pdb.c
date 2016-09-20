@@ -68,12 +68,12 @@ int addFieldToStruct(json_object *parent_obj, char* field_name, char* field_type
 }
 
 
-int addGlobalVar(json_object *parent_obj, char* name, int offset, int size, char* section_name)
+int addGlobalVar(json_object *parent_obj, char* name, uint64_t offset, int size, char* section_name)
 {
     json_object *var_info;
     var_info = json_object_new_array();
 
-    printf("%s\n\n", name);
+    //printf("%s\n\n", name);
     //json_object_array_add( field_info, json_object_new_string(field_type));
     json_object_array_add( var_info, json_object_new_int(offset));
     json_object_array_add( var_info, json_object_new_int(size));

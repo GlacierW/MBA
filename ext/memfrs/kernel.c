@@ -33,8 +33,8 @@ uint64_t memfrs_find_nt_kernel_base(CPUState* cpu)
                 // TODO: Not use magic number, use ds query system instead
                 if(memcmp(buf, RSDS_HEADER_SIG, strlen(RSDS_HEADER_SIG))==0)
                 {
-                    printf("\tRSDS Find at %"PRIx64"\n", i+j);
-                    printf("\tImage name %s\n", (char*)(buf+RSDS_HEADER_IMAGE_NAME_OFF));
+                    //printf("\tRSDS Find at %"PRIx64"\n", i+j);
+                    //printf("\tImage name %s\n", (char*)(buf+RSDS_HEADER_IMAGE_NAME_OFF));
                     break;
                 }
             }

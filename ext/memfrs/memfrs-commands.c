@@ -236,7 +236,45 @@ void do_module_list(Monitor *mon, const QDict *qdict)
         }
     }*/
     memfrs_scan_module(cpu); 
-
 }
 
+/******************************************************************
+* PURPOSE : Load the global variable's(symbols) information into 
+            g_globalvar_info from json file of gvar_db
+******************************************************************/
+void do_load_global_variable(Monitor *mon, const QDict *qdict)
+{
+    const char* gvar_path = qdict_get_str(qdict, "gvar_db");
+    memfrs_load_globalvar(gvar_path);
+}
 
+/******************************************************************
+* PURPOSE : Get the virtual memory address of symbols with name gvar  
+******************************************************************/
+void do_get_gvar_vmem(Monitor *mon, const QDict *qdict)
+{
+    const char* name = qdict_get_str(qdict, "gvar");
+    CPUState *thiscpu=NULL;
+    uint64_t base = 0;
+    json_object *gvar = NULL;
+    if( (base = memfrs_get_nt_kernel_base()) != 0)
+    {
+        monitor_printf(mon, "Kernel already find at %"PRIx64"\n", base);
+        //return;
+    } else
+    {
+        thiscpu = ENV_GET_CPU((CPUArchState*)mba_mon_get_cpu());
+        base = memfrs_find_nt_kernel_base(thiscpu);
+        if(base != 0)
+            monitor_printf(mon, "Kernel found %"PRIx64"\n", base);
+        else
+        {
+            monitor_printf(mon, "Kernel not found\n");
+            return;
+        }
+   }
+    
+   gvar = memfrs_q_globalvar(name);
+   monitor_printf(mon, "%s @ %"PRIx64"\n", name, memfrs_gvar_offset(gvar) + base);
+   return; 
+}
