@@ -56,10 +56,15 @@ extern void memfrs_get_virmem_content( CPUState *cpu, uint64_t cr3, uint64_t tar
 extern int memfrs_load_globalvar( const char* type_filename);
 extern json_object* memfrs_q_globalvar(const char* gvar_name);
 extern uint64_t memfrs_gvar_offset(json_object* gvarobj);
+extern uint64_t memfrs_find_nt_kernel_base(CPUState* cpu);
+extern uint64_t memfrs_get_nt_kernel_base(void);
+extern void memfrs_scan_module(CPUState *cpu);
+extern void memfrs_traverse_vad_tree(uint64_t eprocess_ptr, CPUState *cpu);
 
-
+/*
 extern void parse_unicode_strptr(uint64_t ustr_ptr, CPUState *cpu);
 extern void parse_unicode_str(uint8_t* ustr, CPUState *cpu);
 extern void hexdump(Monitor *mon, uint8_t* buf, size_t length);
+*/
 #endif
 

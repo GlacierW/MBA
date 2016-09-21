@@ -20,6 +20,7 @@
 
 #include "qemu-common.h"
 #include "ext/memfrs/memfrs.h"
+#include "ext/memfrs/memfrs-priv.h"
 #include "ext/memfrs/kmod.h"
 
 #define SIZE_OF_POOL_HEADER 0x10

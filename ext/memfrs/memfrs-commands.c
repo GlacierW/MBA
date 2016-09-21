@@ -25,6 +25,7 @@
 
 #include "ext/memfrs/memfrs-commands.h"
 #include "ext/memfrs/memfrs.h"
+#include "ext/memfrs/memfrs-priv.h"
 #include "ext/memfrs/kernel.h"
 #include "ext/memfrs/vad.h"
 #include "ext/memfrs/kmod.h"

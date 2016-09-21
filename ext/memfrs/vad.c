@@ -19,6 +19,7 @@
 
 #include "qemu-common.h"
 #include "ext/memfrs/memfrs.h"
+#include "ext/memfrs/memfrs-priv.h"
 #include "ext/memfrs/vad.h"
 
 // Mapping between VAD type and it's name

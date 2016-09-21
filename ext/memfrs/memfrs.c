@@ -27,6 +27,7 @@
 #include "json.h"
 
 #include "ext/memfrs/memfrs.h"
+#include "ext/memfrs/memfrs-priv.h"
 
 /* Global Variable */
 uint64_t g_kpcr_ptr = 0;

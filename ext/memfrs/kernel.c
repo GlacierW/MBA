@@ -1,5 +1,7 @@
 
+
 #include "qemu-common.h"
+#include "ext/memfrs/memfrs.h"
 #include "ext/memfrs/kernel.h"
 
 #define PE_HEADER "MZ"
