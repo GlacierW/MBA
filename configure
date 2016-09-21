@@ -1162,7 +1162,6 @@ for opt do
   ;;
   --enable-mba-all)
     dift="yes"
-    dift_debug="yes"
     agent="yes"
     memfrs="yes"
     tsk="yes"
