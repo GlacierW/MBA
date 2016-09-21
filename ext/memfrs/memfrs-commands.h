@@ -26,5 +26,15 @@ struct Monitor;
 struct QDict;
 void do_process_list(Monitor *mon, const QDict *qdict);
 void do_load_structures(Monitor *mon, const QDict *qdict);
+void do_show_virmem_content(Monitor *mon, const QDict *qdict);
+void do_show_phymem_content(Monitor *mon, const QDict *qdict);
+void do_scan_virmem(Monitor *mon, const QDict *qdict);
+void do_scan_phymem(Monitor *mon, const QDict *qdict);
+void do_traverse_vad(Monitor *mon, const QDict *qdict);
+void do_scan_kernel(Monitor *mon, const QDict *qdict);
+void do_module_list(Monitor *mon, const QDict *qdict);
+void do_load_global_variable(Monitor *mon, const QDict *qdict);
+void do_get_gvar_vmem(Monitor *mon, const QDict *qdict);
+//void hexdump(Monitor *mon, uint8_t* buf, size_t length);
 #endif
 
