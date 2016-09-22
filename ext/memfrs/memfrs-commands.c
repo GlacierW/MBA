@@ -276,6 +276,7 @@ void do_get_gvar_vmem(Monitor *mon, const QDict *qdict)
    }
     
    gvar = memfrs_q_globalvar(name);
-   monitor_printf(mon, "%s @ %"PRIx64"\n", name, memfrs_gvar_offset(gvar) + base);
+   if( gvar != NULL )
+       monitor_printf(mon, "%s @ %"PRIx64"\n", name, memfrs_gvar_offset(gvar) + base);
    return; 
 }
