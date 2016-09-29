@@ -92,18 +92,20 @@ static void display_error(char *pszAPI, bool socket_send)
     TCHAR szPrintBuffer[512];
     ZeroMemory(szPrintBuffer, sizeof(szPrintBuffer));
 
-    FormatMessage(
-        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
-        NULL, GetLastError(),
-        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-        (LPTSTR)&lpvMessageBuffer, 0, NULL);
+    FormatMessage( FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM,
+        	   NULL, GetLastError(),
+        	   MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        	   (LPTSTR)&lpvMessageBuffer, 0, NULL
+		 );
 
-    sprintf_s( g_sLogMessage, 
-			   SZ_MAX_LOG,
-			   "ERROR:\tAPI\t\t= %s.\r\n\terror code\t= %d.\r\n\tmessage\t\t= %s.\r\n",
-			   pszAPI,
-			   GetLastError(),
-			   (char *)lpvMessageBuffer );
+    sprintf_s( 	g_sLogMessage, 
+		SZ_MAX_LOG,
+		"ERROR:\tAPI\t\t= %s.\r\n\terror code\t= %d.\r\n\tmessage\t\t= %s.\r\n",
+		pszAPI,
+		GetLastError(),
+		(char *)lpvMessageBuffer 
+	     );
+
     write_log();
 
     if (socket_send)
@@ -143,8 +145,8 @@ static DWORD WINAPI get_and_send_input_thread(LPVOID lpvThreadParam)
     CHAR cInBuf[SZ_MAX_CMD];            // input buffer, write to child
     CHAR errorbuf[sizeof(MSG_REC_SUCCESS)];
     
-    DWORD nBytesRead;
-    DWORD nBytesWrote;
+    DWORD nBytesRead, 
+    nBytesWrote;
 	      
     HANDLE hPipeWrite = (HANDLE)lpvThreadParam;
 
@@ -156,7 +158,6 @@ static DWORD WINAPI get_and_send_input_thread(LPVOID lpvThreadParam)
     while( TRUE ) {
         nBytesRead = recv(g_sClientDupSocket, cInBuf, SZ_MAX_CMD, MSG_WAITALL);
         if( nBytesRead > 0 ) {
-
         	if( !WriteFile(hPipeWrite, cInBuf, strlen(cInBuf), &nBytesWrote, NULL) ) {
             	if (GetLastError() == ERROR_NO_DATA) 
                 	break;  // Pipe was closed (normal exit path).
@@ -166,7 +167,6 @@ static DWORD WINAPI get_and_send_input_thread(LPVOID lpvThreadParam)
         }
         else
         	break;
-		
     }
     return 0;
 }
@@ -200,7 +200,6 @@ static void read_and_handle_output(HANDLE hPipeRead)
 
         send(g_sClientSocket, (const char*)&nBytesRead, sizeof(nBytesRead), 0);
         send(g_sClientSocket, cOutBuf, nBytesRead, 0);
-		
     }
 }
 
@@ -251,7 +250,6 @@ static void prep_and_launch_redirected_child(char *sCommand_line, HANDLE hChildS
 ///
 /// Return AGENT_RET_SUCCESS if succeed, or AGENT_RET_FAIL if fail
 static MBA_AGENT_RETURN execute_cmd(char *sCmdline) {
-    
     // Child  : hOutputWrite, hInputRead, hErrorWrite
     // Parent : hOutputRead, hInputWrite
     HANDLE hOutputRead, hOutputWrite;
@@ -277,34 +275,34 @@ static MBA_AGENT_RETURN execute_cmd(char *sCmdline) {
     if (!CreatePipe(&hOutputRead, &hOutputWrite, &pipeAttr, 0)) {
         display_error("execute_cmd - CreatePipe", TRUE);
 		return AGENT_RET_FAIL;
-    }
+	}
 
     // Create a duplicate of the output write handle for the std error write handle.
     // This is necessary in case the child application closes one of its std output handles.
-    if ( !DuplicateHandle(
-        	GetCurrentProcess(), hOutputWrite,
-        	GetCurrentProcess(), &hErrorWrite,
-        	0, TRUE, DUPLICATE_SAME_ACCESS) ) {
-				display_error("execute_cmd - DuplicateHandle : hErrorWrite -> hOutputWrite", TRUE);
-				return AGENT_RET_FAIL;
+    if ( !DuplicateHandle( GetCurrentProcess(), hOutputWrite,
+        		   GetCurrentProcess(), &hErrorWrite,
+        	 	   0, TRUE, DUPLICATE_SAME_ACCESS) 
+			 ) {
+	display_error("execute_cmd - DuplicateHandle : hErrorWrite -> hOutputWrite", TRUE);
+	return AGENT_RET_FAIL;
     }
         
 
     // Create the child input pipe.
     if ( !CreatePipe( &hInputRead, &hInputWrite, &pipeAttr,0) ){
-    	display_error("execute_cmd - CreatePipe", TRUE);
+    		display_error("execute_cmd - CreatePipe", TRUE);
 		return AGENT_RET_FAIL;
     }
 
     // Ensure the handle for reading from child stdout pipe is not inherited
     if ( !SetHandleInformation( hOutputRead, HANDLE_FLAG_INHERIT, 0) ) {
-	display_error("execute_cmd - SetHandleInformation : Child read", TRUE);
-	return AGENT_RET_FAIL;
+		display_error("execute_cmd - SetHandleInformation : Child read", TRUE);
+		return AGENT_RET_FAIL;
     }
 
     // Ensure the handle for writing to child stdin pipe is not inherited
     if ( !SetHandleInformation( hInputWrite, HANDLE_FLAG_INHERIT, 0) ) {
-    	display_error("execute_cmd - SetHandleInformation : Child write", TRUE);
+	display_error("execute_cmd - SetHandleInformation : Child write", TRUE);
 	return AGENT_RET_FAIL;
     }
 		
@@ -340,7 +338,7 @@ static MBA_AGENT_RETURN execute_cmd(char *sCmdline) {
         get_and_send_input_thread,  // a pointer to the application-defined function to be executed by the thread
         (LPVOID)hInputWrite,        // a pointer to a variable to be passed to the thread.
         0,                          // the flags that control the creation of the thread
-        &dTid);                      // a pointer to a variable that receives the thread identifier.
+        &dTid);                     // a pointer to a variable that receives the thread identifier.
                                     //      If this parameter is NULL, the thread identifier is not returned.
     if (hThread == NULL) {
 	display_error("execute_cmd - CreateThread : Write", TRUE);
@@ -429,14 +427,13 @@ static MBA_AGENT_RETURN import_cmd(char *filePath, SOCKET sClientSocket)
     write_log();
 
     hFile = CreateFile(
-		filePath,                                           // name of the Write
-		GENERIC_WRITE,                                      // open for writing
-		0,                                                  // do not share
-		NULL,                                               // default security
-		CREATE_ALWAYS,                                      // create new file only
-		FILE_FLAG_WRITE_THROUGH | FILE_FLAG_NO_BUFFERING,   // non-buffering I/O
-		NULL                                                // no attr. template
-            );
+			filePath,                                           // name of the Write
+			GENERIC_WRITE,                                      // open for writing
+			0,                                                  // do not share
+			NULL,                                               // default security
+			CREATE_ALWAYS,                                      // create new file only
+			FILE_FLAG_WRITE_THROUGH | FILE_FLAG_NO_BUFFERING,   // non-buffering I/O
+			NULL );                                             // no attr. template
 
     if (g_hLog == INVALID_HANDLE_VALUE) {
         display_error("import_cmd - CreateFile - can't open file", FALSE);
@@ -483,70 +480,70 @@ static MBA_AGENT_RETURN import_cmd(char *filePath, SOCKET sClientSocket)
 	else
 		send(sClientSocket, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS), 0);
 
-		sprintf_s(g_sLogMessage, SZ_MAX_LOG, "read %ld bytes, fwrite %ld bytes\r\n", nBytesRead, nBytesWrite);
-		write_log();
-
-		fileSizeStored += nBytesWrite;
-
-		--recvRound;
-	}
-
-	// perform the last round of file write in times of sector size (for non-buffering write)
-	nBytesRead = fileSize % SZ_MAX_FILECHUNK;
-	if( nBytesRead ) {
-		
-		// --------Check client can read file successfully-------- //
-		nErrorBytesRead = recv( sClientSocket, errorbuf, sizeof(MSG_REC_SUCCESS), MSG_WAITALL );
-		if ( nErrorBytesRead != sizeof(MSG_REC_SUCCESS) ) {
-			display_error("import_cmd - CheckClient - can't check client read file successfully", FALSE);
-			CloseHandle(hFile);
-			return AGENT_RET_FAIL;
-		}
-		if ( strncmp(errorbuf, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ) {
-			display_error("import_cmd - CheckClient - client can't read file", FALSE);
-			CloseHandle(hFile);
-			return AGENT_RET_FAIL;
-		}
-	
-		ZeroMemory( fBuf, SZ_MAX_FILECHUNK );
-		if( nBytesRead != recv( sClientSocket, fBuf, nBytesRead, 0 ) ) {
-			display_error("import_cmd - recv", TRUE);
-			CloseHandle(hFile);
-			return AGENT_RET_FAIL;
-		}
-		//nBytesRead = recv( sClientSocket, fBuf, nBytesRead, 0 );
-		
-		// Write file contents
-		if( WriteFile(hFile, fBuf, SZ_MAX_FILECHUNK, (LPDWORD)&nBytesWrite, NULL) == FALSE ) {
-			display_error("import_cmd - WriteFile", TRUE);
-			send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS), 0);
-			CloseHandle(hFile);
-			return AGENT_RET_FAIL;
-		}
-		else
-			send(sClientSocket, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS), 0);
-
-		fileSizeStored += nBytesRead;
-
-		// close & re-open file to set the true end of file
-		// as we try to minimize the cache activity
-		CloseHandle( hFile );
-		hFile = CreateFile( filePath, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL );
-		
-		// Set file pointer 
-		ptrSetFile = SetFilePointer( hFile, fileSizeStored, NULL, FILE_BEGIN );
-		if ( ptrSetFile ==  INVALID_SET_FILE_POINTER ) {
-			display_error("export_log - GetFileSizeEx", FALSE);
-			send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS), 0);
-			return AGENT_RET_FAIL;
-		}
-		else
-			send(sClientSocket, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS), 0);
-		SetEndOfFile( hFile );
-	}
-	
-	sprintf_s(g_sLogMessage, SZ_MAX_LOG, "Total stored size : %ld bytes\r\n", fileSizeStored);
+	sprintf_s(g_sLogMessage, SZ_MAX_LOG, "read %ld bytes, fwrite %ld bytes\r\n", nBytesRead, nBytesWrite);
 	write_log();
+
+	fileSizeStored += nBytesWrite;
+
+	--recvRound;
+    }
+
+    // perform the last round of file write in times of sector size (for non-buffering write)
+    nBytesRead = fileSize % SZ_MAX_FILECHUNK;
+    if( nBytesRead ) {
+		
+	// --------Check client can read file successfully-------- //
+	nErrorBytesRead = recv( sClientSocket, errorbuf, sizeof(MSG_REC_SUCCESS), MSG_WAITALL );
+	if ( nErrorBytesRead != sizeof(MSG_REC_SUCCESS) ) {
+		display_error("import_cmd - CheckClient - can't check client read file successfully", FALSE);
+		CloseHandle(hFile);
+		return AGENT_RET_FAIL;
+	}
+	if ( strncmp(errorbuf, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ) {
+		display_error("import_cmd - CheckClient - client can't read file", FALSE);
+		CloseHandle(hFile);
+		return AGENT_RET_FAIL;
+	}
+
+	ZeroMemory( fBuf, SZ_MAX_FILECHUNK );
+	if( nBytesRead != recv( sClientSocket, fBuf, nBytesRead, 0 ) ) {
+		display_error("import_cmd - recv", TRUE);
+		CloseHandle(hFile);
+		return AGENT_RET_FAIL;
+	}
+	//nBytesRead = recv( sClientSocket, fBuf, nBytesRead, 0 );
+	
+	// Write file contents
+	if( WriteFile(hFile, fBuf, SZ_MAX_FILECHUNK, (LPDWORD)&nBytesWrite, NULL) == FALSE ) {
+		display_error("import_cmd - WriteFile", TRUE);
+		send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS), 0);
+		CloseHandle(hFile);
+		return AGENT_RET_FAIL;
+	}
+	else
+		send(sClientSocket, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS), 0);
+
+	fileSizeStored += nBytesRead;
+	// close & re-open file to set the true end of file
+	// as we try to minimize the cache activity
+	CloseHandle( hFile );
+	hFile = CreateFile( filePath, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL );
+		
+	// Set file pointer 
+	ptrSetFile = SetFilePointer( hFile, fileSizeStored, NULL, FILE_BEGIN );
+	if ( ptrSetFile ==  INVALID_SET_FILE_POINTER ) {
+		display_error("export_log - GetFileSizeEx", FALSE);
+		send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS), 0);
+		return AGENT_RET_FAIL;
+	}
+	else
+		send(sClientSocket, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS), 0);
+	
+	SetEndOfFile( hFile );
+    }
+	
+    sprintf_s(g_sLogMessage, SZ_MAX_LOG, "Total stored size : %ld bytes\r\n", fileSizeStored);
+    write_log();
 
     CloseHandle(hFile);
 
@@ -561,19 +558,19 @@ static MBA_AGENT_RETURN import_cmd(char *filePath, SOCKET sClientSocket)
 /// Return AGENT_RET_SUCCESS if succeed, or AGENT_RET_FAIL if fail
 static MBA_AGENT_RETURN export_cmd(char *filePath, SOCKET sClientSocket)
 {
-    HANDLE hFile;           // handle the export file
+    HANDLE hFile;           		// handle the export file
     
     DWORDLONG nBytesRead;
     DWORDLONG nBytesWrite;
     DWORDLONG nBytesWriteOneTime;
     DWORDLONG nErrorBytesRead;
 
-    DWORD	  sendRound;      			// rounds of content sent
+    DWORD	  sendRound;      	// rounds of content sent
     
-    LARGE_INTEGER fileSize;     // store the file size (8 bytes)
+    LARGE_INTEGER fileSize;     	// store the file size (8 bytes)
 
 
-    char fBuf[SZ_MAX_FILECHUNK];   // export buffer
+    char fBuf[SZ_MAX_FILECHUNK];   	// export buffer
     char errorbuf[sizeof(MSG_REC_SUCCESS)];
 	
 	// Open File
@@ -584,9 +581,8 @@ static MBA_AGENT_RETURN export_cmd(char *filePath, SOCKET sClientSocket)
         	NULL,                                               // default security
         	OPEN_EXISTING,                                      // existing file only
         	FILE_FLAG_WRITE_THROUGH | FILE_FLAG_NO_BUFFERING,   // nonbuffering
-        	NULL                                                // no attr. template
-            );
-
+        	NULL);                                              // no attr. template
+        
     if (hFile == INVALID_HANDLE_VALUE) {
     	display_error("export_cmd - CreateFile", TRUE);
 	send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS), 0);
@@ -600,7 +596,7 @@ static MBA_AGENT_RETURN export_cmd(char *filePath, SOCKET sClientSocket)
     	display_error("export_cmd - GetFileSizeEx", TRUE);
 	send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS), 0);
 	CloseHandle(hFile);
-   	return AGENT_RET_FAIL;
+    	return AGENT_RET_FAIL;
     }
     else
 	send(sClientSocket, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS), 0);
@@ -628,7 +624,7 @@ static MBA_AGENT_RETURN export_cmd(char *filePath, SOCKET sClientSocket)
 	return AGENT_RET_FAIL;
     }
     if ( strncmp(errorbuf, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ) {
- 	display_error("export_cmd - CheckClient - client can't open file", FALSE);
+	display_error("export_cmd - CheckClient - client can't open file", FALSE);
 	CloseHandle(hFile);
 	return AGENT_RET_FAIL;
     }
@@ -657,7 +653,7 @@ static MBA_AGENT_RETURN export_cmd(char *filePath, SOCKET sClientSocket)
 		return AGENT_RET_FAIL;
 	}
        	nBytesWrite += nBytesWriteOneTime;
-		
+	
 	// --------Check if client can write file successfully-------- //
 	nErrorBytesRead = recv( sClientSocket, errorbuf, sizeof(MSG_REC_SUCCESS), MSG_WAITALL );
 	if ( nErrorBytesRead != sizeof(MSG_REC_SUCCESS) ) {
@@ -682,16 +678,15 @@ static MBA_AGENT_RETURN export_cmd(char *filePath, SOCKET sClientSocket)
     nBytesRead = fileSize.QuadPart % SZ_MAX_FILECHUNK;
     if( nBytesRead ) {
 
-	// Re-open the file without no-buffering restriction
+ 	// Re-open the file without no-buffering restriction
 	hFile = CreateFile(
-			filePath,                   // name of the write
-			GENERIC_READ,               // open for reading
-			FILE_SHARE_READ,            // share for reading
-			NULL,                       // default security
-			OPEN_EXISTING,              // existing file only
-			FILE_ATTRIBUTE_NORMAL,      // normal file
-			NULL                        // no attr. template
-		);
+		filePath,                   // name of the write
+		GENERIC_READ,               // open for reading
+		FILE_SHARE_READ,            // share for reading
+		NULL,                       // default security
+		OPEN_EXISTING,              // existing file only
+		FILE_ATTRIBUTE_NORMAL,      // normal file
+		NULL);                      // no attr. template
 
 	if(hFile == INVALID_HANDLE_VALUE) {
 		display_error( "export_cmd - CreateFile", TRUE);
@@ -703,8 +698,8 @@ static MBA_AGENT_RETURN export_cmd(char *filePath, SOCKET sClientSocket)
 
 	// move the file pointer to the last-read position
 	SetFilePointer(hFile, nBytesWrite, NULL, FILE_BEGIN);
-
 	// read the remaining file content
+
 	if( ReadFile(hFile, fBuf, nBytesRead, (LPDWORD)&nBytesRead, NULL) == 0 ) {
 		display_error("export_cmd - ReadFile", TRUE);
 		send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS), 0);
@@ -766,14 +761,14 @@ static MBA_AGENT_RETURN export_log( SOCKET sClientSocket )
 	
     // Duplicate the global log handle and check the result
     if ( !DuplicateHandle( 
-		  GetCurrentProcess(),
-		  g_hLog,
-		  GetCurrentProcess(),
-		  &hLog,
-		  0,
-		  FALSE,
-		  DUPLICATE_SAME_ACCESS ) ) {
-    	display_error("export_log - GetFileSizeEx", FALSE);
+	  GetCurrentProcess(),
+	  g_hLog,
+	  GetCurrentProcess(),
+	  &hLog,
+	  0,
+	  FALSE,
+	  DUPLICATE_SAME_ACCESS ) ) {
+   	display_error("export_log - GetFileSizeEx", FALSE);
 	send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS), 0);
     	return AGENT_RET_FAIL;
     }
@@ -783,9 +778,9 @@ static MBA_AGENT_RETURN export_log( SOCKET sClientSocket )
     // Set the file pointer of hLog and check the result
     ptrSetFile = SetFilePointer(hLog, 0, NULL, FILE_BEGIN);
     if ( ptrSetFile ==  INVALID_SET_FILE_POINTER ) {
-      	display_error("export_log - GetFileSizeEx", FALSE);
+    	display_error("export_log - GetFileSizeEx", FALSE);
 	send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS), 0);
-	return AGENT_RET_FAIL;
+    	return AGENT_RET_FAIL;
     }
     else
 	send(sClientSocket, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS), 0);
@@ -870,42 +865,41 @@ static MBA_AGENT_RETURN export_log( SOCKET sClientSocket )
     nBytesRead = fileSize.QuadPart % SZ_MAX_FILECHUNK;
     if( nBytesRead ) {
 
- 	// read the remaining file contents
-	if( ReadFile(hLog, fBuf, nBytesRead, (LPDWORD)&nBytesRead, NULL) == 0 ) {
+    	// read the remaining file contents
+    	if( ReadFile(hLog, fBuf, nBytesRead, (LPDWORD)&nBytesRead, NULL) == 0 ) {
 		display_error("export_log - ReadFile", TRUE);
 		send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS), 0);
 		CloseHandle( hLog );
 		return AGENT_RET_FAIL;
-	}
-	else
+    	}
+    	else
 		send(sClientSocket, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS), 0);
 		
 	// send the contents
-	nBytesWriteOneTime = send(sClientSocket, fBuf, nBytesRead, 0);
-	if ( nBytesWriteOneTime != nBytesRead ){
-		display_error("export_cmd - CheckClient - can't send file successfully", FALSE);
+    	nBytesWriteOneTime = send(sClientSocket, fBuf, nBytesRead, 0);
+    	if ( nBytesWriteOneTime != nBytesRead ){
+ 		display_error("export_cmd - CheckClient - can't send file successfully", FALSE);
 		CloseHandle( hLog );
 		return AGENT_RET_FAIL;
-	}
-        nBytesWrite += nBytesWriteOneTime;
+    	}
+    	nBytesWrite += nBytesWriteOneTime;
 		
-	// --------Check if client can write file successfully-------- //
-	nErrorBytesRead = recv( sClientSocket, errorbuf, sizeof(MSG_REC_SUCCESS), MSG_WAITALL );
-	if ( nErrorBytesRead != sizeof(MSG_REC_SUCCESS) ) {
+    	// --------Check if client can write file successfully-------- //
+    	nErrorBytesRead = recv( sClientSocket, errorbuf, sizeof(MSG_REC_SUCCESS), MSG_WAITALL );
+    	if ( nErrorBytesRead != sizeof(MSG_REC_SUCCESS) ) {
 		display_error("export_cmd - CheckClient - can't check client write file successfully", FALSE);
 		CloseHandle( hLog );
 		return AGENT_RET_FAIL;
-	}
-	if ( strncmp(errorbuf, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ) {
+    	}
+    	if ( strncmp(errorbuf, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ) {
 		display_error("export_cmd - CheckClient - client can't write file", FALSE);
 		CloseHandle( hLog );
 		return AGENT_RET_FAIL;
-	}
+    	}
         
     }
 	
     CloseHandle( hLog );
-    
     return AGENT_RET_SUCCESS;
 }
 
@@ -913,15 +907,15 @@ void server_mainloop( SOCKET sListenSocket )
 {
     SOCKET sClientSocket;
 	
-    int iResult,					// system information with error message
-	iSendResult,					// system information with error message after send function
+    int iResult,			     // system information with error message
+	iSendResult,			     // system information with error message after send function
 	command_code;
 	MBA_AGENT_RETURN command_result;
     
-    char sRecvbuf[SZ_MAX_CMD << 1];          		// receive buffer from client
-    char sCommand_line[SZ_MAX_CMD << 1];     		// fully command line
+    char sRecvbuf[SZ_MAX_CMD << 1];          // receive buffer from client
+    char sCommand_line[SZ_MAX_CMD << 1];     // fully command line
     // we allocate two times more space for the string manipulation
-    
+   
     // Accept connections
     while( true ) {
     	
@@ -978,7 +972,7 @@ void server_mainloop( SOCKET sListenSocket )
                         break;
 
 		    case MBA_CMD_UNKNOWN :
-            default:
+    	            default:
 			display_error("main - [COMMAND ERROR] Unknown command", TRUE);
 			command_result = AGENT_RET_SUCCESS;	
                         break;
@@ -1023,7 +1017,7 @@ void server_mainloop( SOCKET sListenSocket )
         closesocket(sClientSocket);
         sprintf_s(g_sLogMessage, SZ_MAX_LOG, "[SYSTEM] Connection closing...\r\n");
         write_log();  
-	}	
+    }	
 }
 
 /// Set up socket for listen on 'DEFAULT_PORT' port.
@@ -1094,31 +1088,31 @@ static SOCKET socket_setup()
 
 HANDLE create_log_file( const char* logPath ) 
 {	
-	HANDLE hLog;
+    HANDLE hLog;
 
-	// prepare the log path
-	if( logPath == NULL ) {
-		// get the %My Documents%
-		SHGetFolderPath( NULL, 
+    // prepare the log path
+    if( logPath == NULL ) {
+	// get the %My Documents%
+	SHGetFolderPath( NULL, 
 			CSIDL_PERSONAL | CSIDL_FLAG_CREATE, 
 			NULL, 
 			0, 
 			g_sLogPath );
 			
-		strcat(g_sLogPath, "\\" DEFAULT_LOG_NAME );
-	}
-	else
-		strncpy(g_sLogPath, logPath, MAX_PATH);
+	strcat(g_sLogPath, "\\" DEFAULT_LOG_NAME );
+    }
+    else
+	strncpy(g_sLogPath, logPath, MAX_PATH);
 	
-	// Createfile of log file and get handler
+    // Createfile of log file and get handler
     hLog = CreateFile(
         g_sLogPath,				// fullpath name of the agent log file
-        GENERIC_READ | GENERIC_WRITE,   		// open for writing
-        FILE_SHARE_READ,        // share
-        NULL,                   // default security
-        CREATE_ALWAYS,            // open file
-        FILE_ATTRIBUTE_NORMAL,  // normal file
-        NULL);                  // no attr. template
+        GENERIC_READ | GENERIC_WRITE,   	// open for writing
+        FILE_SHARE_READ,        		// share
+        NULL,                   		// default security
+        CREATE_ALWAYS,            		// open file
+        FILE_ATTRIBUTE_NORMAL,  		// normal file
+        NULL);                  		// no attr. template
         
     return hLog;
 } 
@@ -1126,7 +1120,7 @@ HANDLE create_log_file( const char* logPath )
 int __cdecl main( int argc, char* argv[] )
 {
     int iResult;
-
+	
     WSADATA wsaData;
     SOCKET sListenSocket = INVALID_SOCKET;  // listen socket
 	
@@ -1152,12 +1146,12 @@ int __cdecl main( int argc, char* argv[] )
         return 3;
     }
 
-	// Giving welcom message
+    // Giving welcom message
     sprintf_s(g_sLogMessage, SZ_MAX_LOG, "================ Welcome to MBA Agent ================\r\n");
     write_log();
 
-	// Server infinite loop
-	server_mainloop( sListenSocket );
+    // Server infinite loop
+    server_mainloop( sListenSocket );
 
     // Cleanup
     WSACleanup();
@@ -1166,5 +1160,3 @@ int __cdecl main( int argc, char* argv[] )
 
     return 0;
 }
-
-
