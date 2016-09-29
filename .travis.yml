@@ -40,6 +40,7 @@ matrix: # define more builds here
   include:
     # enable & run agent unit test
     - env: EXTRA_CONFIG="--enable-agent"
+      compiler: gcc
            #TEST_CMD="make agent -C ext/ -f Makefile.test && ext/agent/test/bin/test_agent"
     # enable all MBA extensions
     #- env: EXTRA_CONFIG="--enable-mba-all"
