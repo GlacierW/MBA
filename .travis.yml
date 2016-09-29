@@ -35,12 +35,12 @@ before_install:
 before_script:
   - ./configure --target-list=${TARGETS} ${EXTRA_CONFIG}
 script:
-  - make -j4 && sh -c "${TEST_CMD}"
+  - make -j4 #&& sh -c "${TEST_CMD}"
 matrix: # define more builds here
   include:
     # enable & run agent unit test
     - env: EXTRA_CONFIG="--enable-agent"
-           TEST_CMD="make agent -C ext/ -f Makefile.test && ext/agent/test/bin/test_agent"
+           #TEST_CMD="make agent -C ext/ -f Makefile.test && ext/agent/test/bin/test_agent"
     # enable all MBA extensions
     #- env: EXTRA_CONFIG="--enable-mba-all"
     #       TEST_CMD="make mba-test"
