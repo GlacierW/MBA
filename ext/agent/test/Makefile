@@ -4,7 +4,7 @@ LINKOBJ	  = gtest_main.o agent_unittest.o $(GTEST_LIB)
 LINKFLAGS = -lpthread -lgcov
 BIN_TEST  = bin
 BIN       = $(BIN_TEST)/test_agent
-CXXFLAGS  = -Wall -DCONFIG_AGENT_TEST -isystem ${GTEST_DIR}/include -isystem ${GMOCK_DIR}/include
+CXXFLAGS  = -Wall -DCONFIG_AGENT_TEST -isystem ${GTEST_DIR}/include -isystem ${GMOCK_DIR}/include -I ../../../include/ -I ../../../ -DQEMU_GLIB_COMPAT_H
 GCOV_FILE = *.gcno *.gcda *.gcov
 
 .PHONY : all clean
