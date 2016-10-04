@@ -9,7 +9,9 @@ GCOV_FILE = *.gcno *.gcda *.gcov
 
 .PHONY : all clean
 
-all: $(BIN)
+#all: $(BIN)
+
+all:
 
 clean:
 	rm -rf $(OBJ) $(BIN_DEST) $(GCOV_FILE)
