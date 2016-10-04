@@ -86,6 +86,9 @@ uint64_t phys_ram_size = 0;
 
 FILE* dift_logfile = NULL;
 
+bool dift_switch_pending = false;
+bool dift_enabled        = false;
+
 // Emulator part
 uint8_t pre_generated_routine[4096] __attribute__((aligned(4096)));
 uint8_t* rt_get_next_enqptr     = pre_generated_routine;
@@ -314,7 +317,6 @@ dift_context dc[1] __attribute__((aligned(4096)));
 
 // DIFT private variable
 static int  sleepness = 0;
-static bool dift_enabled = false;
 static pthread_t dift_thread;
 
 const char* REG_NAME[] = {
@@ -1292,11 +1294,13 @@ CONTAMINATION_RECORD dift_get_disk_dirty( uint64_t haddr ) {
 }
 
 void dift_enable( void ) {
-    dift_enabled = true;
+    if( !dift_enabled )
+        dift_switch_pending = true;
 }
 
 void dift_disable( void ) {
-    dift_enabled = false;
+    if( dift_enabled )
+        dift_switch_pending = true;
 }
 
 bool dift_is_enabled( void ) {
