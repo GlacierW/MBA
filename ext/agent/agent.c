@@ -24,13 +24,22 @@
 #include <string.h>
 #include <stdbool.h>
 #include <pthread.h>
-#include <monitor/monitor.h>
 
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#ifndef CONFIG_AGENT_TEST
+#include <monitor/monitor.h>
+#else
+#include <stdarg.h>
+typedef void Monitor;
+void monitor_vprintf( Monitor* mon, const char* fmt, va_list arg){}
+#endif
+
+
 #include <arpa/inet.h>
 #include "agent.h"
+
 
 struct agent_context {
     
