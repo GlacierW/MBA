@@ -2,7 +2,7 @@
  *  MBA agent extension of QEMU command header
  *
  *  Copyright (c)   2016 Chiawei Wang
- *                  2016 Jui-Chien, Jai
+ *                  2016 Jui-Chien, Jao
  *
  *
  * This library is free software; you can redistribute it and/or

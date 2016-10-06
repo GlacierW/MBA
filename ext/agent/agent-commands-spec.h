@@ -2,7 +2,7 @@
  *  MBA agent extension of QEMU command specification
  *
  *  Copyright (c)   2016 Chiawei Wang
- *                  2016 Jui-Chien, Jai
+ *                  2016 Jui-Chien, Jao
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -34,7 +34,7 @@
     .mhandler.cmd = do_win_expo,
 },
 {
-	.name         = "w_exec",
+    .name         = "w_exec",
     .args_type    = "cmdline:s",
     .params       = "command_to_execute",
     .help         = "Execute the given command inside the guest and perform interactive Input/Output.",
@@ -48,16 +48,16 @@
     .mhandler.cmd = do_win_invo,
 },
 {
-	.name	      = "w_logf",
-	.args_type    = "dstpath:s",
-	.params       = "fullpath_logfile",
-	.help         = "Export the agent log file from the guest to the host. The fullpath of the destination file is required.",
-	.mhandler.cmd = do_win_logf,
+    .name         = "w_logf",
+    .args_type    = "dstpath:s",
+    .params       = "fullpath_logfile",
+    .help         = "Export the agent log file from the guest to the host. The fullpath of the destination file is required.",
+    .mhandler.cmd = do_win_logf,
 },
 {
-	.name  	      = "w_init",
-	.args_type    = "",
-	.params       = "",
-	.help	      = "Create an agent thread to communicate with Windows in-VM agent server.",
-	.mhandler.cmd = do_win_init,
+    .name         = "w_init",
+    .args_type    = "",
+    .params       = "",
+    .help         = "Create an agent thread to communicate with Windows in-VM agent server.",
+    .mhandler.cmd = do_win_init,
 },
