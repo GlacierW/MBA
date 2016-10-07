@@ -390,7 +390,7 @@ static MBA_AGENT_RETURN invoke_cmd(char *sCmdline) {
         return AGENT_RET_SUCCESS;
     }
     else {
-        send(g_sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS), 0);
+        send(g_sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_FAIL), 0);
         return AGENT_RET_FAIL;
     }
 }
@@ -442,7 +442,7 @@ static MBA_AGENT_RETURN import_cmd(char *filePath, SOCKET sClientSocket)
 
     if (g_hLog == INVALID_HANDLE_VALUE) {
         display_error("import_cmd - CreateFile - can't open file", FALSE);
-        send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS), 0);
+        send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_FAIL), 0);
         return AGENT_RET_FAIL;
     }
     else
@@ -478,7 +478,7 @@ static MBA_AGENT_RETURN import_cmd(char *filePath, SOCKET sClientSocket)
         // Write file contents
         if( WriteFile( hFile, fBuf, nBytesRead, (LPDWORD)&nBytesWrite, NULL ) == FALSE ) {
             display_error("import_cmd - WriteFile", FALSE);
-            send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS), 0);
+            send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_FAIL), 0);
             CloseHandle(hFile);
             return AGENT_RET_FAIL;
         }
@@ -521,7 +521,7 @@ static MBA_AGENT_RETURN import_cmd(char *filePath, SOCKET sClientSocket)
         // Write file contents
         if( WriteFile(hFile, fBuf, SZ_MAX_FILECHUNK, (LPDWORD)&nBytesWrite, NULL) == FALSE ) {
             display_error("import_cmd - WriteFile", TRUE);
-            send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS), 0);
+            send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_FAIL), 0);
             CloseHandle(hFile);
             return AGENT_RET_FAIL;
         }
@@ -539,7 +539,7 @@ static MBA_AGENT_RETURN import_cmd(char *filePath, SOCKET sClientSocket)
         ptrSetFile = SetFilePointer( hFile, fileSizeStored, NULL, FILE_BEGIN );
         if ( ptrSetFile ==  INVALID_SET_FILE_POINTER ) {
             display_error("export_log - GetFileSizeEx", FALSE);
-            send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS), 0);
+            send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_FAIL), 0);
             return AGENT_RET_FAIL;
         }
         else
@@ -590,7 +590,7 @@ static MBA_AGENT_RETURN export_cmd(char *filePath, SOCKET sClientSocket)
         
     if (hFile == INVALID_HANDLE_VALUE) {
         display_error("export_cmd - CreateFile", TRUE);
-        send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS), 0);
+        send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_FAIL), 0);
         return AGENT_RET_FAIL;
     }
     else
@@ -599,7 +599,7 @@ static MBA_AGENT_RETURN export_cmd(char *filePath, SOCKET sClientSocket)
     // Get file size
     if (!GetFileSizeEx(hFile, &fileSize)) {
         display_error("export_cmd - GetFileSizeEx", TRUE);
-        send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS), 0);
+        send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_FAIL), 0);
         CloseHandle(hFile);
         return AGENT_RET_FAIL;
     }
@@ -644,7 +644,7 @@ static MBA_AGENT_RETURN export_cmd(char *filePath, SOCKET sClientSocket)
         // Read file contents
         if( ReadFile(hFile, fBuf, SZ_MAX_FILECHUNK, (LPDWORD)&nBytesRead, NULL) == 0 ) {
             display_error( "export_cmd - ReadFile", TRUE);
-            send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS), 0);
+            send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_FAIL), 0);
             return AGENT_RET_FAIL;
         }
         else
@@ -695,7 +695,7 @@ static MBA_AGENT_RETURN export_cmd(char *filePath, SOCKET sClientSocket)
 
         if(hFile == INVALID_HANDLE_VALUE) {
             display_error( "export_cmd - CreateFile", TRUE);
-            send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS), 0);
+            send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_FAIL), 0);
             return AGENT_RET_FAIL;
         }
         else
@@ -707,7 +707,7 @@ static MBA_AGENT_RETURN export_cmd(char *filePath, SOCKET sClientSocket)
         // read the remaining file content
         if( ReadFile(hFile, fBuf, nBytesRead, (LPDWORD)&nBytesRead, NULL) == 0 ) {
             display_error("export_cmd - ReadFile", TRUE);
-            send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS), 0);
+            send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_FAIL), 0);
             CloseHandle(hFile);
             return AGENT_RET_FAIL;
         }
@@ -774,7 +774,7 @@ static MBA_AGENT_RETURN export_log( SOCKET sClientSocket )
           FALSE,
           DUPLICATE_SAME_ACCESS ) ) {
         display_error("export_log - GetFileSizeEx", FALSE);
-        send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS), 0);
+        send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_FAIL), 0);
         return AGENT_RET_FAIL;
     }
     else
@@ -784,7 +784,7 @@ static MBA_AGENT_RETURN export_log( SOCKET sClientSocket )
     ptrSetFile = SetFilePointer(hLog, 0, NULL, FILE_BEGIN);
     if ( ptrSetFile ==  INVALID_SET_FILE_POINTER ) {
         display_error("export_log - GetFileSizeEx", FALSE);
-        send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS), 0);
+        send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_FAIL), 0);
         return AGENT_RET_FAIL;
     }
     else
@@ -793,7 +793,7 @@ static MBA_AGENT_RETURN export_log( SOCKET sClientSocket )
     // Read log file size
     if (!GetFileSizeEx(hLog, &fileSize)) {
         display_error("export_log - GetFileSizeEx", FALSE);
-        send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS), 0);
+        send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_FAIL), 0);
         CloseHandle( hLog );
         return AGENT_RET_FAIL;
     }
@@ -831,7 +831,7 @@ static MBA_AGENT_RETURN export_log( SOCKET sClientSocket )
         // Read log file contents
         if( ReadFile(hLog, fBuf, SZ_MAX_FILECHUNK, (LPDWORD)&nBytesRead, NULL) == 0 ) {
             display_error( "export_log - ReadFile", TRUE);
-            send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS), 0);
+            send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_FAIL), 0);
             CloseHandle( hLog );
             return AGENT_RET_FAIL;
         }
@@ -873,7 +873,7 @@ static MBA_AGENT_RETURN export_log( SOCKET sClientSocket )
         // read the remaining file contents
         if( ReadFile(hLog, fBuf, nBytesRead, (LPDWORD)&nBytesRead, NULL) == 0 ) {
             display_error("export_log - ReadFile", TRUE);
-            send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_SUCCESS), 0);
+            send(sClientSocket, MSG_REC_FAIL, sizeof(MSG_REC_FAIL), 0);
             CloseHandle( hLog );
             return AGENT_RET_FAIL;
         }

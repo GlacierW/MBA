@@ -227,7 +227,7 @@ static MBA_AGENT_RETURN import_host_file( void ) {
              
              // --------construct the result to the server-------- //
          bzero( errorbuf, sizeof(MSG_REC_SUCCESS) );
-         snprintf( errorbuf, sizeof(MSG_REC_SUCCESS), MSG_REC_FAIL );
+         snprintf( errorbuf, sizeof(MSG_REC_FAIL), MSG_REC_FAIL );
          // --------send the result to the server-------- //
          as_write( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
              
@@ -358,7 +358,7 @@ static MBA_AGENT_RETURN export_guest_file( void ) {
          
     // --------construct the result to the server-------- //
     bzero( errorbuf, sizeof(MSG_REC_SUCCESS) );
-    snprintf( errorbuf, sizeof(MSG_REC_SUCCESS), MSG_REC_FAIL );
+    snprintf( errorbuf, sizeof(MSG_REC_FAIL), MSG_REC_FAIL );
     
     // --------send the result to the server-------- //
     as_write( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
@@ -424,7 +424,7 @@ static MBA_AGENT_RETURN export_guest_file( void ) {
                  
          // --------construct the result to the server-------- //
          bzero( errorbuf, sizeof(MSG_REC_SUCCESS) );
-         snprintf( errorbuf, sizeof(MSG_REC_SUCCESS), MSG_REC_FAIL );
+         snprintf( errorbuf, sizeof(MSG_REC_FAIL), MSG_REC_FAIL );
                  
          // -------send the result to the server------- //
          as_write( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
@@ -558,7 +558,7 @@ static MBA_AGENT_RETURN execute_guest_cmd_noreturn( void ) {
     agent_printf( "Failed to check server invoke executable successfully\n" );
     goto invo_fail;
     }
-    agent_printf("errorbuf : %s\n", errorbuf);
+    
     if ( strncmp(errorbuf, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ){
     agent_printf( "Server failed to invoke executable\n" );
     goto invo_fail;
@@ -648,7 +648,7 @@ static MBA_AGENT_RETURN export_agent_log( void ) {
          
          // --------construct the result to the server-------- //
          bzero( errorbuf, sizeof(MSG_REC_SUCCESS) );
-         snprintf( errorbuf, sizeof(MSG_REC_SUCCESS), MSG_REC_FAIL );
+         snprintf( errorbuf, sizeof(MSG_REC_FAIL), MSG_REC_FAIL );
     
          // -------send the result to the server------- //
          as_write( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
@@ -698,7 +698,7 @@ static MBA_AGENT_RETURN export_agent_log( void ) {
                  
          // --------construct the result to the server-------- //
          bzero( errorbuf, sizeof(MSG_REC_SUCCESS) );
-         snprintf( errorbuf, sizeof(MSG_REC_SUCCESS), MSG_REC_FAIL );
+         snprintf( errorbuf, sizeof(MSG_REC_FAIL), MSG_REC_FAIL );
              
          // -------send the result to the server------- //
          as_write( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
