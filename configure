@@ -347,6 +347,7 @@ obhook="no"
 nettramon="no"
 dba="no"
 tracer="no"
+systrace="no"
 #########################
 
 # parse CC options first
@@ -1171,6 +1172,9 @@ for opt do
     echo "NOTE: DBA relies on almost every MBA extension!!"
     dba="yes"
   ;;
+  --enable-systrace)
+    systrace="yes"
+  ;;
   --enable-mba-all)
     dift="yes"
     agent="yes"
@@ -1180,6 +1184,7 @@ for opt do
     nettramon="yes"
     dba="yes"
     tracer="yes"
+    systrace="yes"
   ;;
   --disable-dift) dift="no"
   ;;
@@ -1484,6 +1489,7 @@ Advanced options (experts only):
   --enable-tracer          enable tracer
   --enable-nettramon       enable Network Traffic Monitor
   --enable-dba             enable Dynamic Behavior Analyzer
+  --enable-systrace        enable System Call Tracing
   --enable-mba-all         enable all of the MBA features
 
 NOTE: The object files are built at the place where configure is launched
@@ -4557,6 +4563,7 @@ echo "Out-of-Box hook support           $obhook"
 echo "Tracer                            $tracer"
 echo "Network Traffic Monitor           $nettramon"
 echo "Dynamic behavior analysis support $dba"
+echo "System Call Tracing               $systrace"
 #########################
 
 if test "$sdl_too_old" = "yes"; then
@@ -5477,6 +5484,10 @@ if test "$tracer" = "yes"; then
   echo "CONFIG_TRACER=y" >> $config_target_mak
 fi
 
+if test "$systrace" = "yes"; then
+  echo "CONFIG_SYSTRACE=y" >> $config_host_mak
+  echo "CONFIG_SYSTRACE=y" >> $config_target_mak
+fi
 #########################
 
 # generate QEMU_CFLAGS/LDFLAGS for targets

@@ -68,7 +68,10 @@ bool memfrs_check_struct_info(void)
     return (g_struct_info!=NULL)? 1 : 0;
 }
 
-
+bool memfrs_check_globalvar_info(void)
+{
+    return (g_globalvar_info!=NULL)? 1 : 0;
+}
 
 /*******************************************************************
 field_info* memfrs_q_field( json_object* struc, const char* field_name  )
