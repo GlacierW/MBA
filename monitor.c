@@ -100,6 +100,9 @@
 
 #if defined(CONFIG_OBHOOK)
 #include "ext/obhook/obhook-commands.h"
+
+#if defined(CONFIG_ANALYSES)
+#include "ext/analyses/analyses-commands.h"
 #endif
 
 //#define DEBUG
@@ -2979,7 +2982,11 @@ static mon_cmd_t mon_cmds[] = {
 #endif
 
 #if defined(CONFIG_MEMFRS)
-#include "ext/memfrs/memfrs-commands-spec.h" 
+#include "ext/memfrs/memfrs-commands-spec.h"
+#endif
+
+#if defined(CONFIG_ANALYSES)
+#include "ext/analyses/analyses-commands-spec.h"
 #endif
 
 #if defined(CONFIG_OBHOOK)
