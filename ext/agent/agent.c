@@ -5,7 +5,7 @@
  *                  2016 Chuan-Hua, Cheng
  *                  2016 JuiChien, Jao
  *
- * This library is free software; you can redistribute it and/or
+ * This library is free software you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2 of the License, or (at your option) any later version.
@@ -30,16 +30,19 @@
 
 #ifndef CONFIG_AGENT_TEST
 #include <monitor/monitor.h>
+#define _MOCKABLE(x) x
 #else
 #include <stdarg.h>
 typedef void Monitor;
 void monitor_vprintf( Monitor* mon, const char* fmt, va_list arg){}
+#include "test/test.h"
+/// Change name to avoid macros in test.h from expanding.
+/// Refer to _dift_log to call original dift_log in tests.
+#define _MOCKABLE(x) _##x
 #endif
-
 
 #include <arpa/inet.h>
 #include "agent.h"
-
 
 struct agent_context {
     
@@ -107,7 +110,7 @@ static void agent_cleanup( void ) {
 ///     \param  count       Count in bytes of buf to be written
 ///
 /// Return bytes written, <= 0 if any error occured
-static ssize_t as_write( int sock_fd, void* buf, size_t count ) {
+static ssize_t _MOCKABLE(as_write)( int sock_fd, void* buf, size_t count ) {
 
     ssize_t n_wbytes = write( sock_fd, buf, count );
 
@@ -128,7 +131,7 @@ static ssize_t as_write( int sock_fd, void* buf, size_t count ) {
 ///     \param  count       Count in bytes of buf to be read
 ///
 /// Return bytes read, <= 0 if any error occured
-static ssize_t as_read( int sock_fd, void* buf, size_t count ) {
+static ssize_t _MOCKABLE(as_read)( int sock_fd, void* buf, size_t count ) {
 
     ssize_t n_rbytes = read( sock_fd, buf, count );
 
@@ -155,7 +158,7 @@ static void set_agent_action( MBA_AGENT_ACTION act_type ) {
 
 /// Import a host file into guest
 /// Return AGENT_RET_SUCCESS if succeed or AGENT_RET_EFAIL if fail
-static MBA_AGENT_RETURN import_host_file( void ) {
+static MBA_AGENT_RETURN _MOCKABLE(import_host_file)( void ) {
 
     int fd = -1;
 
@@ -292,7 +295,7 @@ impo_fail:
 
 /// Export a guest file to host
 /// Return AGENT_RET_SUCCESS if succeed or AGENT_RET_EFAIL if fail
-static MBA_AGENT_RETURN export_guest_file( void ) {
+static MBA_AGENT_RETURN _MOCKABLE(export_guest_file)( void ) {
     
     char cmd_emit[SZ_MAX_COMMAND];
 
@@ -455,7 +458,7 @@ expo_fail:
 
 /// Execute a guest command and perform interactive stdin/stdout
 /// Return AGENT_RET_SUCCESS if succeed or AGENT_RET_EFAIL if fail
-static MBA_AGENT_RETURN execute_guest_cmd_return( void ) {
+static MBA_AGENT_RETURN _MOCKABLE(execute_guest_cmd_return)( void ) {
     
     char exec_rdy[sizeof(MSG_EXEC_READY)];
     char cmd_emit[SZ_MAX_COMMAND];
@@ -531,7 +534,7 @@ exec_fail:
 
 /// Execute a guest command without expecting the output
 /// Return AGENT_RET_SUCCESS if succeed or AGENT_RET_EFAIL if fail
-static MBA_AGENT_RETURN execute_guest_cmd_noreturn( void ) {
+static MBA_AGENT_RETURN _MOCKABLE(execute_guest_cmd_noreturn)( void ) {
 
     char cmd_emit[SZ_MAX_COMMAND];
     char errorbuf[sizeof(MSG_REC_SUCCESS)];
@@ -572,7 +575,7 @@ invo_fail:
 
 /// Export the agent server log to host
 /// Return AGENT_RET_SUCCESS if succeed or AGENT_RET_EFAIL if fail
-static MBA_AGENT_RETURN export_agent_log( void ) {
+static MBA_AGENT_RETURN _MOCKABLE(export_agent_log)( void ) {
 
     char cmd_emit[SZ_MAX_COMMAND];
 
@@ -748,7 +751,7 @@ static void show_server_ack( void ) {
 
 /// Connect agent server via localhost redirected port
 /// Return socket descriptor on success, -1 otherwise
-static int connect_agent_server( void ) {
+static int _MOCKABLE(connect_agent_server)( void ) {
 
     int    sock;
     struct sockaddr_in server_addr;
@@ -841,11 +844,11 @@ static void* agent_client_mainloop( void* null_arg ) {
 /// Public API
 /// Each API should be named with the 'agent_' prefix.
 /// Note that an agent thread (via agent_init()) should exists to co-work with
-inline bool agent_is_ready( void ) {
+inline bool _MOCKABLE(agent_is_ready)( void ) {
     return ac->ready;
 }
 
-bool agent_is_exec( void ) {
+bool _MOCKABLE(agent_is_exec)( void ) {
 
     bool ret = false;
 
@@ -885,7 +888,7 @@ void agent_handle_exec_command( const char* cmdline ) {
     as_write( ac->sock, cmd_emit, SZ_MAX_COMMAND );
 }    
 
-MBA_AGENT_RETURN agent_import( const char* dst_path, const char* src_path ) {
+MBA_AGENT_RETURN _MOCKABLE(agent_import)( const char* dst_path, const char* src_path ) {
 
     if( !agent_is_ready() )
         return AGENT_RET_EINIT;
@@ -914,7 +917,7 @@ MBA_AGENT_RETURN agent_import( const char* dst_path, const char* src_path ) {
     return AGENT_RET_SUCCESS;
 }
 
-MBA_AGENT_RETURN agent_export( const char* dst_path, const char* src_path ) {
+MBA_AGENT_RETURN _MOCKABLE(agent_export)( const char* dst_path, const char* src_path ) {
  
     if( !agent_is_ready() )
         return AGENT_RET_EINIT;
@@ -943,7 +946,7 @@ MBA_AGENT_RETURN agent_export( const char* dst_path, const char* src_path ) {
     return AGENT_RET_SUCCESS;
 } 
 
-MBA_AGENT_RETURN agent_execute( const char* cmdline ) {
+MBA_AGENT_RETURN _MOCKABLE(agent_execute)( const char* cmdline ) {
 
     if( !agent_is_ready() )
         return AGENT_RET_EINIT;
@@ -969,7 +972,7 @@ MBA_AGENT_RETURN agent_execute( const char* cmdline ) {
     return AGENT_RET_SUCCESS;   
 } 
 
-MBA_AGENT_RETURN agent_invoke( const char* cmdline ) {
+MBA_AGENT_RETURN _MOCKABLE(agent_invoke)( const char* cmdline ) {
     
     if( !agent_is_ready() )
         return AGENT_RET_EINIT;
@@ -995,7 +998,7 @@ MBA_AGENT_RETURN agent_invoke( const char* cmdline ) {
     return AGENT_RET_SUCCESS;   
 }
 
-MBA_AGENT_RETURN agent_logfile( const char* dst_path ) {
+MBA_AGENT_RETURN _MOCKABLE(agent_logfile)( const char* dst_path ) {
 
     if( !agent_is_ready() )
         return AGENT_RET_EINIT;
@@ -1021,7 +1024,7 @@ MBA_AGENT_RETURN agent_logfile( const char* dst_path ) {
     return AGENT_RET_SUCCESS;
 }
 
-MBA_AGENT_RETURN agent_init( Monitor *mon, uint16_t server_fwd_port ) {
+MBA_AGENT_RETURN _MOCKABLE(agent_init)( Monitor *mon, uint16_t server_fwd_port ) {
 
     if( ac->act.type == AGENT_ACT_INIT )
         return AGENT_RET_EBUSY;
