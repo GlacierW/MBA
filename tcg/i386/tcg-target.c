@@ -1787,16 +1787,15 @@ static void tcg_out_qemu_dift_inc_diftcodes( TCGContext* s, const TCGArg* args )
     tcg_out8(s, 0xb8);
     tcg_out64(s, (uint64_t)args[0]);         // mov rax, args[0]
 
-    tcg_out8(s, 0x48);
     tcg_out8(s, 0xa3);
-    tcg_out64(s, (uint64_t)&dift_code_cntr); // mov [&dift_code_cntr], rax
+    tcg_out64(s, (uint64_t)&dift_code_cntr); // mov [&dift_code_cntr], eax
 }
 
 static void tcg_out_qemu_dift_tb_begin( TCGContext* s, const TCGArg* args ) {
 
     tcg_out8(s, 0x48);
     tcg_out8(s, 0xba);
-    tcg_out64(s, REC_END_SYMBOL | REC_BEFORE_BLOCK_BEGIN);  // mov rdx, REC_BEFORE_BLOCK_BEGIN
+    tcg_out64(s, REC_END_SYMBOL | REC_BEFORE_BLOCK_BEGIN);  // mov rdx, REC_END_SYMBOL | REC_BEFORE_BLOCK_BEGIN
 
     tcg_out8(s, 0x48);
     tcg_out8(s, 0xb8);
