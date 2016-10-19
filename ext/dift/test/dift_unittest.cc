@@ -1,7 +1,9 @@
-/*
+/*z
  *  De-coupled Information Flow Tracking (DIFT) test cases
  *
  *  Copyright (c) 2016 Chiawei Wang
+ *                2016 Hao Li
+ *                2016 Chuanhua, Cheng
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -26,7 +28,9 @@
 #include <inttypes.h>
 
 struct dift_context;
+
 struct hook_functions {
+
     virtual ~hook_functions() {};
 
     virtual void exit( int ) = 0;
@@ -56,6 +60,7 @@ struct hook_functions {
     virtual void init_dift_context(dift_context*) = 0;
     virtual int pthread_create(pthread_t*, const pthread_attr_t*, void*(*)(void*), void* ) = 0;
 };
+
 struct mock_functions : hook_functions {
     MOCK_METHOD1( exit, void(int) );
     MOCK_METHOD0( getpagesize, size_t() );
@@ -298,11 +303,12 @@ TEST( RecordCase, DUMP_CASE ) {
     ASSERT_EQ( dumped_case_count, case_count_in_case_list );
 }
 
-#define COUNT_ELEMENT( x ) sizeof( x )/sizeof( *x )
+#define COUNT_ELEMENT(x) sizeof(x)/sizeof(*x)
 TEST( RecordCase, PATTERN_CHECK ) {
+
     int const case_count = COUNT_ELEMENT( case_list );
     std::set<int> case_set;
-    for ( int i = 0; i < case_count; i++ ) {
+    for ( size_t i = 0; i < case_count; i++ ) {
         EXPECT_EQ( 0xc000, case_list[i]&0xc000 ) << "With i: " << i;
         case_set.insert( case_list[i] );
     }
@@ -319,7 +325,7 @@ TEST( RecordCase, INIT_CASE_MAPPING ) {
     ASSERT_EQ( MEM_REG_OO_APPEND_MO64, case_mapping[((0xc0 | OPT_REG << 4 | OPT_MEM << 2 | MO_64) << 8) | EFFECT_ONE_TO_ONE | EFFECT_APPEND] );
 
     std::set<int> mapped_case_set;
-    for ( int i = 0; i < COUNT_ELEMENT(case_mapping); i++ ) {
+    for ( size_t i = 0; i < COUNT_ELEMENT(case_mapping); i++ ) {
         uint8_t mapped_case = case_mapping[i];
         if ( mapped_case == 0xff )
             continue;
@@ -361,7 +367,6 @@ TEST( RecordCase, GET_CASE_NB ) {
         uint8_t  const ot       = (rec_case>> 8) &  0x3;
         uint8_t  const effect   =  rec_case      & 0xff;
         
-        uint8_t const nb = dift_rec_case_nb(dst_type, src_type, ot, effect);
         nb_set.insert( dift_rec_case_nb(dst_type, src_type, ot, effect) );
     }
 
@@ -646,7 +651,6 @@ TEST_F( Tainting, HD_TO_MEM ) {
 TEST_F (Tainting, INVALID_RANGE ) {
     GEN_MOCK_OBJECT( mock );
 
-    uint64_t const tag = SHARE_VALUE_NOT_ZERO;
     uint64_t const mem_addr = SHARE_VALUE_NOT_ZERO;
     uint64_t const hd_addr  = SHARE_VALUE_NOT_ZERO;
 
@@ -658,6 +662,7 @@ TEST_F (Tainting, INVALID_RANGE ) {
     ON_CALL( mock, is_valid_disk_range(_,_) ).WillByDefault( Return(1) );
     copy_contamination_mem_hd( dc, mem_addr, hd_addr, 1 );
 }
+
 TEST( Others, DIFT_SYNC) {
     GEN_MOCK_OBJECT( mock );
     InSequence dummy;
@@ -665,23 +670,18 @@ TEST( Others, DIFT_SYNC) {
     dift_code_loc = SHARE_VALUE_NOT_ZERO;
     dift_code_cntr = SHARE_VALUE_NOT_ZERO;
 
+    dift_thread_ok_signal = 1;
+
     EXPECT_CALL( mock, dift_rec_enqueue(REC_END_SYMBOL | REC_BEFORE_BLOCK_BEGIN) );
     EXPECT_CALL( mock, dift_rec_enqueue((((uint64_t)dift_code_loc<<16)|dift_code_cntr)<<16) );
     EXPECT_CALL( mock, dift_rec_enqueue(REC_END_SYMBOL | REC_SYNC) );
     EXPECT_CALL( mock, kick_enqptr() );
-    EXPECT_CALL( mock, wait_dift_analysis() );
+    EXPECT_CALL( mock, wait_dift_analysis() ).WillOnce( Invoke(_wait_dift_analysis) );
 
     dift_sync();
 
-    ASSERT_EQ( 0, dift_code_loc );
     ASSERT_EQ( 0, dift_code_cntr );
     ASSERT_EQ( 0, dift_thread_ok_signal );
-
-    EXPECT_CALL( mock, dift_rec_enqueue(REC_END_SYMBOL | REC_SYNC) );
-    EXPECT_CALL( mock, kick_enqptr() );
-    EXPECT_CALL( mock, wait_dift_analysis() );
-
-    dift_sync();
 }
 
 static void dump_func_insn( const char* func_name, uint8_t* func_ptr ) {
@@ -781,7 +781,8 @@ TEST_P( ParameterizedPagesize, MPROTECT ) {
     EXPECT_CALL( mock, mprotect(_, _, PROT_READ | PROT_WRITE | PROT_EXEC))
         .WillOnce( DoAll(
             ExpectArg0Divisible(pagesize), 
-            ExpectArg1Divisible(pagesize)
+            ExpectArg1Divisible(pagesize),
+            Return(0)
             ));
     // This test require human recognition due to the ad-hoc string format mapping
     _pre_generate_routine();
@@ -824,7 +825,6 @@ TEST( DiftUnitTest, HD_RANGE ) {
     ASSERT_EQ( false, valid_disk_range );
 }
 
-
 TEST( DiftUnitTest, HD_DIRTY_PAGE ) {
     GEN_MOCK_OBJECT( mock );
     EXPECT_CALL(mock, calloc(_,_)).WillRepeatedly(Invoke(calloc));
@@ -835,7 +835,6 @@ TEST( DiftUnitTest, HD_DIRTY_PAGE ) {
         ASSERT_EQ( sizeof(rec[traversal] ), sizeof(CONTAMINATION_RECORD) ); // make sure every rec's size is correct
     } // for
 }
-
 
 TEST( DiftUnitTest, HD_DIRTY_PAGE_ERROR ) {
     InSequence dummy;
@@ -848,28 +847,45 @@ TEST( DiftUnitTest, HD_DIRTY_PAGE_ERROR ) {
     ASSERT_EQ( NULL, rec ); // make sure rec is empty
 }
 
-
 TEST( DiftUnitTest, DIFT_ENABLE ) {
-    bool temp = dift_is_enabled();
+    
+    // when DIFT is enabled
+    dift_enabled = true;
+    ASSERT_EQ( false, dift_switch_pending );
     dift_enable();
-    ASSERT_EQ( true, dift_is_enabled() );
-    dift_enabled = temp;
+    ASSERT_EQ( false, dift_switch_pending );
+
+    // when DIFT is disabled
+    dift_enabled = false;
+    ASSERT_EQ( false, dift_switch_pending );
+    dift_enable();
+    ASSERT_EQ( true, dift_switch_pending );
+
+    dift_switch_pending = false;
 }
 
 TEST( DiftUnitTest, DIFT_DISABLE ) {
-    bool temp = dift_is_enabled();
+    
+    // when DIFT is disabled
+    dift_enabled = false;
+    ASSERT_EQ( false, dift_switch_pending );
     dift_disable();
-    ASSERT_EQ( false, dift_is_enabled() );
-    dift_enabled = temp;
+    ASSERT_EQ( false, dift_switch_pending );
+
+    // when DIFT is enabled
+    dift_enabled = true;
+    ASSERT_EQ( false, dift_switch_pending );
+    dift_disable();
+    ASSERT_EQ( true, dift_switch_pending );
+
+    dift_switch_pending = false;
 }
 
 TEST( DiftUnitTest, DIFT_IS_ENABLED ) {
-    bool temp = dift_is_enabled();
-    dift_enable();
+    dift_enabled = true;
     ASSERT_EQ( true, dift_is_enabled() );
-    dift_disable();
+    dift_enabled = false;
     ASSERT_EQ( false, dift_is_enabled() );
-    dift_enabled = temp;
 }
 
 TEST( DiftUnitTest, DIFT_LOG_OUTPUT ) {
@@ -1123,9 +1139,10 @@ TEST( DiftUnitTest, DIFT_COMTAMINATE_MEM_OR_IS_VALID_TAG_ERROR ) {
 
 
 TEST( DiftUnitTest, DIFT_COMTAMINATE_IS_VALID_MEM_ERROR ) {
-    phys_ram_size = 0x100;
     int dift_code = 0;
     GEN_MOCK_OBJECT( mock );
+    
+    phys_ram_size = 0x100;
     EXPECT_CALL(mock, calloc(_,_)).WillRepeatedly(Invoke(calloc));
     EXPECT_CALL(mock, getpagesize()).WillRepeatedly(Invoke(getpagesize));
     EXPECT_CALL(mock, dift_rec_enqueue(_)).Times(0);
@@ -1141,9 +1158,10 @@ TEST( DiftUnitTest, DIFT_COMTAMINATE_IS_VALID_MEM_ERROR ) {
 }
 
 TEST( DiftUnitTest, DIFT_COMTAMINATE_IS_VALID_HD_ERROR ) {
-    phys_ram_size = 0x100;
     int dift_code = 0;
     GEN_MOCK_OBJECT( mock );
+    
+    phys_ram_size = 0x100;
     EXPECT_CALL(mock, calloc(_,_)).WillRepeatedly(Invoke(calloc));
     EXPECT_CALL(mock, getpagesize()).WillRepeatedly(Invoke(getpagesize));
     EXPECT_CALL(mock, dift_rec_enqueue(_)).Times(0);
