@@ -296,10 +296,10 @@ uint16_t case_list[] ={
         XMM_EFFECT_CLEAR,                                                            // 79
 };
 
-uint32_t dift_code_top =  1;  // Loc 0 is reserved for the workaround in add_file_taint
+uint32_t dift_code_top  = 0;
 uint32_t dift_code_cntr = 0;
-uint32_t dift_code_loc;
-uint32_t dift_code_off;
+uint32_t dift_code_loc  = 0;
+uint32_t dift_code_off  = 0;
 
 // The size of the allocation should be fixed
 uint64_t dift_code_buffer[CONFIG_MAX_TB_ESTI * CONFIG_IF_CODES_PER_TB] __attribute__((aligned(4096)));    
@@ -1138,23 +1138,19 @@ void dift_sync( void ) {
 
     uint64_t rec = 0;
 
-    if( dift_code_loc != 0 ) {
+    rec |=  dift_code_loc;
+    rec <<= 0x10;
 
-        rec |=  dift_code_loc;
-        rec <<= 0x10;
+    rec |=  dift_code_cntr;
+    rec <<= 0x10;
 
-        rec |=  dift_code_cntr;
-        rec <<= 0x10;
-
-        dift_rec_enqueue( REC_END_SYMBOL | REC_BEFORE_BLOCK_BEGIN );
-        dift_rec_enqueue( rec );
-    }
+    dift_rec_enqueue( REC_END_SYMBOL | REC_BEFORE_BLOCK_BEGIN );
+    dift_rec_enqueue( rec );
 
     dift_rec_enqueue( REC_END_SYMBOL | REC_SYNC );
     kick_enqptr();
     wait_dift_analysis();
 
-    dift_code_loc = 0;
     dift_code_cntr = 0;
     
     dift_thread_ok_signal = 0;

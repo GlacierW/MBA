@@ -783,7 +783,7 @@ void tb_flush(CPUArchState *env1)
 
 #if defined(CONFIG_DIFT)
     dift_sync();
-    dift_code_top = 1; // loc 0 is reserved for the case REC_SYNC
+    dift_code_top = 0;
 #endif
 
 #if defined(DEBUG_FLUSH)
