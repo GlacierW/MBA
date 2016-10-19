@@ -780,8 +780,13 @@ static void _MOCKABLE(wait_dift_analysis)( void ) {
 
 static int _MOCKABLE(is_valid_mem_range)( uint64_t addr, uint64_t len ) {
 
-    if( phys_ram_size < addr || phys_ram_size - addr < len )
+    if( 
+        (phys_ram_size < addr || phys_ram_size - addr < len)
+    &&  addr != clean_source
+    &&  addr != null_sink 
+    )
         return false;
+
     return true;
 }
 // DIFT Private API - Memory taint operation
