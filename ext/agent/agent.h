@@ -29,10 +29,10 @@
 #define SZ_MAX_FILEPATH  256
 #define SZ_MAX_FILECHUNK 8192 // 8KB per I/O chunk
 
-#define MSG_EXEC_READY "EXEC_READY"
-#define MSG_ACK_PREFIX "System Receive : "
+#define MSG_EXEC_READY  "EXEC_READY"
+#define MSG_ACK_PREFIX  "System Receive : "
 #define MSG_REC_SUCCESS "SUCCESS"
-#define MSG_REC_FAIL "CMDFAIL"
+#define MSG_REC_FAIL    "CMDFAIL"
 
 // performing agent action
 enum MBA_AGENT_ACTION {
@@ -154,5 +154,16 @@ extern MBA_AGENT_RETURN agent_logfile( const char* dst_path );
 ///        AGENT_RET_EBUSY, the agent thread is still busy dealing the initialization
 ///        AGENT_RET_EFAIL, general failure
 extern MBA_AGENT_RETURN agent_init( Monitor* mon, uint16_t server_fwd_port );
+
+/// Reset agent context
+/// This API should be called before any other 'agent_xxx' can be used
+/// 
+///        \param none 
+///
+/// Return AGENT_RET_SUCCESS, no error occured
+///        AGENT_RET_EBUSY, the agent thread is still busy dealing the initialization
+///        AGENT_RET_EFAIL, general failure
+extern MBA_AGENT_RETURN agent_reset( Monitor* mon );
+
 #endif
 

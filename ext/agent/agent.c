@@ -27,6 +27,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 
 #ifndef CONFIG_AGENT_TEST
 #include <monitor/monitor.h>
@@ -41,7 +42,6 @@ void monitor_vprintf( Monitor* mon, const char* fmt, va_list arg){}
 #define _MOCKABLE(x) _##x
 #endif
 
-#include <arpa/inet.h>
 #include "agent.h"
 
 struct agent_context {
@@ -80,7 +80,7 @@ agent_context ac[1];
 
 /// Cleanup the resource stored in the agent context
 /// Return none
-static void agent_cleanup( void ) {
+static void _MOCKABLE(agent_cleanup)( void ) {
 
     // thread cleanup
     pthread_cancel( ac->thread.tid );
@@ -96,6 +96,9 @@ static void agent_cleanup( void ) {
         pthread_mutex_unlock( &ac->act.mtx );
     pthread_mutex_unlock( &ac->act.mtx );
     pthread_mutex_destroy( &ac->act.mtx );
+
+    // Terminate the socket
+    close( ac->sock );
     
     // context structure zero-out
     bzero( ac, sizeof(agent_context) );
@@ -229,20 +232,20 @@ static MBA_AGENT_RETURN _MOCKABLE(import_host_file)( void ) {
             agent_printf( "Failed to read content of '%s'\n", src_path );
              
              // --------construct the result to the server-------- //
-         bzero( errorbuf, sizeof(MSG_REC_SUCCESS) );
-         snprintf( errorbuf, sizeof(MSG_REC_FAIL), MSG_REC_FAIL );
-         // --------send the result to the server-------- //
-         as_write( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
+             bzero( errorbuf, sizeof(MSG_REC_FAIL) );
+             snprintf( errorbuf, sizeof(MSG_REC_FAIL), MSG_REC_FAIL );
+             // --------send the result to the server-------- //
+             as_write( ac->sock, errorbuf, sizeof(MSG_REC_FAIL) );
              
-            goto impo_fail;
+             goto impo_fail;
         }
          
-    // --------construct the result to the server-------- //
-    bzero( errorbuf, sizeof(MSG_REC_SUCCESS) );
-    snprintf( errorbuf, sizeof(MSG_REC_SUCCESS), MSG_REC_SUCCESS );
-    // --------send the result to the server-------- //
-    as_write( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
-
+        // --------construct the result to the server-------- //
+        bzero( errorbuf, sizeof(MSG_REC_SUCCESS) );
+        snprintf( errorbuf, sizeof(MSG_REC_SUCCESS), MSG_REC_SUCCESS );
+        // --------send the result to the server-------- //
+        as_write( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
+        
         fsize -= n_rbytes;
 
         // send to agent server
@@ -254,32 +257,32 @@ static MBA_AGENT_RETURN _MOCKABLE(import_host_file)( void ) {
                 goto impo_fail;
             }
 
-         // --------Check if server can write file successfully-------- //
-         n_rerrorbytes = as_read( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
-         if ( n_rerrorbytes != sizeof(MSG_REC_SUCCESS) ) {
-             agent_printf( "Failed to check server write file content\n" );
-             goto impo_fail;
-         }
-         if ( strncmp(errorbuf, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ){
-         agent_printf( "Server failed to write file\n" );
-         goto impo_fail;
-         }
+            // --------Check if server can write file successfully-------- //
+            n_rerrorbytes = as_read( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
+            if ( n_rerrorbytes != sizeof(MSG_REC_SUCCESS) ) {
+                agent_printf( "Failed to check server write file content\n" );
+                goto impo_fail;
+            }
+            if ( strncmp(errorbuf, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ){
+                agent_printf( "Server failed to write file\n" );
+                goto impo_fail;
+            }
     
-         if ( n_rbytes < SZ_MAX_FILECHUNK ) {
+            if ( n_rbytes < SZ_MAX_FILECHUNK ) {
                  // --------Check if server set file pointer successfully-------- //
                  n_rerrorbytes = as_read( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
                  if ( n_rerrorbytes != sizeof(MSG_REC_SUCCESS) ) {
                      agent_printf( "Failed to check server set file pointer\n" );
-                 goto impo_fail;
+                     goto impo_fail;
                  }
                  if ( strncmp(errorbuf, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ){
-             agent_printf( "Server failed to set file pointer\n" );
-             goto impo_fail;
+                     agent_printf( "Server failed to set file pointer\n" );
+                     goto impo_fail;
                  }
-         }
+             }
 
-            n_rbytes -= n_wbytes;
-            fptr     += n_wbytes;
+             n_rbytes -= n_wbytes;
+             fptr     += n_wbytes;
         }
     
     }
@@ -426,11 +429,11 @@ static MBA_AGENT_RETURN _MOCKABLE(export_guest_file)( void ) {
                 agent_printf( "Failed to store file content\n" );
                  
          // --------construct the result to the server-------- //
-         bzero( errorbuf, sizeof(MSG_REC_SUCCESS) );
+         bzero( errorbuf, sizeof(MSG_REC_FAIL) );
          snprintf( errorbuf, sizeof(MSG_REC_FAIL), MSG_REC_FAIL );
                  
          // -------send the result to the server------- //
-         as_write( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
+         as_write( ac->sock, errorbuf, sizeof(MSG_REC_FAIL) );
                  
          goto expo_fail;
          }
@@ -650,11 +653,11 @@ static MBA_AGENT_RETURN _MOCKABLE(export_agent_log)( void ) {
         agent_printf( "Failed to open '%s' for agent log export\n", dst_path );
          
          // --------construct the result to the server-------- //
-         bzero( errorbuf, sizeof(MSG_REC_SUCCESS) );
+         bzero( errorbuf, sizeof(MSG_REC_FAIL) );
          snprintf( errorbuf, sizeof(MSG_REC_FAIL), MSG_REC_FAIL );
     
          // -------send the result to the server------- //
-         as_write( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
+         as_write( ac->sock, errorbuf, sizeof(MSG_REC_FAIL) );
          
         goto logf_fail;
     }
@@ -700,11 +703,11 @@ static MBA_AGENT_RETURN _MOCKABLE(export_agent_log)( void ) {
                 agent_printf( "Failed to store file content\n" );
                  
          // --------construct the result to the server-------- //
-         bzero( errorbuf, sizeof(MSG_REC_SUCCESS) );
+         bzero( errorbuf, sizeof(MSG_REC_FAIL) );
          snprintf( errorbuf, sizeof(MSG_REC_FAIL), MSG_REC_FAIL );
              
          // -------send the result to the server------- //
-         as_write( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
+         as_write( ac->sock, errorbuf, sizeof(MSG_REC_FAIL) );
          
                 goto logf_fail;
             }
@@ -760,12 +763,14 @@ static int _MOCKABLE(connect_agent_server)( void ) {
 
     server_addr.sin_family = AF_INET;
     server_addr.sin_port   = htons(ac->fwd_port);
+    //server_addr.sin_port   = htons(8888);
 
     sock = socket( AF_INET,SOCK_STREAM, 0 );
     if( sock == -1 )
         return -1;
 
     inet_pton( AF_INET, "127.0.0.1", &server_addr.sin_addr );
+    //inet_pton( AF_INET, "140.113.194.88", &server_addr.sin_addr );
     if( connect(sock, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1 )
         return -1;
 
@@ -859,7 +864,7 @@ bool _MOCKABLE(agent_is_exec)( void ) {
     return ret;
 }
 
-void agent_printf( const char* fmt, ... ) {
+void _MOCKABLE(agent_printf)( const char* fmt, ... ) {
 
     va_list args;
 
@@ -1067,3 +1072,10 @@ init_fail:
 
     return AGENT_RET_EFAIL;
 }
+
+MBA_AGENT_RETURN agent_reset( Monitor *mon ) {
+   
+    int fwd_port = ac->fwd_port; 
+    agent_cleanup();
+    return agent_init( mon, fwd_port );
+} 
