@@ -373,6 +373,9 @@ typedef struct dift_record  dift_record;
 
 extern const dift_record DIFT_REC_EMPTY;
 
+extern bool dift_switch_pending;
+extern bool dift_enabled;
+
 extern uint64_t phys_ram_base;
 extern uint64_t phys_ram_size;
 

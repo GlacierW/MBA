@@ -86,6 +86,9 @@ uint64_t phys_ram_size = 0;
 
 FILE* dift_logfile = NULL;
 
+bool dift_switch_pending = false;
+bool dift_enabled        = false;
+
 // Emulator part
 uint8_t pre_generated_routine[4096] __attribute__((aligned(4096)));
 uint8_t* rt_get_next_enqptr     = pre_generated_routine;
@@ -293,10 +296,10 @@ uint16_t case_list[] ={
         XMM_EFFECT_CLEAR,                                                            // 79
 };
 
-uint32_t dift_code_top =  1;  // Loc 0 is reserved for the workaround in add_file_taint
+uint32_t dift_code_top  = 0;
 uint32_t dift_code_cntr = 0;
-uint32_t dift_code_loc;
-uint32_t dift_code_off;
+uint32_t dift_code_loc  = 0;
+uint32_t dift_code_off  = 0;
 
 // The size of the allocation should be fixed
 uint64_t dift_code_buffer[CONFIG_MAX_TB_ESTI * CONFIG_IF_CODES_PER_TB] __attribute__((aligned(4096)));    
@@ -314,7 +317,6 @@ dift_context dc[1] __attribute__((aligned(4096)));
 
 // DIFT private variable
 static int  sleepness = 0;
-static bool dift_enabled = false;
 static pthread_t dift_thread;
 
 const char* REG_NAME[] = {
@@ -778,8 +780,13 @@ static void _MOCKABLE(wait_dift_analysis)( void ) {
 
 static int _MOCKABLE(is_valid_mem_range)( uint64_t addr, uint64_t len ) {
 
-    if( phys_ram_size < addr || phys_ram_size - addr < len )
+    if( 
+        (phys_ram_size < addr || phys_ram_size - addr < len)
+    &&  addr != clean_source
+    &&  addr != null_sink 
+    )
         return false;
+
     return true;
 }
 // DIFT Private API - Memory taint operation
@@ -1136,23 +1143,19 @@ void dift_sync( void ) {
 
     uint64_t rec = 0;
 
-    if( dift_code_loc != 0 ) {
+    rec |=  dift_code_loc;
+    rec <<= 0x10;
 
-        rec |=  dift_code_loc;
-        rec <<= 0x10;
+    rec |=  dift_code_cntr;
+    rec <<= 0x10;
 
-        rec |=  dift_code_cntr;
-        rec <<= 0x10;
-
-        dift_rec_enqueue( REC_END_SYMBOL | REC_BEFORE_BLOCK_BEGIN );
-        dift_rec_enqueue( rec );
-    }
+    dift_rec_enqueue( REC_END_SYMBOL | REC_BEFORE_BLOCK_BEGIN );
+    dift_rec_enqueue( rec );
 
     dift_rec_enqueue( REC_END_SYMBOL | REC_SYNC );
     kick_enqptr();
     wait_dift_analysis();
 
-    dift_code_loc = 0;
     dift_code_cntr = 0;
     
     dift_thread_ok_signal = 0;
@@ -1292,11 +1295,13 @@ CONTAMINATION_RECORD dift_get_disk_dirty( uint64_t haddr ) {
 }
 
 void dift_enable( void ) {
-    dift_enabled = true;
+    if( !dift_enabled )
+        dift_switch_pending = true;
 }
 
 void dift_disable( void ) {
-    dift_enabled = false;
+    if( dift_enabled )
+        dift_switch_pending = true;
 }
 
 bool dift_is_enabled( void ) {

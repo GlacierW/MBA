@@ -732,6 +732,9 @@ static void gen_dift_block_begin( DisasContext* s ) {
 
     uint64_t rec = REC_BLOCK_BEGIN;
 
+    if( !dift_is_enabled() )
+        return;
+
 #if defined(CONFIG_DIFT_DEBUG)
     qemu_log( "gen_dift_block_begin, tb->dift_code_loc = %08x\n", s->tb->dift_code_loc / CONFIG_IF_CODES_PER_TB );
 #endif
@@ -9417,7 +9420,6 @@ static inline void gen_intermediate_code_internal(X86CPU *cpu,
 
         dift_code_off = dift_code_cntr;
         dift_sync();
-        dift_code_loc = (dc->tb->dift_code_loc / CONFIG_IF_CODES_PER_TB);
     }
     label_or_helper_appeared = 0;
 #endif

@@ -206,6 +206,12 @@ bool memfrs_kpcr_self_check( uint64_t kpcr_ptr ) {
 UT_icd adr_icd = {sizeof(uint64_t), NULL, NULL, NULL };
 UT_array* memfrs_scan_virmem( CPUState *cpu, uint64_t start_addr, uint64_t end_addr, const char* pattern ) {
     uint64_t i;
+
+    if(start_addr >= end_addr){
+        printf("end_addr is not less than start_addr\n");
+        return NULL;
+    }
+
     uint8_t* buf = (uint8_t*)malloc(strlen(pattern));
     UT_array *match_addr;
 
@@ -248,6 +254,11 @@ OUTPUT:   UT_array*,            An UT_array that contains the address of found p
 UT_array* memfrs_scan_phymem( uint64_t start_addr, uint64_t end_addr, const char* pattern ) {
     uint64_t i;
     UT_array *match_addr;
+    if(start_addr >= end_addr){
+        printf("end_addr is not less than start_addr\n");
+        return NULL;
+    }
+
     uint8_t* buf = (uint8_t*)malloc(strlen(pattern));
     if(buf == NULL){
         printf("Cannot allocate memory for memfrs_scan_phymem()\n");

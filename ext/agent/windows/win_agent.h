@@ -5,6 +5,7 @@
  *
  *  Copyright (c)   2016 E-lin Ho
  *                  2016 Chiawei Wang
+ *                  2016 JuiChien, Jao
  *                  
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -23,16 +24,19 @@
 #ifndef __WIN_AGENT_H__
 #define __WIN_AGENT_H__
 
-#define DEFAULT_PORT 		 "8888"
-#define DEFAULT_LOG_NAME	 "agent_log.txt"
+#define DEFAULT_PORT         "8888"
+#define DEFAULT_LOG_NAME     "agent_log.txt"
 #define DEFAULT_SECTOR_SIZE  512
 
-#define SZ_MAX_CMD 256          // max command size
-#define SZ_MAX_LOG 256          // log message buffer size
-#define SZ_MAX_FILECHUNK 8192	// maximum import/export file chunk
+#define SZ_MAX_CMD  256          // max command size
+#define SZ_MAX_LOG  256          // log message buffer size
+#define SZ_MAX_L    256          // log message buffer size
+#define SZ_MAX_FILECHUNK 8192    // maximum import/export file chunk
 
 #define MSG_EXEC_READY  "EXEC_READY"
-#define MSG_ACK_PREFIX	"System Receive : "
+#define MSG_ACK_PREFIX  "System Receive : "
+#define MSG_REC_SUCCESS "SUCCESS"
+#define MSG_REC_FAIL    "CMDFAIL"
 
 enum cmd_type {
     MBA_CMD_UNKNOWN,    // 0 : Unknow command from MBA
@@ -43,4 +47,13 @@ enum cmd_type {
     MBA_CMD_LOGF        // 5 : Command begging with 'logf' from MBA     // log file
 };
 
+//common return value
+enum MBA_AGENT_RETURN{
+    AGENT_RET_SUCCESS, 
+    AGENT_RET_FAIL
+};
+
+typedef enum MBA_AGENT_RETURN MBA_AGENT_RETURN;
+
 #endif
+

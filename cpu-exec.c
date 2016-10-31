@@ -490,9 +490,19 @@ int cpu_exec(CPUArchState *env)
                 }
 
 #if defined(CONFIG_DIFT)
-                // Herein we check if the DIFT code cache is nearly full
+                // Check if the DIFT code cache is nearly full
                 if( dift_code_top + 10000 > CONFIG_MAX_TB_ESTI )
                     tb_flush( env );
+
+                // if a pending DIFT switch on/off, flush the 
+                // translated code blocks and flip the DIFT status
+                if( dift_switch_pending ) {
+
+                    tb_flush( env );
+
+                    dift_enabled = !dift_enabled;
+                    dift_switch_pending = false;
+                }
 #endif
 
 #if defined(CONFIG_OBHOOK)
@@ -502,9 +512,7 @@ int cpu_exec(CPUArchState *env)
                     tb_flush( env );
                     obhook_pending_hooks = false;
                 }
-
 #endif
-
                 spin_lock(&tcg_ctx.tb_ctx.tb_lock);
                 have_tb_lock = true;
                 tb = tb_find_fast(env);
