@@ -18,16 +18,30 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+
+#if !defined(CONFIG_MEMFRS_TEST)
 #include "qemu-common.h"
 #include "monitor/monitor.h"
 #include "include/exec/cpu-common.h"
-#include "include/utarray.h"
 #include "exec/cpu-all.h"
-
+#include "include/utarray.h"
 #include "json.h"
+#endif
 
-#include "ext/memfrs/memfrs.h"
-#include "ext/memfrs/memfrs-priv.h"
+#if defined(CONFIG_MEMFRS_TEST)
+#include "test/test.h"
+#endif
+
+#include "memfrs.h"
+#include "memfrs-priv.h"
+
+#if defined(CONFIG_MEMFRS_TEST)
+/// Change name to avoid macros in test.h from expanding.
+/// Refer to _dift_log to call original dift_log in tests.
+#define _MOCKABLE(x) _##x
+#else
+#define _MOCKABLE(x) x
+#endif
 
 /* Global Variable */
 uint64_t g_kpcr_ptr = 0;

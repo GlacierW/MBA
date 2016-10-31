@@ -314,7 +314,7 @@ void dump_gvar_json(R_PDB *pdb)
                 sctn_header = utarray_eltptr(pe_stream->sections_hdrs, (gdata->segment -1));
                 if (sctn_header) {
 			char *name = gdata->name.name;
-                        printf("name found: %s %x %d %s\n", name, sctn_header->virtual_address+gdata->offset, gdata->symtype, sctn_header->name);
+                        printf("name found: %s %d %x %d %s\n", name, gdata->leaf_type, sctn_header->virtual_address+gdata->offset, gdata->symtype, sctn_header->name);
                         addGlobalVar( global_var, name, sctn_header->virtual_address+gdata->offset, gdata->symtype, sctn_header->name);
                 }
         }

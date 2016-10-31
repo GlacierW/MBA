@@ -23,9 +23,11 @@
 #include <stdbool.h>
 #include <inttypes.h>
 
+#if !defined(CONFIG_MEMFRS_TEST)
 #include "qom/cpu.h"
 #include "json-c/json.h"
 #include "include/utarray.h"
+#endif
 
 #define STRLEN 128
 #define SIZEOFUNICODESTRING 0x10
