@@ -29,5 +29,6 @@ void do_win_exec(struct Monitor *mon, const struct QDict *qdict);
 void do_win_invo(struct Monitor *mon, const struct QDict *qdict);
 void do_win_logf(struct Monitor *mon, const struct QDict *qdict);
 void do_win_init(struct Monitor *mon, const struct QDict *qdict);
+void do_win_sync(struct Monitor *mon, const struct QDict *qdict);
 void do_win_reset(struct Monitor *mon, const struct QDict *qdict);
 #endif

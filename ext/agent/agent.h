@@ -43,6 +43,7 @@ enum MBA_AGENT_ACTION {
     AGENT_ACT_EXEC,
     AGENT_ACT_INVO,
     AGENT_ACT_LOGF,
+    AGENT_ACT_SYNC,
 };
 
 // common return value
@@ -148,20 +149,28 @@ extern MBA_AGENT_RETURN agent_logfile( const char* dst_path );
 /// This API should be called before any other 'agent_xxx' can be used
 /// 
 ///        \param mon              monitor of QEMU, allowing agent extension to show message
-///        \param server_fwd_port  the local port number to forward network connections to the in-VM agent
+///        \param server_fwd_port  the local port number to forward network connections to the in-VM agent.
+///                                0 means to new a fwd_port(w_init), and non-zero means to use the previous fwd_port(agent_reset)
+///        \param fwd_port         the function pointer to the net_slirp_redir to do the redirection of port
 ///
 /// Return AGENT_RET_SUCCESS, no error occured
 ///        AGENT_RET_EBUSY, the agent thread is still busy dealing the initialization
 ///        AGENT_RET_EFAIL, general failure
-extern MBA_AGENT_RETURN agent_init( Monitor* mon, uint16_t server_fwd_port );
+extern MBA_AGENT_RETURN agent_init( Monitor* mon, uint16_t server_fwd_port, int(*fwd_port)(const char*) );
 
-/// Reset agent context
-/// This API should be called before any other 'agent_xxx' can be used
-/// 
-///        \param none 
+/// Flush the cache to disk in guest OS 
+///
+///        no param
 ///
 /// Return AGENT_RET_SUCCESS, no error occured
-///        AGENT_RET_EBUSY, the agent thread is still busy dealing the initialization
+///        AGENT_RET_EFAIL, general failure
+extern MBA_AGENT_RETURN agent_sync( void );
+
+/// Reset agent context
+/// 
+///        \param mon              monitor of QEMU, allowing reconnect to agent server by agent_init
+///
+/// Return AGENT_RET_SUCCESS, no error occured
 ///        AGENT_RET_EFAIL, general failure
 extern MBA_AGENT_RETURN agent_reset( Monitor* mon );
 

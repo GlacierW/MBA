@@ -188,41 +188,9 @@ void do_win_init( Monitor *mon, const QDict *qdict )
 {
     MBA_AGENT_RETURN ret;
 
-    // counter (down) for port forwarding setup try
-    int try_countdown = 10; 
-
-    uint16_t fwd_port;
-    char     fwd_config[32];
-        
-    // check if the agent extension has been initialized
-    if( agent_is_ready() ) { 
-        monitor_printf( mon, "The agent has been initialized\n" );
-        return;
-    }   
-
-    // setup port forwarding for in-VM agent server, 10 times trying with random port
-    srand( time(NULL) );
-    while( try_countdown ) { 
-
-        fwd_port  = rand() % 65535;
-        fwd_port += (fwd_port < 1024 )? 1024 : 0;
-
-        bzero( fwd_config, sizeof(fwd_config) );
-        snprintf( fwd_config, 32, "tcp:%d::%d", fwd_port, AGENT_GUEST_PORT );
-
-        if( net_slirp_redir(fwd_config) == 0 ) 
-            break;
-
-        --try_countdown;
-    }   
-
-    if( try_countdown == 0 ) { 
-        monitor_printf( mon, "Agent port forwarding setup failed\n" );
-        return;
-    }   
-
     // initialize agent
-    ret = agent_init( mon, fwd_port );
+    // 0 tells the agent_init to new a fwd_port and send the function pointer 
+    ret = agent_init( mon, 0, &net_slirp_redir );
     switch( ret ) { 
 
         case AGENT_RET_SUCCESS:
@@ -244,42 +212,35 @@ void do_win_init( Monitor *mon, const QDict *qdict )
 
 }
 
+void do_win_sync( Monitor *mon, const QDict *qdict ) {
+
+    MBA_AGENT_RETURN ret;
+
+    ret = agent_sync( );
+    switch( ret ) { 
+
+        case AGENT_RET_SUCCESS:
+            monitor_printf( mon, "Agent Sync command is sent successfully, please wait for the ack-message\n" );
+            break;
+
+        case AGENT_RET_EBUSY:
+            monitor_printf( mon, "Agent is busy handling the previous command. Come back later\n" );
+            break;
+
+        case AGENT_RET_EFAIL:
+            monitor_printf( mon, "Agent Sync failed\n" );
+            break;
+
+        default:
+            monitor_printf( mon, "Unkown error when reseting agent\n" );
+            break;
+    }
+}
+
 void do_win_reset( Monitor *mon, const QDict *qdict ) {
 
     MBA_AGENT_RETURN ret;
     
-    // counter (down) for port forwarding setup try
-    int try_countdown = 10; 
-
-    uint16_t fwd_port;
-    char     fwd_config[32];
-        
-    if ( agent_is_ready()==0 ) {
-        monitor_printf( mon, "Agent client has not started\n" );
-        return;
-    }
-
-    // setup port forwarding for in-VM agent server, 10 times trying with random port
-    srand( time(NULL) );
-    while( try_countdown ) { 
-
-        fwd_port  = rand() % 65535;
-        fwd_port += (fwd_port < 1024 )? 1024 : 0;
-
-        bzero( fwd_config, sizeof(fwd_config) );
-        snprintf( fwd_config, 32, "tcp:%d::%d", fwd_port, AGENT_GUEST_PORT );
-
-        if( net_slirp_redir(fwd_config) == 0 ) 
-            break;
-
-        --try_countdown;
-    }   
-
-    if( try_countdown == 0 ) { 
-        monitor_printf( mon, "Agent port forwarding setup failed\n" );
-        return;
-    }   
-
     ret = agent_reset( mon );
     switch( ret ) { 
 

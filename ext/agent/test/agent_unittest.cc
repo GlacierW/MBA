@@ -25,9 +25,10 @@
 #include <set>
 #include <inttypes.h>
 
-extern "C" {
-#include "../agent.c"
+typedef void Monitor;
 
+extern "C" {
+#include "../agent.h"
 }
 
 struct hook_functions {
@@ -49,49 +50,63 @@ struct hook_functions {
     virtual MBA_AGENT_RETURN execute_guest_cmd_return( void ) = 0;
     virtual MBA_AGENT_RETURN execute_guest_cmd_noreturn( void ) = 0;
     virtual MBA_AGENT_RETURN export_agent_log( void ) = 0;
+    virtual MBA_AGENT_RETURN sync_cache( void ) = 0;
     virtual int connect_agent_server( void ) = 0;
     virtual bool agent_is_ready( void ) = 0;
     virtual bool agent_is_exec( void ) = 0;
-    virtual void agent_printf( const char*, ... ) = 0;
+    virtual void agent_printf( const char* ) = 0;
     virtual MBA_AGENT_RETURN agent_import( const char*, const char* ) = 0;
     virtual MBA_AGENT_RETURN agent_export( const char*, const char* ) = 0;
     virtual MBA_AGENT_RETURN agent_execute( const char* ) = 0;
     virtual MBA_AGENT_RETURN agent_invoke( const char* ) = 0;
     virtual MBA_AGENT_RETURN agent_logfile( const char* ) = 0;
-    virtual MBA_AGENT_RETURN agent_init( Monitor*, uint16_t ) = 0;
+    virtual MBA_AGENT_RETURN agent_sync( void ) = 0;
+    virtual MBA_AGENT_RETURN agent_init( Monitor*, uint16_t, int(*)(const char*)) = 0;
 };
 
 struct mock_functions : hook_functions {
-    MOCK_METHOD1( exit, void( int ) )
-    MOCK_METHOD4( pthread_create, int(pthread_t*, const pthread_attr_t*, void*(*)(void*), void* ) )
-    MOCK_METHOD2( fopen, FILE*(const char *, const char *) )
-    MOCK_METHOD3( write, int(int, void*, int) )
-    MOCK_METHOD3( read, int(int, void*, int) )
+    MOCK_METHOD1( exit, void( int ) );
+    MOCK_METHOD4( pthread_create, int(pthread_t*, const pthread_attr_t*, void*(*)(void*), void* ) );
+    MOCK_METHOD2( pthread_mutex_init, int( pthread_mutex_t*, const pthread_mutexattr_t* ));
+    MOCK_METHOD2( pthread_cond_init, int(pthread_cond_t*, const pthread_condattr_t*));
+    MOCK_METHOD2( fopen, FILE*(const char *, const char *) );
+    MOCK_METHOD3( write, int(int, void*, int) );
+    MOCK_METHOD3( read, int(int, void*, int) );
 
-    MOCK_METHOD0( agent_cleanup, void( void ) )
-    MOCK_METHOD3( as_write, ssize_t( int, void*, size_t ) )
-    MOCK_METHOD3( as_read, ssize_t( int, void*, size_t ) )
-    MOCK_METHOD0( import_host_file, MBA_AGENT_RETURN( void ) )
-    MOCK_METHOD0( export_guest_fil, MBA_AGENT_RETURN( void ) )
-    MOCK_METHOD0( execute_guest_cmd_return, MBA_AGENT_RETURN( void ) )
-    MOCK_METHOD0( execute_guest_cmd_noreturn, MBA_AGENT_RETURN( void ) )
-    MOCK_METHOD0( export_agent_log, MBA_AGENT_RETURN( void ) )
-    MOCK_METHOD0( connect_agent_server, int( void ) )
-    MOCK_METHOD0( agent_is_ready, bool( void ) )
-    MOCK_METHOD0( agent_is_exec, bool( void ) )
-    MOCK_METHOD2( agent_printf, void(const char*, ...) )
-    MOCK_METHOD2( agent_import, MBA_AGENT_RETURN( const char*, const char* ) )
-    MOCK_METHOD2( agent_export, MBA_AGENT_RETURN( const char*, const char* ) )
-    MOCK_METHOD1( agent_execute, MBA_AGENT_RETURN( const char* ) )
-    MOCK_METHOD1( agent_invoke, MBA_AGENT_RETURN( const char* ) )
-    MOCK_METHOD1( agent_logfile, MBA_AGENT_RETURN( const char* ) )
-    MOCK_METHOD2( agent_init, MBA_AGENT_RETURN( Monitor*, uint16_t ) )
+    MOCK_METHOD0( agent_cleanup, void( void ) );
+    MOCK_METHOD3( as_write, ssize_t( int, void*, size_t ) );
+    MOCK_METHOD3( as_read, ssize_t( int, void*, size_t ) );
+    MOCK_METHOD0( import_host_file, MBA_AGENT_RETURN( void ) );
+    MOCK_METHOD0( export_guest_file, MBA_AGENT_RETURN( void ) );
+    MOCK_METHOD0( execute_guest_cmd_return, MBA_AGENT_RETURN( void ) );
+    MOCK_METHOD0( execute_guest_cmd_noreturn, MBA_AGENT_RETURN( void ) );
+    MOCK_METHOD0( export_agent_log, MBA_AGENT_RETURN( void ) );
+    MOCK_METHOD0( sync_cache,  MBA_AGENT_RETURN( void ) );
+    MOCK_METHOD0( connect_agent_server, int( void ) );
+    MOCK_METHOD0( agent_is_ready, bool( void ) );
+    MOCK_METHOD0( agent_is_exec, bool( void ) );
+    MOCK_METHOD1( agent_printf, void(const char*) );
+    MOCK_METHOD2( agent_import, MBA_AGENT_RETURN( const char*, const char* ) );
+    MOCK_METHOD2( agent_export, MBA_AGENT_RETURN( const char*, const char* ) );
+    MOCK_METHOD1( agent_execute, MBA_AGENT_RETURN( const char* ) );
+    MOCK_METHOD1( agent_invoke, MBA_AGENT_RETURN( const char* ) );
+    MOCK_METHOD1( agent_logfile, MBA_AGENT_RETURN( const char* ) );
+    MOCK_METHOD0( agent_sync, MBA_AGENT_RETURN( void ) );
+    MOCK_METHOD3( agent_init, MBA_AGENT_RETURN( Monitor*, uint16_t, int(*)(const char*)) );
 } *mock_ptr;
+
+extern "C" {
+#include "../agent.c"
+}
 
 #undef exit
 #undef pthread_create
+#undef pthread_mutex_init
+#undef pthread_cond_init
 #undef fopen
-#undef agent_clenup
+#undef write
+#undef read
+#undef agent_cleanup
 #undef as_write
 #undef as_read
 #undef import_host_file
@@ -99,6 +114,7 @@ struct mock_functions : hook_functions {
 #undef execute_guest_cmd_return
 #undef execute_guest_cmd_noreturn
 #undef export_agent_log
+#undef sync_cache
 #undef connect_agent_server
 #undef agent_is_ready
 #undef agent_is_exec
@@ -108,6 +124,7 @@ struct mock_functions : hook_functions {
 #undef agent_execute
 #undef agent_invoke
 #undef agent_logfile
+#undef agent_sync
 #undef agent_init
 
 #define GEN_MOCK_OBJECT( x )  mock_functions x; mock_ptr = &x;
@@ -119,29 +136,29 @@ protected:
     virtual void SetUp() {
         GEN_MOCK_OBJECT( mock );
 
-        EXPECT_CALLL( mock, agent_is_ready() ).WillOnce( Return( true ) );
-        EXPECT_CALLL( mock, pthread_mutex_init(_,_) ).WillOnce( Return( 0 ) );
-        EXPECT_CALLL( mock, pthread_mutex_init(_,_) ).WillOnce( Return( 0 ) );
-        EXPECT_CALLL( mock, pthread_cond_init(_,_) ).WillOnce( Return( 0 ) );
-        EXPECT_CALLL( mock, pthread_create(_,_,_,_) ).WillOnce( Return( 0 ) );
+        EXPECT_CALL( mock, agent_is_ready() ).WillOnce( Return( true ) );
+        EXPECT_CALL( mock, pthread_mutex_init(_,_) ).WillOnce( Return( 0 ) );
+        EXPECT_CALL( mock, pthread_mutex_init(_,_) ).WillOnce( Return( 0 ) );
+        EXPECT_CALL( mock, pthread_cond_init(_,_) ).WillOnce( Return( 0 ) );
+        EXPECT_CALL( mock, pthread_create(_,_,_,_) ).WillOnce( Return( 0 ) );
 
-        _agent_init(NULL, 8888);
+        _agent_init(NULL, 8888, NULL);
 
-    }
+    };
     virtual void TearDown() {
         // No recycable due to all initializations mocked
-    }
-}
+    };
+};
 
 // Static Functions Testing
-TEST ( Agent_Init, WRITE_FAIL ) {
+TEST_F ( FixtureAgentContextInitilizes, WRITE_FAIL ) {
     GEN_MOCK_OBJECT( mock );
     
     EXPECT_CALL( mock, write(_,_,_) ).WillOnce( Return(-1) );
-    EXPECT_CALL( mock, agent_printf("The connection to the agent server is broken while reading\n") ).Times( 1 )
-    EXPECT_CALL( mock, agent_clenup() ).Times( 1 );
+    EXPECT_CALL( mock, agent_printf("The connection to the agent server is broken while reading\n") ).Times( 1 );
+    EXPECT_CALL( mock, agent_cleanup() ).Times( 1 );
 
-    _agent_init();
+    _agent_init(NULL, 1111, NULL);
 }
 
 

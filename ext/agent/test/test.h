@@ -1,5 +1,5 @@
 // Library functions
-#define exit(x) mock_ptr->(x)
+#define exit(x) mock_ptr->exit(x)
 #define pthread_create(x, y, z, a) mock_ptr->pthread_create(x, y, z, a)
 #define fopen(x, y) mock_ptr->fopen(x, y)
 #define write(x, y, z) mock_ptr->write(x, y, z)
@@ -13,10 +13,12 @@
 #define export_guest_file() mock_ptr->export_guest_file()
 #define execute_guest_cmd_return() mock_ptr->execute_guest_cmd_return()
 #define execute_guest_cmd_noreturn() mock_ptr->execute_guest_cmd_noreturn()
+#define sync_cache() mock_ptr->sync_cache()
 #define export_agent_log() mock_ptr->export_agent_log()
 #define connect_agent_server() mock_ptr->connect_agent_server()
 
 // Public API
+#define agent_printf(x, ...) mock_ptr->agent_printf(x)
 #define agent_is_ready() mock_ptr->agent_is_ready()
 #define agent_is_exec() mock_ptr->agent_is_exec()
 #define agent_import(x, y) mock_ptr->agent_import(x, y)
@@ -24,4 +26,5 @@
 #define agent_execute(x) mock_ptr->agent_execute(x)
 #define agent_invoke(x) mock_ptr->agent_invoke(x)
 #define agent_logfile(x) mock_ptr->agent_logfile(x)
-#define agent_init(x, y) mock_ptr->agent_init(x, y)
+#define agent_sync() mock_ptr->agent_sync()
+#define agent_init(x, y, z) mock_ptr->agent_init(x, y, z)
