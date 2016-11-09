@@ -242,7 +242,6 @@ endif
 ifdef  CONFIG_TSK
 ext/tsk/sleuthkit/libqcow/libqcow/.libs/libqcow.a:
 	cd ext/tsk/sleuthkit/libqcow &&\
-	./synclibs.sh &&\
 	./autogen.sh &&\
 	./configure --enable-static CFLAGS="-fPIC" &&\
 	$(MAKE)
