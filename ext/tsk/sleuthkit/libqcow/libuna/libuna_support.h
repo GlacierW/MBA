@@ -1,5 +1,5 @@
 /*
- * The internal definitions
+ * Support functions
  *
  * Copyright (C) 2008-2016, Joachim Metz <joachim.metz@gmail.com>
  *
@@ -19,37 +19,31 @@
  * along with this software.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#if !defined( LIBCPATH_INTERNAL_DEFINITIONS_H )
-#define LIBCPATH_INTERNAL_DEFINITIONS_H
+#if !defined( _LIBUNA_SUPPORT_H )
+#define _LIBUNA_SUPPORT_H
 
 #include <common.h>
 #include <types.h>
 
-/* Define HAVE_LOCAL_LIBCPATH for local use of libcpath
- */
-#if !defined( HAVE_LOCAL_LIBCPATH )
-#include <libcpath/definitions.h>
+#include <stdio.h>
 
-/* The definitions in <libcpath/definitions.h> are copied here
- * for local use of libcpath
- */
-#else
+#include "libuna_extern.h"
 
-#define LIBCPATH_VERSION			20161109
+#if defined( __cplusplus )
+extern "C" {
+#endif
 
-/* The libcpath version string
- */
-#define LIBCPATH_VERSION_STRING			"20161109"
+#if !defined( HAVE_LOCAL_LIBUNA )
 
-#if defined( WINAPI )
-#define LIBCPATH_SEPARATOR			'\\'
+LIBUNA_EXTERN \
+const char *libuna_get_version(
+             void );
 
-#else
-#define LIBCPATH_SEPARATOR			'/'
+#endif /* !defined( HAVE_LOCAL_LIBUNA ) */
 
-#endif /* defined( WINAPI ) */
-
-#endif /* !defined( HAVE_LOCAL_LIBCPATH ) */
+#if defined( __cplusplus )
+}
+#endif
 
 #endif
 

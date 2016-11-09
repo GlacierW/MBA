@@ -3350,7 +3350,6 @@ int libcpath_path_change_directory_wide(
 	char *narrow_directory_name       = 0;
 	size_t directory_name_length      = 0;
 	size_t narrow_directory_name_size = 0;
-	int result                        = 0;
 
 	if( directory_name == NULL )
 	{
@@ -3657,10 +3656,9 @@ int libcpath_path_get_current_working_directory_wide(
      size_t *current_working_directory_size,
      libcerror_error_t **error )
 {
-	static char *function                        = "libcpath_path_get_current_working_directory_wide";
-	char *narrow_current_working_directory       = 0;
-	size_t narrow_current_working_directory_size = 0;
-	int result                                   = 0;
+	static char *function                          = "libcpath_path_get_current_working_directory_wide";
+	char *narrow_current_working_directory         = 0;
+	size_t narrow_current_working_directory_length = 0;
 
 	if( current_working_directory == NULL )
 	{
@@ -3723,15 +3721,15 @@ int libcpath_path_get_current_working_directory_wide(
 
 		goto on_error;
 	}
-	narrow_current_working_directory_size = 1 + narrow_string_length(
-	                                             narrow_current_working_directory );
+	narrow_current_working_directory_length = narrow_string_length(
+	                                           narrow_current_working_directory );
 
 	/* Convert the current working directory to a wide string
 	 * if the platform has no wide character open function
 	 */
 	if( libcpath_system_string_size_from_narrow_string(
 	     narrow_current_working_directory,
-	     narrow_current_working_directory_size,
+	     narrow_current_working_directory_length + 1,
 	     current_working_directory_size,
 	     error ) != 1 )
 	{
@@ -3772,11 +3770,11 @@ int libcpath_path_get_current_working_directory_wide(
 
 		goto on_error;
 	}
-	if( libcpath_system_string_copy_from_narrow_string(
+	if( libcpath_system_string_copy_to_wide_string(
+	     narrow_current_working_directory,
+	     narrow_current_working_directory_length + 1,
 	     *current_working_directory,
 	     *current_working_directory_size,
-	     narrow_current_working_directory,
-	     narrow_current_working_directory_size,
 	     error ) != 1 )
 	{
 		libcerror_error_set(
@@ -6282,7 +6280,6 @@ int libcpath_path_make_directory_wide(
 	char *narrow_directory_name       = 0;
 	size_t directory_name_length      = 0;
 	size_t narrow_directory_name_size = 0;
-	int result                        = 0;
 
 	if( directory_name == NULL )
 	{

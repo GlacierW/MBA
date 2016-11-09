@@ -1,5 +1,5 @@
 /*
- * The internal definitions
+ * Support functions
  *
  * Copyright (C) 2008-2016, Joachim Metz <joachim.metz@gmail.com>
  *
@@ -19,37 +19,21 @@
  * along with this software.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#if !defined( LIBCPATH_INTERNAL_DEFINITIONS_H )
-#define LIBCPATH_INTERNAL_DEFINITIONS_H
-
 #include <common.h>
 #include <types.h>
 
-/* Define HAVE_LOCAL_LIBCPATH for local use of libcpath
+#include "libuna_definitions.h"
+#include "libuna_support.h"
+
+#if !defined( HAVE_LOCAL_LIBUNA )
+
+/* Returns the library version as a string
  */
-#if !defined( HAVE_LOCAL_LIBCPATH )
-#include <libcpath/definitions.h>
+const char *libuna_get_version(
+             void )
+{
+	return( (const char *) LIBUNA_VERSION_STRING );
+}
 
-/* The definitions in <libcpath/definitions.h> are copied here
- * for local use of libcpath
- */
-#else
-
-#define LIBCPATH_VERSION			20161109
-
-/* The libcpath version string
- */
-#define LIBCPATH_VERSION_STRING			"20161109"
-
-#if defined( WINAPI )
-#define LIBCPATH_SEPARATOR			'\\'
-
-#else
-#define LIBCPATH_SEPARATOR			'/'
-
-#endif /* defined( WINAPI ) */
-
-#endif /* !defined( HAVE_LOCAL_LIBCPATH ) */
-
-#endif
+#endif /* !defined( HAVE_LOCAL_LIBUNA ) */
 

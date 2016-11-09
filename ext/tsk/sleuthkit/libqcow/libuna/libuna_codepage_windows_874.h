@@ -1,5 +1,5 @@
 /*
- * The internal definitions
+ * Windows 874 codepage (Thai) functions
  *
  * Copyright (C) 2008-2016, Joachim Metz <joachim.metz@gmail.com>
  *
@@ -19,37 +19,24 @@
  * along with this software.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#if !defined( LIBCPATH_INTERNAL_DEFINITIONS_H )
-#define LIBCPATH_INTERNAL_DEFINITIONS_H
+#if !defined( _LIBUNA_CODEPAGE_WINDOWS_874_H )
+#define _LIBUNA_CODEPAGE_WINDOWS_874_H
 
 #include <common.h>
 #include <types.h>
 
-/* Define HAVE_LOCAL_LIBCPATH for local use of libcpath
- */
-#if !defined( HAVE_LOCAL_LIBCPATH )
-#include <libcpath/definitions.h>
+#if defined( __cplusplus )
+extern "C" {
+#endif
 
-/* The definitions in <libcpath/definitions.h> are copied here
- * for local use of libcpath
- */
-#else
+extern const uint16_t libuna_codepage_windows_874_byte_stream_to_unicode_base_0x80[ 128 ];
 
-#define LIBCPATH_VERSION			20161109
+extern const uint8_t libuna_codepage_windows_874_unicode_to_byte_stream_base_0x0e00[ 96 ];
+extern const uint8_t libuna_codepage_windows_874_unicode_to_byte_stream_base_0x2018[ 8 ];
 
-/* The libcpath version string
- */
-#define LIBCPATH_VERSION_STRING			"20161109"
-
-#if defined( WINAPI )
-#define LIBCPATH_SEPARATOR			'\\'
-
-#else
-#define LIBCPATH_SEPARATOR			'/'
-
-#endif /* defined( WINAPI ) */
-
-#endif /* !defined( HAVE_LOCAL_LIBCPATH ) */
+#if defined( __cplusplus )
+}
+#endif
 
 #endif
 

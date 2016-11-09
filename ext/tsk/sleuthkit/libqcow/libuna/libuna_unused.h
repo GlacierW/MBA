@@ -1,5 +1,5 @@
 /*
- * The internal definitions
+ * The internal unused definition
  *
  * Copyright (C) 2008-2016, Joachim Metz <joachim.metz@gmail.com>
  *
@@ -19,37 +19,26 @@
  * along with this software.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#if !defined( LIBCPATH_INTERNAL_DEFINITIONS_H )
-#define LIBCPATH_INTERNAL_DEFINITIONS_H
+#if !defined( _LIBUNA_INTERNAL_UNUSED_H )
+#define _LIBUNA_INTERNAL_UNUSED_H
 
 #include <common.h>
-#include <types.h>
 
-/* Define HAVE_LOCAL_LIBCPATH for local use of libcpath
- */
-#if !defined( HAVE_LOCAL_LIBCPATH )
-#include <libcpath/definitions.h>
-
-/* The definitions in <libcpath/definitions.h> are copied here
- * for local use of libcpath
- */
+#if !defined( LIBUNA_ATTRIBUTE_UNUSED )
+#if defined( __GNUC__ ) && __GNUC__ >= 3
+#define LIBUNA_ATTRIBUTE_UNUSED	__attribute__ ((__unused__))
 #else
-
-#define LIBCPATH_VERSION			20161109
-
-/* The libcpath version string
- */
-#define LIBCPATH_VERSION_STRING			"20161109"
-
-#if defined( WINAPI )
-#define LIBCPATH_SEPARATOR			'\\'
-
-#else
-#define LIBCPATH_SEPARATOR			'/'
-
-#endif /* defined( WINAPI ) */
-
-#endif /* !defined( HAVE_LOCAL_LIBCPATH ) */
-
+#define LIBUNA_ATTRIBUTE_UNUSED
 #endif
+#endif
+
+#if defined( _MSC_VER )
+#define LIBUNA_UNREFERENCED_PARAMETER( parameter ) \
+	UNREFERENCED_PARAMETER( parameter );
+#else
+#define LIBUNA_UNREFERENCED_PARAMETER( parameter ) \
+	/* parameter */
+#endif
+
+#endif /* !defined( _LIBUNA_INTERNAL_UNUSED_H ) */
 

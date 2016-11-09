@@ -1115,7 +1115,7 @@ int libbfio_file_io_handle_set_name_wide(
 
 		goto on_error;
 	}
-	if( libbfio_system_string_copy_from_narrow_string(
+	if( libbfio_system_string_copy_from_wide_string(
 	     file_io_handle->name,
 	     file_io_handle->name_size,
 	     name,

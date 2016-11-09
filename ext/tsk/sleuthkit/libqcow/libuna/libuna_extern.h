@@ -1,5 +1,5 @@
 /*
- * The internal definitions
+ * The internal extern definition
  *
  * Copyright (C) 2008-2016, Joachim Metz <joachim.metz@gmail.com>
  *
@@ -19,37 +19,28 @@
  * along with this software.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#if !defined( LIBCPATH_INTERNAL_DEFINITIONS_H )
-#define LIBCPATH_INTERNAL_DEFINITIONS_H
+#if !defined( _LIBUNA_INTERNAL_EXTERN_H )
+#define _LIBUNA_INTERNAL_EXTERN_H
 
 #include <common.h>
-#include <types.h>
 
-/* Define HAVE_LOCAL_LIBCPATH for local use of libcpath
+/* Define HAVE_LOCAL_LIBUNA for local use of libuna
  */
-#if !defined( HAVE_LOCAL_LIBCPATH )
-#include <libcpath/definitions.h>
+#if !defined( HAVE_LOCAL_LIBUNA )
 
-/* The definitions in <libcpath/definitions.h> are copied here
- * for local use of libcpath
+/* If libtool DLL support is enabled set LIBUNA_DLL_EXPORT
+ * before including libuna/extern.h
  */
-#else
+#if defined( _WIN32 ) && defined( DLL_EXPORT )
+#define LIBUNA_DLL_EXPORT
+#endif
 
-#define LIBCPATH_VERSION			20161109
-
-/* The libcpath version string
- */
-#define LIBCPATH_VERSION_STRING			"20161109"
-
-#if defined( WINAPI )
-#define LIBCPATH_SEPARATOR			'\\'
+#include <libuna/extern.h>
 
 #else
-#define LIBCPATH_SEPARATOR			'/'
-
-#endif /* defined( WINAPI ) */
-
-#endif /* !defined( HAVE_LOCAL_LIBCPATH ) */
+#define LIBUNA_EXTERN	extern
 
 #endif
+
+#endif /* !defined( _LIBUNA_INTERNAL_EXTERN_H ) */
 

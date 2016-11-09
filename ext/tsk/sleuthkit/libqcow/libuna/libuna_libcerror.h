@@ -1,5 +1,5 @@
 /*
- * The internal definitions
+ * The internal libcerror header
  *
  * Copyright (C) 2008-2016, Joachim Metz <joachim.metz@gmail.com>
  *
@@ -19,37 +19,32 @@
  * along with this software.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#if !defined( LIBCPATH_INTERNAL_DEFINITIONS_H )
-#define LIBCPATH_INTERNAL_DEFINITIONS_H
+#if !defined( _LIBUNA_LIBCERROR_H )
+#define _LIBUNA_LIBCERROR_H
 
 #include <common.h>
-#include <types.h>
 
-/* Define HAVE_LOCAL_LIBCPATH for local use of libcpath
+/* Define HAVE_LOCAL_LIBCERROR for local use of libcerror
  */
-#if !defined( HAVE_LOCAL_LIBCPATH )
-#include <libcpath/definitions.h>
+#if defined( HAVE_LOCAL_LIBCERROR )
 
-/* The definitions in <libcpath/definitions.h> are copied here
- * for local use of libcpath
- */
+#include <libcerror_definitions.h>
+#include <libcerror_error.h>
+#include <libcerror_system.h>
+#include <libcerror_types.h>
+
 #else
 
-#define LIBCPATH_VERSION			20161109
-
-/* The libcpath version string
+/* If libtool DLL support is enabled set LIBCERROR_DLL_IMPORT
+ * before including libcerror.h
  */
-#define LIBCPATH_VERSION_STRING			"20161109"
-
-#if defined( WINAPI )
-#define LIBCPATH_SEPARATOR			'\\'
-
-#else
-#define LIBCPATH_SEPARATOR			'/'
-
-#endif /* defined( WINAPI ) */
-
-#endif /* !defined( HAVE_LOCAL_LIBCPATH ) */
-
+#if defined( _WIN32 ) && defined( DLL_IMPORT )
+#define LIBCERROR_DLL_IMPORT
 #endif
+
+#include <libcerror.h>
+
+#endif /* defined( HAVE_LOCAL_LIBCERROR ) */
+
+#endif /* !defined( _LIBUNA_LIBCERROR_H ) */
 

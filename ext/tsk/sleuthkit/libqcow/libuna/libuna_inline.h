@@ -1,5 +1,5 @@
 /*
- * The internal definitions
+ * The internal inline definition
  *
  * Copyright (C) 2008-2016, Joachim Metz <joachim.metz@gmail.com>
  *
@@ -19,37 +19,21 @@
  * along with this software.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#if !defined( LIBCPATH_INTERNAL_DEFINITIONS_H )
-#define LIBCPATH_INTERNAL_DEFINITIONS_H
+#if !defined( _LIBUNA_INTERNAL_INLINE_H )
+#define _LIBUNA_INTERNAL_INLINE_H
 
 #include <common.h>
-#include <types.h>
 
-/* Define HAVE_LOCAL_LIBCPATH for local use of libcpath
- */
-#if !defined( HAVE_LOCAL_LIBCPATH )
-#include <libcpath/definitions.h>
+#if defined( _MSC_VER )
+#define LIBUNA_INLINE _inline
 
-/* The definitions in <libcpath/definitions.h> are copied here
- * for local use of libcpath
- */
-#else
-
-#define LIBCPATH_VERSION			20161109
-
-/* The libcpath version string
- */
-#define LIBCPATH_VERSION_STRING			"20161109"
-
-#if defined( WINAPI )
-#define LIBCPATH_SEPARATOR			'\\'
+#elif defined( __BORLANDC__ ) || defined( __clang__ ) || ( defined( __GNUC__ ) && __GNUC__ >= 5 )
+#define LIBUNA_INLINE /* inline */
 
 #else
-#define LIBCPATH_SEPARATOR			'/'
-
-#endif /* defined( WINAPI ) */
-
-#endif /* !defined( HAVE_LOCAL_LIBCPATH ) */
+#define LIBUNA_INLINE inline
 
 #endif
+
+#endif /* !defined( _LIBUNA_INTERNAL_INLINE_H ) */
 
