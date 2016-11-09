@@ -1,16 +1,16 @@
-#!/bin/sh
+#!/bin/bash
 # Script that runs the tests
 #
-# Version: 20160422
+# Version: 20161018
 
 EXIT_SUCCESS=0;
 EXIT_FAILURE=1;
 
 run_configure_make()
 {
-	local CONFIGURE_OPTIONS=$1;
+	local CONFIGURE_OPTIONS=$@;
 
-	./configure ${CONFIGURE_OPTIONS};
+	./configure ${CONFIGURE_OPTIONS[@]};
 	RESULT=$?;
 
 	if test ${RESULT} -ne ${EXIT_SUCCESS};
@@ -44,7 +44,7 @@ run_configure_make()
 
 run_configure_make_check()
 {
-	run_configure_make $1;
+	run_configure_make $@;
 	RESULT=$?;
 
 	if test ${RESULT} -ne ${EXIT_SUCCESS};
@@ -69,9 +69,27 @@ run_configure_make_check()
 	return ${EXIT_SUCCESS};
 }
 
+run_configure_make_check_with_coverage()
+{
+	# Disable optimization so we can hook malloc and realloc.
+	export CPPFLAGS="-DOPTIMIZATION_DISABLED";
+	export CFLAGS="--coverage -O0";
+	export LDFLAGS="--coverage";
+
+	# Disable creating a shared library so we can hook memset.
+	run_configure_make_check "--enable-shared=no --enable-wide-character-type";
+	RESULT=$?;
+
+	export CPPFLAGS=;
+	export CFLAGS=;
+	export LDFLAGS=;
+
+	return ${RESULT};
+}
+
 run_configure_make_check_python()
 {
-	run_configure_make $1;
+	run_configure_make $@;
 	RESULT=$?;
 
 	if test ${RESULT} -ne ${EXIT_SUCCESS};
@@ -112,7 +130,10 @@ run_setup_py_tests()
 	return ${EXIT_SUCCESS};
 }
 
-if ! run_configure_make_check;
+run_configure_make_check;
+RESULT=$?;
+
+if test ${RESULT} -ne ${EXIT_SUCCESS};
 then
 	exit ${EXIT_FAILURE};
 fi
@@ -123,7 +144,10 @@ HAVE_WITH_ZLIB=$?;
 
 if test ${HAVE_WITH_ZLIB} -eq 0;
 then
-	if ! run_configure_make_check "--with-zlib=no";
+	run_configure_make_check "--with-zlib=no";
+	RESULT=$?;
+
+	if test ${RESULT} -ne ${EXIT_SUCCESS};
 	then
 		exit ${EXIT_FAILURE};
 	fi
@@ -135,12 +159,18 @@ HAVE_WITH_OPENSSL=$?;
 
 if test ${HAVE_WITH_OPENSSL} -eq 0;
 then
-	if ! run_configure_make_check "--with-openssl=no";
+	run_configure_make_check "--with-openssl=no";
+	RESULT=$?;
+
+	if test ${RESULT} -ne ${EXIT_SUCCESS};
 	then
 		exit ${EXIT_FAILURE};
 	fi
 
-	if ! run_configure_make_check "--enable-openssl-evp-cipher=no --enable-openssl-evp-md=no";
+	run_configure_make_check "--enable-openssl-evp-cipher=no --enable-openssl-evp-md=no";
+	RESULT=$?;
+
+	if test ${RESULT} -ne ${EXIT_SUCCESS};
 	then
 		exit ${EXIT_FAILURE};
 	fi
@@ -160,13 +190,19 @@ then
 	then
 		export PYTHON_VERSION=2;
 
-		if ! run_configure_make_check_python "--enable-python";
+		run_configure_make_check_python "--enable-python";
+		RESULT=$?;
+
+		if test ${RESULT} -ne ${EXIT_SUCCESS};
 		then
 			exit ${EXIT_FAILURE};
 		fi
 		export PYTHON_VERSION=;
 
-		if ! run_configure_make "--enable-python2";
+		run_configure_make "--enable-python2";
+		RESULT=$?;
+
+		if test ${RESULT} -ne ${EXIT_SUCCESS};
 		then
 			exit ${EXIT_FAILURE};
 		fi
@@ -185,13 +221,19 @@ then
 	then
 		export PYTHON_VERSION=3;
 
-		if ! run_configure_make_check_python "--enable-python";
+		run_configure_make_check_python "--enable-python";
+		RESULT=$?;
+
+		if test ${RESULT} -ne ${EXIT_SUCCESS};
 		then
 			exit ${EXIT_FAILURE};
 		fi
 		export PYTHON_VERSION=;
 
-		if ! run_configure_make "--enable-python3";
+		run_configure_make "--enable-python3";
+		RESULT=$?;
+
+		if test ${RESULT} -ne ${EXIT_SUCCESS};
 		then
 			exit ${EXIT_FAILURE};
 		fi
@@ -205,7 +247,10 @@ then
 	# Test with the default Python version.
 	if test -z ${PYTHON2} && test -z ${PYTHON3};
 	then
-		if ! run_configure_make_check_python "--enable-python";
+		run_configure_make_check_python "--enable-python";
+		RESULT=$?;
+
+		if test ${RESULT} -ne ${EXIT_SUCCESS};
 		then
 			exit ${EXIT_FAILURE};
 		fi
@@ -217,6 +262,14 @@ then
 			exit ${EXIT_FAILURE};
 		fi
 	fi
+fi
+
+run_configure_make_check_with_coverage;
+RESULT=$?;
+
+if test ${RESULT} -ne ${EXIT_SUCCESS};
+then
+	exit ${EXIT_FAILURE};
 fi
 
 exit ${EXIT_SUCCESS};

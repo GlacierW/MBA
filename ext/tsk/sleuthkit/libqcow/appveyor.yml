@@ -22,3 +22,6 @@ before_build:
 build:
   project: vs2010\libqcow.sln
 
+test_script:
+  - ps: .\runtests.ps1
+
