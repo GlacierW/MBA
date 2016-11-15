@@ -124,7 +124,6 @@ static ssize_t _MOCKABLE(as_write)( int sock_fd, void* buf, size_t count ) {
     // 0: connection orderly closed, -1: error
     if( n_wbytes <= 0 ) {
         agent_printf( "The connection to the agent server is broken while writing\n" );
-        agent_printf("%s\n",strerror(errno));
         agent_cleanup();
     }
     return n_wbytes;
@@ -147,7 +146,6 @@ static ssize_t _MOCKABLE(as_read)( int sock_fd, void* buf, size_t count ) {
     // 0: connection orderly closed, -1: error
     if( n_rbytes <= 0 ) {
         agent_printf( "The connection to the agent server is broken while reading\n" );
-        agent_printf("%s\n",strerror(errno));
         agent_cleanup();
     }
     return n_rbytes;
@@ -495,10 +493,10 @@ static MBA_AGENT_RETURN _MOCKABLE(execute_guest_cmd_return)( void ) {
     }
     
     // read the constant string "EXEC_READY"
-    bzero( exec_rdy, sizeof(MSG_EXEC_READY) );
-    n_rbytes = as_read( ac->sock, exec_rdy, sizeof(MSG_EXEC_READY) );
+    bzero( exec_rdy, sizeof(MSG_REC_SUCCESS) );
+    n_rbytes = as_read( ac->sock, exec_rdy, sizeof(MSG_REC_SUCCESS) );
 
-    if( n_rbytes != sizeof(MSG_EXEC_READY) || strncmp(exec_rdy, MSG_EXEC_READY, sizeof(MSG_EXEC_READY)) != 0 ) {
+    if( n_rbytes != sizeof(MSG_REC_SUCCESS) || strncmp(exec_rdy, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ) {
         agent_printf( "Failed to receive the ready signal for agent 'execute' action\n" );
         goto exec_fail;
     }
