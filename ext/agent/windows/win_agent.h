@@ -33,7 +33,6 @@
 #define SZ_MAX_L    256          // log message buffer size
 #define SZ_MAX_FILECHUNK 8192    // maximum import/export file chunk
 
-#define MSG_EXEC_READY  "EXEC_READY"
 #define MSG_ACK_PREFIX  "System Receive : "
 #define MSG_REC_SUCCESS "SUCCESS"
 #define MSG_REC_FAIL    "CMDFAIL"
