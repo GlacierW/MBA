@@ -117,7 +117,7 @@ extern bool obhook_pending_hooks;
 ///     \param  label   user-friendly name for the hook (optional, can be NULL)
 ///     \param  cb      callback routine to be invoked when the hook is triggered
 ///                     Note that each callback routine will be invoked and given
-///                     a pointer to the current CPU state structure
+///                     a pointer to the current CPU state structure (CPUState*)
 ///
 /// Return a new obhook descriptor on success, otherwise -1 is returned and the obhook_errno is set
 extern int obhook_add_process( target_ulong cr3, target_ulong addr, const char* label, void*(*cb) (void *) );
@@ -132,7 +132,7 @@ extern int obhook_add_process( target_ulong cr3, target_ulong addr, const char* 
 ///     \param  label       user-friendly name for the hook (optional, can be NULL)
 ///     \param  cb          callback routine to be invoked when the hook is triggered
 ///                         Note that each callback routine will be invoked and given
-///                         a pointer to the current CPU state structure
+///                         a pointer to the current CPU state structure (CPUState*)
 ///
 /// Return a new obhook descriptor on success, otherwise -1 is returned and the obhook_errno is set
 extern int obhook_add_universal( target_ulong kern_addr, const char* label, void*(*cb) (void *) );

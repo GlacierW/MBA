@@ -98,6 +98,10 @@
 #include "ext/memfrs/memfrs-commands.h"
 #endif
 
+#if defined(CONFIG_OBHOOK)
+#include "ext/obhook/obhook-commands.h"
+#endif
+
 //#define DEBUG
 //#define DEBUG_COMPLETION
 
@@ -2977,6 +2981,11 @@ static mon_cmd_t mon_cmds[] = {
 #if defined(CONFIG_MEMFRS)
 #include "ext/memfrs/memfrs-commands-spec.h" 
 #endif
+
+#if defined(CONFIG_OBHOOK)
+#include "ext/obhook/obhook-commands-spec.h"
+#endif
+
     { NULL, NULL, },
 };
 

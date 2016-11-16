@@ -36,7 +36,7 @@ void helper_obhook_dispatcher( CPUX86State* env ) {
     if( cb_list != NULL ) {
         LL_FOREACH( cb_list, cb_rec ) {
             if( cb_rec->enabled )
-                cb_rec->cb_func( env );
+                cb_rec->cb_func( ENV_GET_CPU(env) );
         }
     }
 
@@ -45,7 +45,7 @@ void helper_obhook_dispatcher( CPUX86State* env ) {
     if( cb_list != NULL ) {
         LL_FOREACH( cb_list, cb_rec ) {
             if( cb_rec->enabled )
-                cb_rec->cb_func( env );
+                cb_rec->cb_func( ENV_GET_CPU(env) );
         }
     }
 }
