@@ -61,3 +61,17 @@
     .help         = "Create an agent thread to communicate with Windows in-VM agent server.",
     .mhandler.cmd = do_win_init,
 },
+{
+    .name         = "w_sync",
+    .args_type    = "", 
+    .params       = "",
+    .help         = "Flush the Guest OS cache.",
+    .mhandler.cmd = do_win_sync,
+},
+{
+    .name         = "w_reset",
+    .args_type    = "", 
+    .params       = "",
+    .help         = "Reset the agent client to the condition before w_init.",
+    .mhandler.cmd = do_win_reset,
+},

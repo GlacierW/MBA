@@ -19,7 +19,17 @@
 #ifndef __MEMFRS_VAD_H__
 #define __MEMFRS_VAD_H__
 
+#if !defined(CONFIG_MEMFRS_TEST)
 #include "qom/cpu.h"
+#endif
+
+typedef struct vad_node{
+    uint64_t start_viraddr;
+    uint64_t end_viraddr;
+    int vad_type;
+    int vad_protection;
+    char* filename;
+} vad_node;
 
 typedef enum{
     VadNone,
@@ -81,5 +91,5 @@ static int const MmProtectToValue[32] = {
         PAGE_WRITECOMBINE | PAGE_EXECUTE_WRITECOPY
 };
 
-int parse_mmvad_node(uint64_t mmvad_ptr, CPUState *cpu);
+vad_node* parse_mmvad_node(uint64_t mmvad_ptr, CPUState *cpu);
 #endif

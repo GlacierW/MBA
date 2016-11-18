@@ -32,6 +32,9 @@ before_install:
   - g++ -isystem googletest/googletest/include/ -Igoogletest/googletest -pthread -c googletest/googletest/src/gtest-all.cc -DGTEST_CREATE_SHARED_LIBRARY=1 -fPIC -shared -o libgtest.so
   - sudo mv libgtest.so /usr/lib/
   - sudo mv googletest/googletest/include/* /usr/include/
+  # for memfrs testing
+  - perl gdown.pl/gdown.pl "https://docs.google.com/uc?id=0Bw0V1Yd9ZxkESWNhbVVhMFRDMGc&export=download" type_definition.json;
+  - perl gdown.pl/gdown.pl "https://docs.google.com/uc?id=0Bw0V1Yd9ZxkEWDh0VlNYbGNsYTA&export=download" global_variable.json;
 before_script:
   - ./configure --target-list=${TARGETS} ${EXTRA_CONFIG}
 script:
@@ -53,4 +56,7 @@ matrix: # define more builds here
     # enable & run obhook unit test
     - env: EXTRA_CONFIG="--enable-obhook"
            TEST_CMD="make obhook -C ext -f Makefile.test && ext/obhook/test/bin/test_obhook"
+      compiler: gcc
+    - env: EXTRA_CONFIG="--enable-memfrs"
+           TEST_CMD="make memfrs -C ext -f Makefile.test && ext/memfrs/test/bin/test_memfrs"
       compiler: gcc

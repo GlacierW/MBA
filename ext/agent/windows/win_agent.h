@@ -5,7 +5,7 @@
  *
  *  Copyright (c)   2016 E-lin Ho
  *                  2016 Chiawei Wang
- *                  2016 JuiChien, Jao
+ *                  2016 Juichien Jao
  *                  
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -33,7 +33,6 @@
 #define SZ_MAX_L    256          // log message buffer size
 #define SZ_MAX_FILECHUNK 8192    // maximum import/export file chunk
 
-#define MSG_EXEC_READY  "EXEC_READY"
 #define MSG_ACK_PREFIX  "System Receive : "
 #define MSG_REC_SUCCESS "SUCCESS"
 #define MSG_REC_FAIL    "CMDFAIL"
@@ -44,7 +43,8 @@ enum cmd_type {
     MBA_CMD_INVO,       // 2 : Command begging with 'invo' from MBA     // invoke
     MBA_CMD_EXPO,       // 3 : Command begging with 'expo' from MBA     // export
     MBA_CMD_IMPO,       // 4 : Command begging with 'impo' from MBA     // import
-    MBA_CMD_LOGF        // 5 : Command begging with 'logf' from MBA     // log file
+    MBA_CMD_LOGF,        // 5 : Command begging with 'logf' from MBA     // log file
+    MBA_CMD_SYNC        // 6 : Command begging with 'sync' from MBA     // sync
 };
 
 //common return value

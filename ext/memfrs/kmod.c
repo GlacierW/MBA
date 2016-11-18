@@ -17,11 +17,13 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-
+#if !defined(CONFIG_MEMFRS_TEST)
 #include "qemu-common.h"
-#include "ext/memfrs/memfrs.h"
-#include "ext/memfrs/memfrs-priv.h"
-#include "ext/memfrs/kmod.h"
+#endif
+
+#include "memfrs.h"
+#include "memfrs-priv.h"
+#include "kmod.h"
 
 #define SIZE_OF_POOL_HEADER 0x10
 
@@ -35,12 +37,15 @@ INPUT:  CPUState *cpu            pointer to current cpu
 
 OUTPUT: void                     
 **********************************************************************************/
-void memfrs_scan_module(CPUState *cpu)
+
+UT_icd module_icd = {sizeof(kernel_module), NULL, NULL, NULL };
+UT_array*  memfrs_scan_module(CPUState *cpu)
 {
     uint64_t i ;
     uint8_t* module_tag = (uint8_t*)malloc(strlen(POOL_TAG_MODULE));
     uint8_t buf[SIZEOFUNICODESTRING];
     int offset_tag, offset_fullname, offset_basename;
+    UT_array *module_list;
 
     printf("Scan for pattern %s\n", POOL_TAG_MODULE);
 
@@ -48,7 +53,7 @@ void memfrs_scan_module(CPUState *cpu)
     if( memfrs_check_struct_info() == 0)
     {
         printf("Data structure information is not loaded\n");
-        return;
+        return NULL;
     }
 
     json_object* jobj = memfrs_q_struct("_POOL_HEADER");
@@ -66,6 +71,8 @@ void memfrs_scan_module(CPUState *cpu)
     offset_basename = f_info->offset;
     memfrs_close_field(f_info);
 
+    utarray_new( module_list, &module_icd);
+
     //Scan whole physical memory
     for(i = 0; i < MAXMEM-strlen(POOL_TAG_MODULE); i++)
     {
@@ -73,18 +80,25 @@ void memfrs_scan_module(CPUState *cpu)
         cpu_physical_memory_read(i, module_tag, strlen(POOL_TAG_MODULE));
         if(memcmp( module_tag, POOL_TAG_MODULE, strlen(POOL_TAG_MODULE))==0)
         {
-            printf( "pattern found %"PRIx64"\n", i);
+            printf( "pattern found %lx\n", i);
             //TODO: Use ds query api instead
+            kernel_module* kmod = (kernel_module*)malloc(sizeof(kernel_module));
+
             // Retrieve whole path
             cpu_physical_memory_read(i- offset_tag+ SIZE_OF_POOL_HEADER+ offset_fullname, buf, SIZEOFUNICODESTRING);
-            parse_unicode_str(buf, cpu);
-  
+            
+            char* fullname = parse_unicode_str(buf, cpu);
+            strcpy(kmod->fullname, fullname);
             // Retrieve base name of kernel module
             cpu_physical_memory_read(i- offset_tag+ SIZE_OF_POOL_HEADER+ offset_basename, buf, SIZEOFUNICODESTRING);
-            parse_unicode_str(buf, cpu);
+            char* basename = parse_unicode_str(buf, cpu);
+            strcpy(kmod->basename, basename);
+            
+            kmod->base = i;
             printf("\n");
+            utarray_push_back(module_list, kmod);
         }
     }
-
+    return module_list;
 }
 

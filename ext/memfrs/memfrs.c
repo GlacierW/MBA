@@ -194,7 +194,7 @@ bool memfrs_kpcr_self_check( uint64_t kpcr_ptr ) {
     // Check if the Self pointer point back to _KPCR structure, which is the hueristic check of _KPCR 
     if( kpcr_ptr == self_ptr ) {
         g_kpcr_ptr = kpcr_ptr;
-        printf("KPCR found %" PRIx64 "\n", g_kpcr_ptr);
+        printf("KPCR found %lx\n", g_kpcr_ptr);
         return true;
     }
   
@@ -204,7 +204,7 @@ bool memfrs_kpcr_self_check( uint64_t kpcr_ptr ) {
 
 //TODO: Still buggy
 UT_icd adr_icd = {sizeof(uint64_t), NULL, NULL, NULL };
-UT_array* memfrs_scan_virmem( CPUState *cpu, uint64_t start_addr, uint64_t end_addr, const char* pattern ) {
+UT_array* memfrs_scan_virmem( CPUState *cpu, uint64_t start_addr, uint64_t end_addr, const char* pattern, int length ) {
     uint64_t i;
 
     if(start_addr >= end_addr){
@@ -212,10 +212,10 @@ UT_array* memfrs_scan_virmem( CPUState *cpu, uint64_t start_addr, uint64_t end_a
         return NULL;
     }
 
-    uint8_t* buf = (uint8_t*)malloc(strlen(pattern));
+    uint8_t* buf = (uint8_t*)malloc(length);
     UT_array *match_addr;
 
-    memset(buf, 0, strlen(pattern));
+    memset(buf, 0, length);
 
     if(buf == NULL){
         printf("Cannot allocate memory for do_show_memory_taint_map()\n");
@@ -226,14 +226,12 @@ UT_array* memfrs_scan_virmem( CPUState *cpu, uint64_t start_addr, uint64_t end_a
 
     printf("Scan for pattern %s\n", pattern);
 
-    for(i = start_addr; i < end_addr-strlen(pattern)+1; i++)
+    for(i = start_addr; i < end_addr-length+1; i++)
     {
-        //if(i %0x1000 == 0)
-        //    printf("Current addr %"PRIx64"\n", i);
-        cpu_memory_rw_debug(cpu, i, buf, strlen(pattern), 0);
-        if(memcmp(buf, pattern, strlen(pattern))==0)
+        cpu_memory_rw_debug(cpu, i, buf, length, 0);
+        if(memcmp(buf, pattern, length)==0)
         {
-            printf("pattern found %"PRIx64"\n", i);
+            printf("pattern found %lx\n", i);
             utarray_push_back(match_addr, &i);
         }
     }
@@ -251,7 +249,7 @@ INPUT:    uint64_t start_addr,  The start address
 OUTPUT:   UT_array*,            An UT_array that contains the address of found pattern
 
 *******************************************************************/
-UT_array* memfrs_scan_phymem( uint64_t start_addr, uint64_t end_addr, const char* pattern ) {
+UT_array* memfrs_scan_phymem( uint64_t start_addr, uint64_t end_addr, const char* pattern , int length ) {
     uint64_t i;
     UT_array *match_addr;
     if(start_addr >= end_addr){
@@ -259,7 +257,7 @@ UT_array* memfrs_scan_phymem( uint64_t start_addr, uint64_t end_addr, const char
         return NULL;
     }
 
-    uint8_t* buf = (uint8_t*)malloc(strlen(pattern));
+    uint8_t* buf = (uint8_t*)malloc(length);
     if(buf == NULL){
         printf("Cannot allocate memory for memfrs_scan_phymem()\n");
         return NULL;
@@ -268,12 +266,12 @@ UT_array* memfrs_scan_phymem( uint64_t start_addr, uint64_t end_addr, const char
     utarray_new( match_addr, &adr_icd);
 
     printf("Scan for pattern %s\n", pattern);
-    for(i = start_addr; i < end_addr-strlen(pattern)+1; i++)
+    for(i = start_addr; i < end_addr-length+1; i++)
     {
-        cpu_physical_memory_read(i, buf, strlen(pattern));
-        if(memcmp(buf, pattern, strlen(pattern))==0)
+        cpu_physical_memory_read(i, buf, length);
+        if(memcmp(buf, pattern, length)==0)
         {
-            printf("pattern found %"PRIx64"\n", i);
+            printf("pattern found %lx\n", i);
             utarray_push_back(match_addr, &i);
         }
     }
@@ -281,7 +279,7 @@ UT_array* memfrs_scan_phymem( uint64_t start_addr, uint64_t end_addr, const char
 }
 
 /*******************************************************************
-void memfrs_get_virmem_content( CPUState *cpu, uint64_t cr3, uint64_t target_addr, uint64_t target_length, uint8_t* buf)
+int memfrs_get_virmem_content( CPUState *cpu, uint64_t cr3, uint64_t target_addr, uint64_t target_length, uint8_t* buf)
 
 Get the memory content in virtual memory
 
@@ -290,10 +288,10 @@ INPUT:    CPUState *cpu          Current cpu
           uint64_t target_addr   The target address 
           uint64_t target_length The length to be getten
           uint8_t* buf           The buffer to save the memory content
-OUTPUT:   void
+OUTPUT:   int                    -1 indicate fails
 
 *******************************************************************/
-void memfrs_get_virmem_content( CPUState *cpu, uint64_t cr3, uint64_t target_addr, uint64_t target_length, uint8_t* buf)
+int memfrs_get_virmem_content( CPUState *cpu, uint64_t cr3, uint64_t target_addr, uint64_t target_length, uint8_t* buf)
 {
     X86CPU copied_cpu;
     int ret;
@@ -305,20 +303,21 @@ void memfrs_get_virmem_content( CPUState *cpu, uint64_t cr3, uint64_t target_add
     }
 
     ret = cpu_memory_rw_debug((CPUState *)&copied_cpu, target_addr, (uint8_t*)buf, target_length, 0);
-    if(ret != 0)
-        printf("Fail to read virtual memory\n");
-
-    return;
+    if(ret != 0){
+        //printf("Fail to read virtual memory\n");
+        return -1;
+    }
+    return 0;
 }
 
 void hexdump(Monitor *mon, uint8_t* buf, size_t length)
 {
     int i,j ;
 
-    for(i = 0 ; i < length ; i+=0x10) {
+    for(i = 0 ; i < (int)length ; i+=0x10) {
         monitor_printf(mon, "%02x: ", i);
         for(j = 0; j< 0x10; j++){
-            if(i+j > length)
+            if(i+j > (int)length)
                 monitor_printf( mon, "   " );
             else
                 monitor_printf( mon, "%02x " , buf[i+j]);
@@ -327,7 +326,7 @@ void hexdump(Monitor *mon, uint8_t* buf, size_t length)
         monitor_printf(mon, "  |  ");
 
         for(j = 0; j< 0x10; j++){
-            if(i+j > length)
+            if(i+j > (int)length)
                 monitor_printf( mon, "-" );
             else if(buf[i+j] >= 0x20 && buf[i+j] <= 0x7e)
                 monitor_printf( mon, "%c" , buf[i+j]);
@@ -396,6 +395,7 @@ int memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
 
     // Retrieve the _KPCR structure
     jkpcr = memfrs_q_struct("_KPCR");
+
     // Query Prcb field in _KPCR struct
     f_info = memfrs_q_field(jkpcr, "Prcb");
     // Query Prcb for the sub-field name CurrentThread 
@@ -452,7 +452,7 @@ int memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
         //Read CR3 & Process name
         cpu_memory_rw_debug( cpu, eprocess_ptr + offset_cr3_to_eprocess, (uint8_t*)&cr3, sizeof(cr3), 0 );
         cpu_memory_rw_debug( cpu, eprocess_ptr + offset_process_name_to_eprocess, (uint8_t*)buf, sizeof(buf), 0 );
-        printf( "eprocess: %" PRIx64 "CR3: %" PRIx64 ", Process Name: %s\n", eprocess_ptr, cr3, buf );
+        printf( "eprocess: %lx CR3: %lx, Process Name: %s\n", eprocess_ptr, cr3, buf );
 
         // read next entry  
         cpu_memory_rw_debug( cpu, eprocess_ptr + offset_blink_to_eprocess, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), 0 );
@@ -464,7 +464,7 @@ int memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
     return 0;
 }
 
-void parse_unicode_strptr(uint64_t ustr_ptr, CPUState *cpu)
+char* parse_unicode_strptr(uint64_t ustr_ptr, CPUState *cpu)
 {
     json_object* ustr = NULL;
     field_info* f_info = NULL;
@@ -490,7 +490,7 @@ void parse_unicode_strptr(uint64_t ustr_ptr, CPUState *cpu)
     printf("String with size %d/%d\n", length, max_length);
 
     if(length == 0 || length > 256 || max_length ==0 || max_length > 256)
-        return;
+        return NULL;
 
     f_info = memfrs_q_field(ustr, "Buffer");
     offset = f_info->offset;
@@ -510,9 +510,11 @@ void parse_unicode_strptr(uint64_t ustr_ptr, CPUState *cpu)
     str[i] = 0x00;
     //printf("Filename %ls\n", (wchar_t*p)buf);
     printf("Filename %s\n", str);
+    free(buf);
+    return str;
 }
 
-void parse_unicode_str(uint8_t* ustr, CPUState *cpu)
+char* parse_unicode_str(uint8_t* ustr, CPUState *cpu)
 {
     json_object* justr = NULL;
     field_info* f_info = NULL;
@@ -542,20 +544,21 @@ void parse_unicode_str(uint8_t* ustr, CPUState *cpu)
     printf("String with size %d/%d\n", length, max_length);
 
     if(length == 0 || length > 256 || max_length ==0 || max_length > 256)
-        return;
+        return NULL;
 
     f_info = memfrs_q_field(justr, "Buffer");
     offset = f_info->offset;
     buf_ptr = *((uint64_t*)(ustr+offset));
-    //cpu_memory_rw_debug( cpu, ustr_ptr+offset, (uint8_t*)&buf_ptr, sizeof(buf_ptr), 0 );
     memfrs_close_field(f_info);
-
-    //printf("Address: %" PRIx64 "\n", buf_ptr);
+    
+    printf("testtesttest\n");
 
     buf = (uint8_t*)malloc(max_length+2);
     str = (char*)malloc(max_length+1);
     memset(str, 0, max_length+1);
+    printf("testtesttest\n");
     cpu_memory_rw_debug( cpu, buf_ptr, buf, max_length, 0 );
+    printf("buf %s\n", buf);
     //Hardcode Unicode Parse
     //wcstombs(str, (const wchar_t *)buf, max_length);
     for(i=0; i<max_length;i+=2)
@@ -563,6 +566,8 @@ void parse_unicode_str(uint8_t* ustr, CPUState *cpu)
     str[i] = 0x00;
     //printf("Filename %ls\n", (wchar_t*p)buf);
     printf("Filename %s\n", str);
+    free(buf);
+    return str;
 }
 
 /*******************************************************************
@@ -593,6 +598,9 @@ json_object* memfrs_q_globalvar(const char* gvar_name)
 {
     json_object* target = NULL;
 
+    if(g_globalvar_info==NULL)
+        return NULL;
+
     // Query global structure info with structure name ds_name
     // Restore the query result into target json_object 
     json_object_object_get_ex(g_globalvar_info, gvar_name, &target);
@@ -611,11 +619,13 @@ json_object format.
 memfrs_q_globalvar should be invoked first to get the json_object.
 
 INPUT:    json_object* gvarobj  the json obj of interesting global symbol
-OUTPUT:   uint64_t              the virtual address of specific global variable
+OUTPUT:   int64_t               the virtual address of specific global variable, -1 indicates fails
 
 *******************************************************************/
-uint64_t memfrs_gvar_offset(json_object* gvarobj)
+int64_t memfrs_gvar_offset(json_object* gvarobj)
 {
+    if(gvarobj==NULL)
+        return -1;
     json_object* tmp_jobject = json_object_array_get_idx(gvarobj, 0);
     uint64_t offset = json_object_get_int(tmp_jobject);
     return offset;

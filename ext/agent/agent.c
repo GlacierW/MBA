@@ -2,10 +2,10 @@
  *  Windows in-VM agent implementation
  *
  *  Copyright (c)   2016 Chiawei Wang
- *                  2016 Chuan-Hua, Cheng
- *                  2016 JuiChien, Jao
+ *                  2016 Chuan-Hua Cheng
+ *                  2016 JuiChien Jao
  *
- * This library is free software; you can redistribute it and/or
+ * This library is free software you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
  * License as published by the Free Software Foundation; either
  * version 2 of the License, or (at your option) any later version.
@@ -27,19 +27,22 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
 
 #ifndef CONFIG_AGENT_TEST
 #include <monitor/monitor.h>
+#define _MOCKABLE(x) x
 #else
 #include <stdarg.h>
 typedef void Monitor;
 void monitor_vprintf( Monitor* mon, const char* fmt, va_list arg){}
+#include "test/test.h"
+/// Change name to avoid macros in test.h from expanding.
+/// Refer to _dift_log to call original dift_log in tests.
+#define _MOCKABLE(x) _##x
 #endif
 
-
-#include <arpa/inet.h>
 #include "agent.h"
-
 
 struct agent_context {
     
@@ -59,9 +62,15 @@ struct agent_context {
         char src_path[SZ_MAX_FILEPATH];
     } act;
 
-    int      sock;
+    // The transmission arguments for UDP protocol and the port redirection.
+    // UDP socket
+    int    sock;
+    // server address information
+    struct sockaddr_in serveraddr;
+    // fwd_port registered in QEMU to agent server
     uint16_t fwd_port;
 
+    // flag for agent client's status, FALSE for no initialization, TRUE for done initialization
     bool ready;
 
     Monitor* mon;
@@ -77,7 +86,7 @@ agent_context ac[1];
 
 /// Cleanup the resource stored in the agent context
 /// Return none
-static void agent_cleanup( void ) {
+static void _MOCKABLE(agent_cleanup)( void ) {
 
     // thread cleanup
     pthread_cancel( ac->thread.tid );
@@ -93,7 +102,7 @@ static void agent_cleanup( void ) {
         pthread_mutex_unlock( &ac->act.mtx );
     pthread_mutex_unlock( &ac->act.mtx );
     pthread_mutex_destroy( &ac->act.mtx );
-    
+
     // context structure zero-out
     bzero( ac, sizeof(agent_context) );
 }
@@ -107,9 +116,10 @@ static void agent_cleanup( void ) {
 ///     \param  count       Count in bytes of buf to be written
 ///
 /// Return bytes written, <= 0 if any error occured
-static ssize_t as_write( int sock_fd, void* buf, size_t count ) {
+static ssize_t _MOCKABLE(as_write)( int sock_fd, void* buf, size_t count ) {
 
-    ssize_t n_wbytes = write( sock_fd, buf, count );
+    socklen_t length = sizeof(ac->serveraddr);
+    ssize_t n_wbytes = sendto( sock_fd, buf, count, 0, (struct sockaddr*)&ac->serveraddr, length );
 
     // 0: connection orderly closed, -1: error
     if( n_wbytes <= 0 ) {
@@ -128,9 +138,10 @@ static ssize_t as_write( int sock_fd, void* buf, size_t count ) {
 ///     \param  count       Count in bytes of buf to be read
 ///
 /// Return bytes read, <= 0 if any error occured
-static ssize_t as_read( int sock_fd, void* buf, size_t count ) {
+static ssize_t _MOCKABLE(as_read)( int sock_fd, void* buf, size_t count ) {
 
-    ssize_t n_rbytes = read( sock_fd, buf, count );
+    socklen_t length;
+    ssize_t n_rbytes = recvfrom( sock_fd, buf, count, 0, (struct sockaddr*)&ac->serveraddr, &length );
 
     // 0: connection orderly closed, -1: error
     if( n_rbytes <= 0 ) {
@@ -155,7 +166,7 @@ static void set_agent_action( MBA_AGENT_ACTION act_type ) {
 
 /// Import a host file into guest
 /// Return AGENT_RET_SUCCESS if succeed or AGENT_RET_EFAIL if fail
-static MBA_AGENT_RETURN import_host_file( void ) {
+static MBA_AGENT_RETURN _MOCKABLE(import_host_file)( void ) {
 
     int fd = -1;
 
@@ -226,20 +237,20 @@ static MBA_AGENT_RETURN import_host_file( void ) {
             agent_printf( "Failed to read content of '%s'\n", src_path );
              
              // --------construct the result to the server-------- //
-         bzero( errorbuf, sizeof(MSG_REC_SUCCESS) );
-         snprintf( errorbuf, sizeof(MSG_REC_FAIL), MSG_REC_FAIL );
-         // --------send the result to the server-------- //
-         as_write( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
+             bzero( errorbuf, sizeof(MSG_REC_FAIL) );
+             snprintf( errorbuf, sizeof(MSG_REC_FAIL), MSG_REC_FAIL );
+             // --------send the result to the server-------- //
+             as_write( ac->sock, errorbuf, sizeof(MSG_REC_FAIL) );
              
-            goto impo_fail;
+             goto impo_fail;
         }
          
-    // --------construct the result to the server-------- //
-    bzero( errorbuf, sizeof(MSG_REC_SUCCESS) );
-    snprintf( errorbuf, sizeof(MSG_REC_SUCCESS), MSG_REC_SUCCESS );
-    // --------send the result to the server-------- //
-    as_write( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
-
+        // --------construct the result to the server-------- //
+        bzero( errorbuf, sizeof(MSG_REC_SUCCESS) );
+        snprintf( errorbuf, sizeof(MSG_REC_SUCCESS), MSG_REC_SUCCESS );
+        // --------send the result to the server-------- //
+        as_write( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
+        
         fsize -= n_rbytes;
 
         // send to agent server
@@ -251,32 +262,32 @@ static MBA_AGENT_RETURN import_host_file( void ) {
                 goto impo_fail;
             }
 
-         // --------Check if server can write file successfully-------- //
-         n_rerrorbytes = as_read( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
-         if ( n_rerrorbytes != sizeof(MSG_REC_SUCCESS) ) {
-             agent_printf( "Failed to check server write file content\n" );
-             goto impo_fail;
-         }
-         if ( strncmp(errorbuf, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ){
-         agent_printf( "Server failed to write file\n" );
-         goto impo_fail;
-         }
+            // --------Check if server can write file successfully-------- //
+            n_rerrorbytes = as_read( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
+            if ( n_rerrorbytes != sizeof(MSG_REC_SUCCESS) ) {
+                agent_printf( "Failed to check server write file content\n" );
+                goto impo_fail;
+            }
+            if ( strncmp(errorbuf, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ){
+                agent_printf( "Server failed to write file\n" );
+                goto impo_fail;
+            }
     
-         if ( n_rbytes < SZ_MAX_FILECHUNK ) {
+            if ( n_rbytes < SZ_MAX_FILECHUNK ) {
                  // --------Check if server set file pointer successfully-------- //
                  n_rerrorbytes = as_read( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
                  if ( n_rerrorbytes != sizeof(MSG_REC_SUCCESS) ) {
                      agent_printf( "Failed to check server set file pointer\n" );
-                 goto impo_fail;
+                     goto impo_fail;
                  }
                  if ( strncmp(errorbuf, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ){
-             agent_printf( "Server failed to set file pointer\n" );
-             goto impo_fail;
+                     agent_printf( "Server failed to set file pointer\n" );
+                     goto impo_fail;
                  }
-         }
+             }
 
-            n_rbytes -= n_wbytes;
-            fptr     += n_wbytes;
+             n_rbytes -= n_wbytes;
+             fptr     += n_wbytes;
         }
     
     }
@@ -292,7 +303,7 @@ impo_fail:
 
 /// Export a guest file to host
 /// Return AGENT_RET_SUCCESS if succeed or AGENT_RET_EFAIL if fail
-static MBA_AGENT_RETURN export_guest_file( void ) {
+static MBA_AGENT_RETURN _MOCKABLE(export_guest_file)( void ) {
     
     char cmd_emit[SZ_MAX_COMMAND];
 
@@ -423,11 +434,11 @@ static MBA_AGENT_RETURN export_guest_file( void ) {
                 agent_printf( "Failed to store file content\n" );
                  
          // --------construct the result to the server-------- //
-         bzero( errorbuf, sizeof(MSG_REC_SUCCESS) );
+         bzero( errorbuf, sizeof(MSG_REC_FAIL) );
          snprintf( errorbuf, sizeof(MSG_REC_FAIL), MSG_REC_FAIL );
                  
          // -------send the result to the server------- //
-         as_write( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
+         as_write( ac->sock, errorbuf, sizeof(MSG_REC_FAIL) );
                  
          goto expo_fail;
          }
@@ -455,7 +466,7 @@ expo_fail:
 
 /// Execute a guest command and perform interactive stdin/stdout
 /// Return AGENT_RET_SUCCESS if succeed or AGENT_RET_EFAIL if fail
-static MBA_AGENT_RETURN execute_guest_cmd_return( void ) {
+static MBA_AGENT_RETURN _MOCKABLE(execute_guest_cmd_return)( void ) {
     
     char exec_rdy[sizeof(MSG_EXEC_READY)];
     char cmd_emit[SZ_MAX_COMMAND];
@@ -482,10 +493,10 @@ static MBA_AGENT_RETURN execute_guest_cmd_return( void ) {
     }
     
     // read the constant string "EXEC_READY"
-    bzero( exec_rdy, sizeof(MSG_EXEC_READY) );
-    n_rbytes = as_read( ac->sock, exec_rdy, sizeof(MSG_EXEC_READY) );
+    bzero( exec_rdy, sizeof(MSG_REC_SUCCESS) );
+    n_rbytes = as_read( ac->sock, exec_rdy, sizeof(MSG_REC_SUCCESS) );
 
-    if( n_rbytes != sizeof(MSG_EXEC_READY) || strncmp(exec_rdy, MSG_EXEC_READY, sizeof(MSG_EXEC_READY)) != 0 ) {
+    if( n_rbytes != sizeof(MSG_REC_SUCCESS) || strncmp(exec_rdy, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ) {
         agent_printf( "Failed to receive the ready signal for agent 'execute' action\n" );
         goto exec_fail;
     }
@@ -531,7 +542,7 @@ exec_fail:
 
 /// Execute a guest command without expecting the output
 /// Return AGENT_RET_SUCCESS if succeed or AGENT_RET_EFAIL if fail
-static MBA_AGENT_RETURN execute_guest_cmd_noreturn( void ) {
+static MBA_AGENT_RETURN _MOCKABLE(execute_guest_cmd_noreturn)( void ) {
 
     char cmd_emit[SZ_MAX_COMMAND];
     char errorbuf[sizeof(MSG_REC_SUCCESS)];
@@ -572,7 +583,7 @@ invo_fail:
 
 /// Export the agent server log to host
 /// Return AGENT_RET_SUCCESS if succeed or AGENT_RET_EFAIL if fail
-static MBA_AGENT_RETURN export_agent_log( void ) {
+static MBA_AGENT_RETURN _MOCKABLE(export_agent_log)( void ) {
 
     char cmd_emit[SZ_MAX_COMMAND];
 
@@ -647,11 +658,11 @@ static MBA_AGENT_RETURN export_agent_log( void ) {
         agent_printf( "Failed to open '%s' for agent log export\n", dst_path );
          
          // --------construct the result to the server-------- //
-         bzero( errorbuf, sizeof(MSG_REC_SUCCESS) );
+         bzero( errorbuf, sizeof(MSG_REC_FAIL) );
          snprintf( errorbuf, sizeof(MSG_REC_FAIL), MSG_REC_FAIL );
     
          // -------send the result to the server------- //
-         as_write( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
+         as_write( ac->sock, errorbuf, sizeof(MSG_REC_FAIL) );
          
         goto logf_fail;
     }
@@ -669,16 +680,16 @@ static MBA_AGENT_RETURN export_agent_log( void ) {
         // measure the maximum bytes should be read
         n_rbytes = (fsize < SZ_MAX_FILECHUNK) ? fsize : SZ_MAX_FILECHUNK;
 
-    // --------Check if server is able to read file-------- //
-    n_rerrorbytes = as_read( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
-    if( n_rerrorbytes != sizeof(MSG_REC_SUCCESS) ) {
-         agent_printf( "Failed to check server read file successfully\n" );
-         goto logf_fail;
-    }
-    if ( strncmp(errorbuf, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ){
-         agent_printf( "Server failed to read file\n" );
-         goto logf_fail;
-    }
+        // --------Check if server is able to read file-------- //
+        n_rerrorbytes = as_read( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
+        if( n_rerrorbytes != sizeof(MSG_REC_SUCCESS) ) {
+            agent_printf( "Failed to check server read file successfully\n" );
+            goto logf_fail;
+        }
+        if ( strncmp(errorbuf, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ){
+            agent_printf( "Server failed to read file\n" );
+            goto logf_fail;
+        }
     
         // receive file content from agent server
         n_rbytes = as_read( ac->sock, fbuf, n_rbytes );
@@ -696,26 +707,26 @@ static MBA_AGENT_RETURN export_agent_log( void ) {
             if( n_wbytes == -1 ) {
                 agent_printf( "Failed to store file content\n" );
                  
-         // --------construct the result to the server-------- //
-         bzero( errorbuf, sizeof(MSG_REC_SUCCESS) );
-         snprintf( errorbuf, sizeof(MSG_REC_FAIL), MSG_REC_FAIL );
+                // --------construct the result to the server-------- //
+                bzero( errorbuf, sizeof(MSG_REC_FAIL) );
+                snprintf( errorbuf, sizeof(MSG_REC_FAIL), MSG_REC_FAIL );
              
-         // -------send the result to the server------- //
-         as_write( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
+                // -------send the result to the server------- //
+                as_write( ac->sock, errorbuf, sizeof(MSG_REC_FAIL) );
          
                 goto logf_fail;
             }
              
-         // --------construct the result to the server-------- //
-         bzero( errorbuf, sizeof(MSG_REC_SUCCESS) );
-         snprintf( errorbuf, sizeof(MSG_REC_SUCCESS), MSG_REC_SUCCESS );
+            // --------construct the result to the server-------- //
+            bzero( errorbuf, sizeof(MSG_REC_SUCCESS) );
+            snprintf( errorbuf, sizeof(MSG_REC_SUCCESS), MSG_REC_SUCCESS );
              
-         // -------send the result to the server------- //
-         as_write( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
+            // -------send the result to the server------- //
+            as_write( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
 
             n_rbytes -= n_wbytes;
             fptr     += n_wbytes;
-    }
+       }
     }
 
     close( fd );
@@ -724,6 +735,53 @@ static MBA_AGENT_RETURN export_agent_log( void ) {
 logf_fail:
     if( fd != -1 )
         close( fd );
+    return AGENT_RET_EFAIL;
+}
+
+/// Execute a guest command without expecting the output
+/// Return AGENT_RET_SUCCESS if succeed or AGENT_RET_EFAIL if fail
+static MBA_AGENT_RETURN _MOCKABLE(sync_cache)( void ) {
+
+    char cmd_emit[SZ_MAX_COMMAND] = "sync" ;
+    char errorbuf[sizeof(MSG_REC_SUCCESS)];
+
+    int n_wbytes;
+    int n_rerrorbytes;
+    
+    // emit command
+    n_wbytes = as_write( ac->sock, cmd_emit, SZ_MAX_COMMAND );
+    if( n_wbytes != SZ_MAX_COMMAND ) {
+        agent_printf( "Failed to emit command '%s'\n", cmd_emit );
+        goto sync_fail;
+    }
+
+    // --------Check if server is able to open file-------- //
+    n_rerrorbytes = as_read( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
+    if( n_rerrorbytes != sizeof(MSG_REC_SUCCESS) ) {
+        agent_printf( "Failed to check server sync - open file successfully\n" );
+        goto sync_fail;
+    }
+    
+    if ( strncmp(errorbuf, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ){
+        agent_printf( "Server failed to sync - open file\n" );
+        goto sync_fail;
+    }
+ 
+    // --------Check if server is able to flush file buffer-------- //
+    n_rerrorbytes = as_read( ac->sock, errorbuf, sizeof(MSG_REC_SUCCESS) );
+    if( n_rerrorbytes != sizeof(MSG_REC_SUCCESS) ) {
+        agent_printf( "Failed to check server sync - flush file buffer successfully\n" );
+        goto sync_fail;
+    }
+    
+    if ( strncmp(errorbuf, MSG_REC_SUCCESS, sizeof(MSG_REC_SUCCESS)) != 0 ){
+        agent_printf( "Server failed to sync - flush file buffer\n" );
+        goto sync_fail;
+    }
+    
+    return AGENT_RET_SUCCESS;
+
+sync_fail:
     return AGENT_RET_EFAIL;
 }
 
@@ -747,23 +805,27 @@ static void show_server_ack( void ) {
 } 
 
 /// Connect agent server via localhost redirected port
+/// The protocol between agent client and the agent server has been changed into UDP
+/// All the transmission should use 'sendto' and 'recvfrom' with the serveraddr in agent context
 /// Return socket descriptor on success, -1 otherwise
-static int connect_agent_server( void ) {
+static int _MOCKABLE(connect_agent_server)( void ) {
 
     int    sock;
-    struct sockaddr_in server_addr;
-
-    bzero( &server_addr, sizeof(server_addr) );
-
-    server_addr.sin_family = AF_INET;
-    server_addr.sin_port   = htons(ac->fwd_port);
-
-    sock = socket( AF_INET,SOCK_STREAM, 0 );
+    
+    // Clear the server address information
+    bzero( &ac->serveraddr, sizeof(ac->serveraddr) );
+    // Create the socket for UDP
+    sock = socket( AF_INET,SOCK_DGRAM, 0 );
     if( sock == -1 )
         return -1;
 
-    inet_pton( AF_INET, "127.0.0.1", &server_addr.sin_addr );
-    if( connect(sock, (struct sockaddr*)&server_addr, sizeof(server_addr)) == -1 )
+    // Set the server address information according to the fwd_port
+    ac->serveraddr.sin_family = AF_INET;
+    inet_pton( AF_INET, "127.0.0.1", &ac->serveraddr.sin_addr );
+    ac->serveraddr.sin_port = htons(ac->fwd_port);
+
+    // Use 'connect' to bind a port for transmission with agent server
+    if( connect(sock, (struct sockaddr*)&ac->serveraddr, sizeof(ac->serveraddr)) == -1 )
         return -1;
 
     return sock;
@@ -819,14 +881,18 @@ static void* agent_client_mainloop( void* null_arg ) {
                 ret = export_agent_log();
                 break;
 
+            case AGENT_ACT_SYNC:
+                ret = sync_cache();
+                break;
+
             default:
                 agent_printf( "Unkown agent action type: %d\n", ac->act.type );
                 break;
         }
-
-        if( ret == AGENT_RET_SUCCESS ) {
+        
+        // Show the server ack-message only when the action succeeds.
+        if( ret == AGENT_RET_SUCCESS )
             show_server_ack();
-        }
         else
             agent_printf( "Previous command failed. Error code: %d\n", ret );
     
@@ -841,11 +907,11 @@ static void* agent_client_mainloop( void* null_arg ) {
 /// Public API
 /// Each API should be named with the 'agent_' prefix.
 /// Note that an agent thread (via agent_init()) should exists to co-work with
-inline bool agent_is_ready( void ) {
+inline bool _MOCKABLE(agent_is_ready)( void ) {
     return ac->ready;
 }
 
-bool agent_is_exec( void ) {
+bool _MOCKABLE(agent_is_exec)( void ) {
 
     bool ret = false;
 
@@ -856,7 +922,7 @@ bool agent_is_exec( void ) {
     return ret;
 }
 
-void agent_printf( const char* fmt, ... ) {
+void _MOCKABLE(agent_printf)( const char* fmt, ... ) {
 
     va_list args;
 
@@ -885,7 +951,7 @@ void agent_handle_exec_command( const char* cmdline ) {
     as_write( ac->sock, cmd_emit, SZ_MAX_COMMAND );
 }    
 
-MBA_AGENT_RETURN agent_import( const char* dst_path, const char* src_path ) {
+MBA_AGENT_RETURN _MOCKABLE(agent_import)( const char* dst_path, const char* src_path ) {
 
     if( !agent_is_ready() )
         return AGENT_RET_EINIT;
@@ -914,7 +980,7 @@ MBA_AGENT_RETURN agent_import( const char* dst_path, const char* src_path ) {
     return AGENT_RET_SUCCESS;
 }
 
-MBA_AGENT_RETURN agent_export( const char* dst_path, const char* src_path ) {
+MBA_AGENT_RETURN _MOCKABLE(agent_export)( const char* dst_path, const char* src_path ) {
  
     if( !agent_is_ready() )
         return AGENT_RET_EINIT;
@@ -943,7 +1009,7 @@ MBA_AGENT_RETURN agent_export( const char* dst_path, const char* src_path ) {
     return AGENT_RET_SUCCESS;
 } 
 
-MBA_AGENT_RETURN agent_execute( const char* cmdline ) {
+MBA_AGENT_RETURN _MOCKABLE(agent_execute)( const char* cmdline ) {
 
     if( !agent_is_ready() )
         return AGENT_RET_EINIT;
@@ -969,7 +1035,7 @@ MBA_AGENT_RETURN agent_execute( const char* cmdline ) {
     return AGENT_RET_SUCCESS;   
 } 
 
-MBA_AGENT_RETURN agent_invoke( const char* cmdline ) {
+MBA_AGENT_RETURN _MOCKABLE(agent_invoke)( const char* cmdline ) {
     
     if( !agent_is_ready() )
         return AGENT_RET_EINIT;
@@ -995,7 +1061,30 @@ MBA_AGENT_RETURN agent_invoke( const char* cmdline ) {
     return AGENT_RET_SUCCESS;   
 }
 
-MBA_AGENT_RETURN agent_logfile( const char* dst_path ) {
+MBA_AGENT_RETURN _MOCKABLE(agent_sync)( void ) {
+    
+    if( !agent_is_ready() )
+        return AGENT_RET_EINIT;
+
+    // get thread lock to setup INVOke action parameters
+    if( pthread_mutex_trylock( &ac->thread.mtx ) == EBUSY )
+        return AGENT_RET_EBUSY;
+
+    // setup invoke action
+    set_agent_action( AGENT_ACT_SYNC );
+
+    // wake up agent thread
+    if( pthread_cond_signal(&ac->thread.cond) != 0 )
+        return AGENT_RET_EFAIL;
+
+    // release lock
+    if( pthread_mutex_unlock(&ac->thread.mtx) != 0 )
+        return AGENT_RET_EFAIL;
+
+    return AGENT_RET_SUCCESS;   
+}
+
+MBA_AGENT_RETURN _MOCKABLE(agent_logfile)( const char* dst_path ) {
 
     if( !agent_is_ready() )
         return AGENT_RET_EINIT;
@@ -1021,7 +1110,7 @@ MBA_AGENT_RETURN agent_logfile( const char* dst_path ) {
     return AGENT_RET_SUCCESS;
 }
 
-MBA_AGENT_RETURN agent_init( Monitor *mon, uint16_t server_fwd_port ) {
+MBA_AGENT_RETURN _MOCKABLE(agent_init)( Monitor *mon, uint16_t fwd_port_in, int (*forward_port)(const char*) ) {
 
     if( ac->act.type == AGENT_ACT_INIT )
         return AGENT_RET_EBUSY;
@@ -1034,9 +1123,48 @@ MBA_AGENT_RETURN agent_init( Monitor *mon, uint16_t server_fwd_port ) {
 
     // setup monitor for agent aessage output to QEMU monitor
     ac->mon = mon;
+    
+    // counter (down) for port forwarding setup try
+    int try_countdown = 10;
+
+    uint16_t fwd_port_temp;
+    char     fwd_config[32];
+
+    // Check whether it needs to do the port redirection
+    if ( fwd_port_in == 0 && forward_port!=NULL ) {
+        
+        // check if the agent extension has been initialized
+        if( agent_is_ready() ) {
+            agent_printf( "The agent has been initialized\n" );
+            goto init_fail;
+        }
+
+        // setup port forwarding for in-VM agent server, 10 times trying with random port
+        srand( time(NULL) );
+        while( try_countdown ) {
+
+            fwd_port_temp  = rand() % 65535;
+            fwd_port_temp += (fwd_port_temp < 1024 )? 1024 : 0;
+
+            bzero( fwd_config, sizeof(fwd_config) );
+            snprintf( fwd_config, 32, "udp:%d::%d", fwd_port_temp, AGENT_GUEST_PORT );
+
+            if( forward_port(fwd_config) == 0 )
+                 break;
+
+            --try_countdown;
+        }
+
+        if( try_countdown == 0 ) {
+            agent_printf( "Agent port forwarding setup failed\n" );
+            goto init_fail;
+        }
+    }
+    else
+        fwd_port_temp = fwd_port_in;
 
     // connect to in-VM agent server via the forwarding port
-    ac->fwd_port = server_fwd_port;
+    ac->fwd_port = fwd_port_temp;
 
     // initialize thread sync var
     if( pthread_mutex_init(&ac->act.mtx, NULL) != 0 )
@@ -1063,4 +1191,11 @@ init_fail:
     pthread_cond_destroy( &ac->thread.cond );
 
     return AGENT_RET_EFAIL;
+}
+
+MBA_AGENT_RETURN agent_reset( Monitor *mon ) {
+    // Copy the previous fwd_port
+    int fwd_port = ac->fwd_port;
+    agent_cleanup();
+    return agent_init( mon, fwd_port, NULL );
 }
