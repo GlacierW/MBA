@@ -111,6 +111,7 @@ json_object *rtl_node;
     // =========== _EPROCESS ==============================
     eprocess = json_object_new_object();
     add_field_to_struct(eprocess, "Pcb", "_KPROCESS", 0x00, 0x2d8, false);
+    add_field_to_struct(eprocess, "UniqueProcessId", "Uint4B", 0x2e8, 0x8, false);
     add_field_to_struct(eprocess, "ActiveProcessLinks", "_LIST_ENTRY", 0x2f0, 0x10, false);
     add_field_to_struct(eprocess, "Peb", "_PEB", 0x3f8, 0x8, true);
     add_field_to_struct(eprocess, "ImageFileName", "UChar[15]", 0x448, 0xf, false);

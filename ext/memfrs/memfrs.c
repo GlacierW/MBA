@@ -44,6 +44,10 @@
 #define _MOCKABLE(x) x
 #endif
 
+#include "ext/dift/dift-commands.h"
+
+#include<stdlib.h>
+
 /* Global Variable */
 uint64_t g_kpcr_ptr = 0;
 json_object *g_struct_info = NULL;
@@ -352,11 +356,15 @@ OUTPUT:    int,                      return 0 if sucess, and not 0 otherwise
 *******************************************************************/
 int memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
 {
+    int i, j, k;
     uint64_t kthread_ptr,
              eprocess_ptr,
              peb_ptr,
              rtl_ptr,
-             buf_ptr;
+             buf_ptr,
+             handle_table_ptr,
+             tablecode_ptr
+            ;
 
     CPUX86State* x86_cpu = (CPUX86State*)cpu->env_ptr;
     uint64_t cr3;
@@ -430,6 +438,7 @@ int memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
 
     // Read the concrete memory value of kthread_ptr(CurrentThread) via _KPCR address
     cpu_memory_rw_debug( cpu, kpcr_ptr + offset_curthread_to_kpcr, (uint8_t*)&kthread_ptr, sizeof(kthread_ptr), 0 );
+
     // Read the concrete memory value of PROCESS via CurrentThread
     // Get the first PROCESS
     cpu_memory_rw_debug( cpu, kthread_ptr + offset_process_to_kthread, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), 0 );
@@ -477,7 +486,6 @@ int memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
     memfrs_close_field(f_info2);
     memfrs_close_field(f_info);
 
-
     // Start iteration process list
     eprocess_ptr_init = eprocess_ptr;
 
@@ -490,18 +498,420 @@ int memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
         printf( "eprocess: %lx CR3: %lx, Process Name: %s\n", eprocess_ptr, cr3, buf );
 
         if( cr3 !=0 ){
-            cpu_memory_rw_debug( cpu, eprocess_ptr + offset_peb_to_eprocess, (uint8_t*)&peb_ptr, sizeof(peb_ptr), 0 );
+
+//--
+uint64_t kcb_ptr, parent_kcb_ptr, check_ptr;
+uint64_t nameblock_ptr;
+uint16_t key_name_length;
+uint8_t key_name_buf[256];
+//--
+unsigned int uniqueProcess, uniqueThread;
+//--
+uint64_t nameinfo_ptr;
+uint8_t nameinfo_length, nameinfo_buf[256];
+//--
+uint64_t level0_ptr, level1_ptr, DeviceObject_ptr, device_infomask;
+uint64_t file_ptr, device_file_ptr;
+int pointercount, handlecount;
+uint8_t typeindex;
+uint8_t infomask;
+uint64_t grantedaccess;
+uint8_t filelength, device_filelength;
+uint8_t file_buf[256], device_file_buf[256];
+int table_level, true_type;
+
+        cpu_memory_rw_debug( cpu, eprocess_ptr + 0x418, (uint8_t*)&handle_table_ptr, sizeof(handle_table_ptr), 0 );
+        cpu_memory_rw_debug( cpu, handle_table_ptr + 0x8, (uint8_t*)&tablecode_ptr, sizeof(tablecode_ptr), 0 );
+        //printf("Handle_Table: %" PRIx64 "\n", handle_table_ptr);
+        //printf("Tablecode: %" PRIx64 "\n", tablecode_ptr);
+
+//cpu_memory_rw_debug( cpu, 0xfffff80399254440, (uint8_t*)&typeindex, 1, 0 );
+
+x86_cpu->cr[3] = cr3;
+        table_level = tablecode_ptr & 0x3;
+        tablecode_ptr = tablecode_ptr & 0xfffffffffffffffc ;
+        if( table_level == 0 ){
+            for( i=0 ; i<256 ; i=i+1 ){
+                tablecode_ptr = tablecode_ptr+0x10;
+                cpu_memory_rw_debug( cpu, tablecode_ptr, (uint8_t*)&level0_ptr, sizeof(level0_ptr), 0 );
+                level0_ptr = ( ( (level0_ptr & 0xfffffffffff00000) >> 16 ) + 0xffff000000000000);
+                cpu_memory_rw_debug( cpu, tablecode_ptr+0x8, (uint8_t*)&grantedaccess, sizeof(grantedaccess), 0 );
+                    grantedaccess = grantedaccess & 0x0000000001ffffff;
+
+                cpu_memory_rw_debug( cpu, level0_ptr, (uint8_t*)&pointercount, sizeof(pointercount), 0 );
+                if( pointercount > 0x1000000 || pointercount < 0 )
+                    continue;
+
+                cpu_memory_rw_debug( cpu, level0_ptr+0x8, (uint8_t*)&handlecount, sizeof(handlecount), 0 );
+                if( handlecount > 0x1000 || handlecount < 0 )
+                    continue;
+
+                cpu_memory_rw_debug( cpu, level0_ptr+0x1a, (uint8_t*)&infomask, sizeof(infomask), 0 );
+                if( infomask > 0x88 )
+                    continue;
+
+                cpu_memory_rw_debug( cpu, level0_ptr+0x18, (uint8_t*)&typeindex, sizeof(typeindex), 0 );
+                if( typeindex >=50 || typeindex < 1 )
+                    continue;                
+
+                if( cpu_memory_rw_debug( cpu, level0_ptr+0x18, (uint8_t*)&typeindex, sizeof(typeindex), 0 ) != -1 ){
+                    true_type =  (int)((typeindex ^ 0xc5 ^ ((level0_ptr & 0x0000ffffffffffff)>>8))& 0xff );
+                    if( true_type == 32 ){
+                        printf("0x%" PRIx64 "\t0x%" PRIx32, level0_ptr, i*4);
+                        cpu_memory_rw_debug( cpu, level0_ptr + 0x88, (uint8_t*)&filelength, sizeof(filelength), 0 );
+                        if (cpu_memory_rw_debug( cpu, level0_ptr + 0x90, (uint8_t*)&file_ptr, sizeof(file_ptr), 0 ) != -1 )
+                            printf("\t0x%" PRIx64 , file_ptr);
+                        else
+                            continue;
+                        if(file_ptr==0x0)
+                            printf("\t\t");
+
+                        printf("\t0x%" PRIx64 , grantedaccess);
+                        if(grantedaccess == 0x0)
+                            printf("\t");
+                        printf("\tfile");
+
+                        cpu_memory_rw_debug( cpu, level0_ptr+0x38, (uint8_t*)&DeviceObject_ptr, sizeof(DeviceObject_ptr), 0 );
+                        if( cpu_memory_rw_debug( cpu, DeviceObject_ptr-0x30+0x1a, (uint8_t*)&device_infomask, sizeof(device_infomask), 0 ) != -1 ){
+                            if(device_infomask & 0x2){
+                                cpu_memory_rw_debug( cpu, DeviceObject_ptr-0x30-0x20+0x8, (uint8_t*)&device_filelength, sizeof(device_filelength), 0 );
+                                cpu_memory_rw_debug( cpu, DeviceObject_ptr-0x30-0x20+0x10, (uint8_t*)&device_file_ptr, sizeof(device_file_ptr), 0 );
+                                cpu_memory_rw_debug( cpu, device_file_ptr, (uint8_t*)device_file_buf, sizeof(device_file_buf), 0 );
+                                
+                                printf("\t{\\Device\\");
+                                for( j=0 ; j<device_filelength ; j=j+1 )
+                                    printf("%c", (char)(*(device_file_buf+j)));
+                                cpu_memory_rw_debug( cpu, file_ptr, (uint8_t*)file_buf, sizeof(file_buf), 0 );
+                                for( j=0 ; j<filelength ; j=j+1 )
+                                    printf("%c", (char)(*(file_buf+j)));
+                                printf( "}\n" );
+                            }
+                        }
+                        else if (cpu_memory_rw_debug( cpu, file_ptr, (uint8_t*)file_buf, sizeof(file_buf), 0 ) != -1){
+                            printf("\t{");
+                            for( j=0 ; j<filelength ; j=j+1 )
+                                printf("%c", (char)(*(file_buf+j)));
+                            printf( "}\n" );
+                        }
+                    }
+                    else{
+                        switch(true_type){
+                            case 2: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tType\t"); break;
+                            case 3: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tDirectory\t"); break;
+                            case 4: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tSymbolicLink\t"); break;
+                            case 5: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tToken\t"); break;
+                            case 6: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tJob\t"); break;
+                            case 7: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tProcess\t"); break;
+                            case 8: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tThread\t"); break;
+                            case 9: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tUserApcReserve\t"); break;
+                            case 10: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tIoCompletionReserve\t"); break;
+                            case 11: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tSilo\t"); break;
+                            case 12: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tDebugObject\t"); break;
+                            case 13: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tEvent\t"); break;
+                            case 14: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tMutant\t"); break;
+                            case 15: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tCallback\t"); break;
+                            case 16: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tSemaphore\t"); break;
+                            case 17: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tTimer\t"); break;
+                            case 18: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tIRTimer\t"); break;
+                            case 19: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tProfile\t"); break;
+                            case 20: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tKeyedEvent\t"); break;
+                            case 21: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tWindowStation\t"); break;
+                            case 22: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tDesktop\t"); break;
+                            case 23: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tComposition\t"); break;
+                            case 24: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tRawInputManager\t"); break;
+                            case 25: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tTpWorkerFactory\t"); break;
+                            case 26: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tAdapter\t"); break;
+                            case 27: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tController\t"); break;
+                            case 28: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tDevice\t"); break;
+                            case 29: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tDriver\t"); break;
+                            case 30: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tIoCompletion\t"); break;
+                            case 31: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tWaitCompletionPacket\t"); break;
+                            case 33: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tTmTm\t"); break;
+                            case 34: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tTmTx\t"); break;
+                            case 35: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tTmRm\t"); break;
+                            case 36: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tTmEn\t"); break;
+                            case 37: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tSection\t"); break;
+                            case 38: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tSession\t"); break;
+                            case 39: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tPartition\t"); break;
+                            case 40: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tKey\t"); break;
+                            case 41: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tALPC Port\t"); break;
+                            case 42: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tPowerRequest\t"); break;
+                            case 43: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tWmiGuid\t"); break;
+                            case 44: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tEtwRegistration\t"); break;
+                            case 45: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tEtwConsumer\t"); break;
+                            case 46: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tDmaAdapter\t"); break;
+                            case 47: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tDmaDomain\t"); break;
+                            case 48: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tPcwObject\t"); break;
+                            //
+                            case 49: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tFilterConnectionPort\t"); break;
+                            case 50: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tFilterCommunicationPort\t"); break;
+                            case 51: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tNetworkNamespace\t"); break;
+                            case 52: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tDxgkSharedResource\t"); break;
+                            case 53: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tDxgkSharedSyncObject\t"); break;
+                            case 54: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4, grantedaccess); printf("      \tDxgkSharedSwapChainObject\t"); break;
+                        }
+
+                        if( true_type == 8 ){
+                            if( cpu_memory_rw_debug( cpu, level0_ptr+0x30+0x628, (uint8_t*)&uniqueProcess, sizeof(uniqueProcess), 0 ) != -1 )
+                                printf("{TID %d}", uniqueProcess);
+                            if( cpu_memory_rw_debug( cpu, level0_ptr+0x30+0x628+0x8, (uint8_t*)&uniqueThread, sizeof(uniqueThread), 0 ) != -1 )
+                                printf("{PID %d}", uniqueThread);
+                        }
+                        else if( true_type == 40 ){
+                            printf("0{");
+                            cpu_memory_rw_debug( cpu, level0_ptr+0x30+0x8, (uint8_t*)&kcb_ptr, sizeof(kcb_ptr), 0 );
+                            cpu_memory_rw_debug( cpu, kcb_ptr+0x40, (uint8_t*)&parent_kcb_ptr, sizeof(parent_kcb_ptr), 0 );
+printf(" 0x%" PRIx64 " ", kcb_ptr);
+printf("###");
+printf(" 0x%" PRIx64 " ", parent_kcb_ptr);
+cpu_memory_rw_debug( cpu, kcb_ptr+0x48, (uint8_t*)&nameblock_ptr, sizeof(nameblock_ptr), 0 );
+cpu_memory_rw_debug( cpu, nameblock_ptr+0x1a, (uint8_t*)&key_name_buf, 6, 0 );
+printf("$$$");
+printf(" 0x%" PRIx64 " ", nameblock_ptr);
+                                cpu_memory_rw_debug( cpu, nameblock_ptr+0x18, (uint8_t*)&key_name_length, sizeof(key_name_length), 0 );
+printf("&&&");
+printf(" %d", key_name_length);
+
+                            while( cpu_memory_rw_debug( cpu, parent_kcb_ptr, (uint8_t*)&check_ptr, sizeof(check_ptr), 0 ) != -1 ){
+                                if( cpu_memory_rw_debug( cpu, kcb_ptr+0x48, (uint8_t*)&nameblock_ptr, sizeof(nameblock_ptr), 0 ) == -1 || cpu_memory_rw_debug( cpu, nameblock_ptr+0x1a, (uint8_t*)&key_name_buf, 6, 0 ) == -1 )
+                                        break;
+                                cpu_memory_rw_debug( cpu, nameblock_ptr+0x18, (uint8_t*)&key_name_length, sizeof(key_name_length), 0 );
+                                for( j=0 ; j<key_name_length ; j=j+1 )
+                                    printf("%c", (char)(*(key_name_buf+j)));
+                                printf("\t");
+                                kcb_ptr = parent_kcb_ptr;
+                                cpu_memory_rw_debug( cpu, kcb_ptr+0x40, (uint8_t*)&parent_kcb_ptr, sizeof(parent_kcb_ptr), 0 );
+                            }
+                            printf("}");
+                        }
+
+                       else if( infomask & 0x2 && infomask & 0x1 )
+                        {
+                            if( cpu_memory_rw_debug( cpu, level0_ptr-0x20-0x20+0x8, (uint8_t*)&nameinfo_length, sizeof(nameinfo_length), 0 ) != -1 )
+                            if( cpu_memory_rw_debug( cpu, level0_ptr-0x20-0x20+0x10, (uint8_t*)&nameinfo_ptr, sizeof(nameinfo_ptr), 0 ) != -1 )
+                            if( cpu_memory_rw_debug( cpu, nameinfo_ptr, (uint8_t*)nameinfo_buf, sizeof(nameinfo_buf), 0 ) != -1 )
+                            {
+                                printf("{");
+                                for( j=0 ; j<nameinfo_length ; j=j+1 )
+                                    printf("%c", (char)(*(nameinfo_buf+j)));
+                                printf("}\n");
+                            }
+                        }
+
+                       else  if( infomask & 0x2 )
+                        {
+                            if( cpu_memory_rw_debug( cpu, level0_ptr-0x20+0x8, (uint8_t*)&nameinfo_length, sizeof(nameinfo_length), 0 ) != -1 )
+                            if( cpu_memory_rw_debug( cpu, level0_ptr-0x20+0x10, (uint8_t*)&nameinfo_ptr, sizeof(nameinfo_ptr), 0 ) != -1 )
+                            if( cpu_memory_rw_debug( cpu, nameinfo_ptr, (uint8_t*)nameinfo_buf, sizeof(nameinfo_buf), 0 ) != -1 )
+                            {
+                                printf("{");
+                                for( j=0 ; j<nameinfo_length ; j=j+1 )
+                                    printf("%c", (char)(*(nameinfo_buf+j)));
+                                printf("}\n");
+                            }
+                        }
+                        printf("\n");
+                    }
+                }
+            }
+        }
+        else if ( table_level == 1 ){
+            for( k=0 ; k<512 ; k=k+1 ){
+                tablecode_ptr = tablecode_ptr+0x8;
+                cpu_memory_rw_debug( cpu, tablecode_ptr, (uint8_t*)&level1_ptr, sizeof(level1_ptr), 0 );
+                if (cpu_memory_rw_debug( cpu, level1_ptr, (uint8_t*)&level0_ptr, sizeof(level0_ptr), 0 ) != -1){
+
+                    for( i=0 ; i<256 ; i=i+1 ){
+                        level1_ptr = level1_ptr+0x10;
+                        cpu_memory_rw_debug( cpu, level1_ptr, (uint8_t*)&level0_ptr, sizeof(level0_ptr), 0 );
+                        level0_ptr = ( ( (level0_ptr & 0xfffffffffff00000) >> 16 ) + 0xffff000000000000);
+                        cpu_memory_rw_debug( cpu, tablecode_ptr+0x8, (uint8_t*)&grantedaccess, sizeof(grantedaccess), 0 );
+                        grantedaccess = grantedaccess & 0x0000000001ffffff;
+        
+                        cpu_memory_rw_debug( cpu, level0_ptr, (uint8_t*)&pointercount, sizeof(pointercount), 0 );
+                        if( pointercount > 0x01000000 || pointercount < 0 )
+                            continue;
+        
+                        cpu_memory_rw_debug( cpu, level0_ptr+0x1a, (uint8_t*)&infomask, sizeof(infomask), 0 );
+                        if( infomask > 0x88 )
+                            continue;
+                        
+                        if( cpu_memory_rw_debug( cpu, level0_ptr+0x18, (uint8_t*)&typeindex, sizeof(typeindex), 0 ) != -1 ){
+                            true_type =  (int)((typeindex ^ 0xc5 ^ ((level0_ptr & 0x0000ffffffffffff)>>8))& 0xff );
+                            if( true_type == 32 ){
+                                printf("0x%" PRIx64 "\t0x%" PRIx32, level0_ptr, i*4+k*1024);
+                                cpu_memory_rw_debug( cpu, level0_ptr + 0x88, (uint8_t*)&filelength, sizeof(filelength), 0 );
+                                if (cpu_memory_rw_debug( cpu, level0_ptr + 0x90, (uint8_t*)&file_ptr, sizeof(file_ptr), 0 ) != -1 )
+                                   printf("\t0x%" PRIx64 , file_ptr);
+                                else
+                                    continue;
+                                if(file_ptr==0x0)
+                                    printf("\t\t");
+        
+                                printf("\t0x%" PRIx64 , grantedaccess);
+                                if(grantedaccess == 0x0)
+                                    printf("\t");
+                                printf("\tfile");
+
+                                cpu_memory_rw_debug( cpu, level0_ptr+0x38, (uint8_t*)&DeviceObject_ptr, sizeof(DeviceObject_ptr), 0 );
+                                if( cpu_memory_rw_debug( cpu, DeviceObject_ptr-0x30+0x1a, (uint8_t*)&device_infomask, sizeof(device_infomask), 0 ) != -1 ){
+                                    if(device_infomask & 0x2){
+                                        cpu_memory_rw_debug( cpu, DeviceObject_ptr-0x30-0x20+0x8, (uint8_t*)&device_filelength, sizeof(device_filelength), 0 );
+                                        cpu_memory_rw_debug( cpu, DeviceObject_ptr-0x30-0x20+0x10, (uint8_t*)&device_file_ptr, sizeof(device_file_ptr), 0 );
+                                        cpu_memory_rw_debug( cpu, device_file_ptr, (uint8_t*)device_file_buf, sizeof(device_file_buf), 0 );
+                                        printf("\t{\\Device\\");
+                                        for( j=0 ; j<device_filelength ; j=j+1 )
+                                            printf("%c", (char)(*(device_file_buf+j)));
+                                        cpu_memory_rw_debug( cpu, file_ptr, (uint8_t*)file_buf, sizeof(file_buf), 0 );
+                                        for( j=0 ; j<filelength ; j=j+1 )
+                                            printf("%c", (char)(*(file_buf+j)));
+                                        printf( "}\n" );
+                                    }
+                                }
+                                else if (cpu_memory_rw_debug( cpu, file_ptr, (uint8_t*)file_buf, sizeof(file_buf), 0 ) != -1){
+                                    printf("\t{");
+                                    for( j=0 ; j<filelength ; j=j+1 )
+                                        printf("%c", (char)(*(file_buf+j)));
+                                    printf( "}\n" );
+                                }
+                            }
+                    else{
+                        switch(true_type){
+                            case 2: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tType\t"); break;
+                            case 3: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tDirectory\t"); break;
+                            case 4: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tSymbolicLink\t"); break;
+                            case 5: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tToken\t"); break;
+                            case 6: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tJob\t"); break;
+                            case 7: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tProcess\t"); break;
+                            case 8: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tThread\t"); break;
+                            case 9: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tUserApcReserve\t"); break;
+                            case 10: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tIoCompletionReserve\t"); break;
+                            case 11: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tSilo\t"); break;
+                            case 12: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tDebugObject\t"); break;
+                            case 13: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tEvent\t"); break;
+                            case 14: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tMutant\t"); break;
+                            case 15: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tCallback\t"); break;
+                            case 16: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tSemaphore\t"); break;
+                            case 17: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tTimer\t"); break;
+                            case 18: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tIRTimer\t"); break;
+                            case 19: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tProfile\t"); break;
+                            case 20: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tKeyedEvent\t"); break;
+                            case 21: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tWindowStation\t"); break;
+                            case 22: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tDesktop\t"); break;
+                            case 23: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tComposition\t"); break;
+                            case 24: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tRawInputManager\t"); break;
+                            case 25: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tTpWorkerFactory\t"); break;
+                            case 26: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tAdapter\t"); break;
+                            case 27: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tController\t"); break;
+                            case 28: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tDevice\t"); break;
+                            case 29: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tDriver\t"); break;
+                            case 30: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tIoCompletion\t"); break;
+                            case 31: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tWaitCompletionPacket\t"); break;
+                            case 33: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tTmTm\t"); break;
+                            case 34: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tTmTx\t"); break;
+                            case 35: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tTmRm\t"); break;
+                            case 36: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tTmEn\t"); break;
+                            case 37: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tSection\t"); break;
+                            case 38: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tSession\t"); break;
+                            case 39: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tPartition\t"); break;
+                            case 40: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tKey\t"); break;
+                            case 41: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tALPC Port\t"); break;
+                            case 42: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tPowerRequest\t"); break;
+                            case 43: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tWmiGuid\t"); break;
+                            case 44: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tEtwRegistration\t"); break;
+                            case 45: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tEtwConsumer\t"); break;
+                            case 46: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tDmaAdapter\t"); break;
+                            case 47: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tDmaDomain\t"); break;
+                            case 48: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tPcwObject\t"); break;
+                            //
+                            case 49: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tFilterConnectionPort\t"); break;
+                            case 50: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tFilterCommunicationPort\t"); break;
+                            case 51: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tNetworkNamespace\t"); break;
+                            case 52: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tDxgkSharedResource\t"); break;
+                            case 53: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tDxgkSharedSyncObject\t"); break;
+                            case 54: printf("0x%" PRIx64 "\t0x%" PRIx32 "\t0x0  \t\t\t0x%" PRIx64, level0_ptr, i*4+k*1024, grantedaccess); printf("      \tDxgkSharedSwapChainObject\t"); break;
+                        }
+                        if( true_type == 8 ){
+                            if( cpu_memory_rw_debug( cpu, level0_ptr+0x30+0x628, (uint8_t*)&uniqueProcess, sizeof(uniqueProcess), 0 ) != -1 ){
+                                printf("{TID %d}", uniqueProcess);
+                            }
+                            if( cpu_memory_rw_debug( cpu, level0_ptr+0x30+0x628+0x8, (uint8_t*)&uniqueThread, sizeof(uniqueThread), 0 ) != -1 ){
+                                printf("{PID %d}", uniqueThread);
+                            }
+                        }
+                        else if( true_type == 40 ){
+                            printf("1{");
+                            cpu_memory_rw_debug( cpu, level0_ptr+0x30+0x8, (uint8_t*)&kcb_ptr, sizeof(kcb_ptr), 0 );
+                            cpu_memory_rw_debug( cpu, kcb_ptr+0x40, (uint8_t*)&parent_kcb_ptr, sizeof(parent_kcb_ptr), 0 );
+                            while( cpu_memory_rw_debug( cpu, parent_kcb_ptr, (uint8_t*)&check_ptr, sizeof(check_ptr), 0 ) != -1 ){
+                                if( cpu_memory_rw_debug( cpu, kcb_ptr+0x48, (uint8_t*)&nameblock_ptr, sizeof(nameblock_ptr), 0 ) ==-1 || cpu_memory_rw_debug( cpu, nameblock_ptr+0x1a, (uint8_t*)&key_name_buf, 6, 0 ) == -1 )
+                                        break;
+
+                                for( j=0 ; j<6 ; j=j+1 )
+                                    printf("%c", (char)(*(key_name_buf+j)));
+                                printf("\t");
+                                kcb_ptr = parent_kcb_ptr;
+                                cpu_memory_rw_debug( cpu, kcb_ptr+0x40, (uint8_t*)&parent_kcb_ptr, sizeof(parent_kcb_ptr), 0 );
+                            }
+                            printf("}");
+                        }
+
+                       else if( infomask & 0x2 && infomask & 0x1 )
+                        {
+                            if( cpu_memory_rw_debug( cpu, level0_ptr-0x20-0x20+0x8, (uint8_t*)&nameinfo_length, sizeof(nameinfo_length), 0 ) != -1 )
+                            if( cpu_memory_rw_debug( cpu, level0_ptr-0x20-0x20+0x10, (uint8_t*)&nameinfo_ptr, sizeof(nameinfo_ptr), 0 ) != -1 )
+                            if( cpu_memory_rw_debug( cpu, nameinfo_ptr, (uint8_t*)nameinfo_buf, sizeof(nameinfo_buf), 0 ) != -1 )
+                            {
+                                printf("{");
+                                for( j=0 ; j<nameinfo_length ; j=j+1 )
+                                    printf("%c", (char)(*(nameinfo_buf+j)));
+                                printf("}\n");
+                            }
+                        }
+
+                        else if ( infomask & 0x2 )
+                        if ( cpu_memory_rw_debug( cpu, level0_ptr-0x20+0x8, (uint8_t*)&nameinfo_length, sizeof(nameinfo_length), 0 ) != -1 )
+                        if ( cpu_memory_rw_debug( cpu, level0_ptr-0x20+0x10, (uint8_t*)&nameinfo_ptr, sizeof(nameinfo_ptr), 0 ) != -1 )
+                        if ( cpu_memory_rw_debug( cpu, nameinfo_ptr, (uint8_t*)nameinfo_buf, sizeof(nameinfo_buf), 0 ) != -1 )
+                        {
+                            printf("{");
+                            for( j=0 ; j<nameinfo_length ; j=j+1 )
+                                printf("%c", (char)(*(nameinfo_buf+j)));
+                            printf("}\n");
+                        }
+                        printf("\n");
+                    }
+
+                        }
+                    }
+
+                }
+            }
+        }
+        else {
+            // [TODO]
+            printf("[Table_level] 2\n");
+        }
+
+
             x86_cpu->cr[3] = cr3;
-            cpu_memory_rw_debug( cpu, peb_ptr + offset_parameter_to_peb, (uint8_t*)&rtl_ptr, sizeof(rtl_ptr), 0 );
-            cpu_memory_rw_debug( cpu, rtl_ptr + offset_length_to_rtl, (uint8_t*)&length, sizeof(length), 0 );
-            cpu_memory_rw_debug( cpu, rtl_ptr + offset_buffer_to_rtl, (uint8_t*)&buf_ptr, sizeof(buf_ptr), 0 );
-            cpu_memory_rw_debug( cpu, buf_ptr, (uint8_t*)buf, sizeof(buf), 0 );
+            cpu_memory_rw_debug( cpu, eprocess_ptr + offset_peb_to_eprocess, (uint8_t*)&peb_ptr, sizeof(peb_ptr), 0 );
+            if(cpu_memory_rw_debug( cpu, peb_ptr + offset_parameter_to_peb, (uint8_t*)&rtl_ptr, sizeof(rtl_ptr), 0 )==-1)
+                rtl_ptr=0;
+
+            if( cpu_memory_rw_debug( cpu, rtl_ptr + offset_length_to_rtl, (uint8_t*)&length, sizeof(length), 0 ) ==-1)
+                length=0;
+
+            if(cpu_memory_rw_debug( cpu, rtl_ptr + offset_buffer_to_rtl, (uint8_t*)&buf_ptr, sizeof(buf_ptr), 0 )==-1)
+                buf_ptr=0;
 
             printf( "Full path: " );
-            int i;
-            for(i=0;i<length;i=i+1){
-                printf("%c", (char)(*(buf+i)));
+            if(cpu_memory_rw_debug( cpu, buf_ptr, (uint8_t*)buf, sizeof(buf), 0 )!=-1)
+            {
+                for(i=0;i<length;i=i+1)
+                    printf("%c", (char)(*(buf+i)));
             }
+
             printf( "\n\n" );
             x86_cpu->cr[3] = cr3_init;
             fflush(stdout);
