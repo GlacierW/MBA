@@ -1,5 +1,5 @@
 /*
- *  De-coupled Information Flow Tracking (DIFT) test cases
+ *  Agent Client (QEMU Part) test cases
  *
  *  Copyright (c) 2016 JuiChien, Jao 
  *
@@ -24,6 +24,9 @@
 #include <errno.h>
 #include <set>
 #include <inttypes.h>
+#include <string>
+
+using namespace std;
 
 typedef void Monitor;
 
@@ -38,13 +41,17 @@ struct hook_functions {
     virtual int pthread_create(pthread_t*, const pthread_attr_t*, void*(*)(void*), void* ) = 0;
     virtual int pthread_mutex_init(pthread_mutex_t*, const pthread_mutexattr_t * ) = 0;
     virtual int pthread_cond_init(pthread_cond_t*, const pthread_condattr_t*) = 0;
+    virtual int pthread_mutex_lock(pthread_mutex_t*) = 0;
+    virtual int pthread_mutex_unlock(pthread_mutex_t*) = 0;
     virtual FILE* fopen(const char *, const char *) = 0;
-    virtual int write( int, void*, int ) = 0;
-    virtual int read( int, void*, int ) = 0;
+    virtual int sendto( int, void*, int, int, struct sockaddr*, socklen_t ) = 0;
+    virtual int recvfrom( int, void*, int, int, struct sockaddr*, socklen_t* ) = 0;
 
     virtual void agent_cleanup( void ) = 0;
     virtual ssize_t as_write( int, void*, size_t ) = 0;
     virtual ssize_t as_read( int, void*, size_t ) = 0;
+    virtual void ecm_write( bool ) = 0;
+    virtual bool ecm_read( void ) = 0;
     virtual MBA_AGENT_RETURN import_host_file( void ) = 0;
     virtual MBA_AGENT_RETURN export_guest_file( void ) = 0;
     virtual MBA_AGENT_RETURN execute_guest_cmd_return( void ) = 0;
@@ -68,14 +75,18 @@ struct mock_functions : hook_functions {
     MOCK_METHOD1( exit, void( int ) );
     MOCK_METHOD4( pthread_create, int(pthread_t*, const pthread_attr_t*, void*(*)(void*), void* ) );
     MOCK_METHOD2( pthread_mutex_init, int( pthread_mutex_t*, const pthread_mutexattr_t* ));
-    MOCK_METHOD2( pthread_cond_init, int(pthread_cond_t*, const pthread_condattr_t*));
+    MOCK_METHOD2( pthread_cond_init, int( pthread_cond_t*, const pthread_condattr_t* ));
+    MOCK_METHOD1( pthread_mutex_lock, int( pthread_mutex_t* ) );
+    MOCK_METHOD1( pthread_mutex_unlock, int( pthread_mutex_t* ) );
     MOCK_METHOD2( fopen, FILE*(const char *, const char *) );
-    MOCK_METHOD3( write, int(int, void*, int) );
-    MOCK_METHOD3( read, int(int, void*, int) );
+    MOCK_METHOD6( sendto, int( int, void*, int, int, struct sockaddr*, socklen_t ) );
+    MOCK_METHOD6( recvfrom, int( int, void*, int, int, struct sockaddr*, socklen_t* ) );
 
     MOCK_METHOD0( agent_cleanup, void( void ) );
     MOCK_METHOD3( as_write, ssize_t( int, void*, size_t ) );
     MOCK_METHOD3( as_read, ssize_t( int, void*, size_t ) );
+    MOCK_METHOD1( ecm_write, void( bool ) );
+    MOCK_METHOD0( ecm_read, bool( void ) );
     MOCK_METHOD0( import_host_file, MBA_AGENT_RETURN( void ) );
     MOCK_METHOD0( export_guest_file, MBA_AGENT_RETURN( void ) );
     MOCK_METHOD0( execute_guest_cmd_return, MBA_AGENT_RETURN( void ) );
@@ -95,6 +106,8 @@ struct mock_functions : hook_functions {
     MOCK_METHOD3( agent_init, MBA_AGENT_RETURN( Monitor*, uint16_t, int(*)(const char*)) );
 } *mock_ptr;
 
+#define FALSE 0
+#define TRUE  1
 extern "C" {
 #include "../agent.c"
 }
@@ -103,12 +116,16 @@ extern "C" {
 #undef pthread_create
 #undef pthread_mutex_init
 #undef pthread_cond_init
+#undef pthread_mutex_lock
+#undef pthread_mutex_unlock
 #undef fopen
-#undef write
-#undef read
+#undef sendto
+#undef recvfrom
 #undef agent_cleanup
 #undef as_write
 #undef as_read
+#undef ecm_write
+#undef ecm_read
 #undef import_host_file
 #undef export_guest_file
 #undef execute_guest_cmd_return
@@ -151,15 +168,68 @@ protected:
 };
 
 // Static Functions Testing
-TEST_F ( FixtureAgentContextInitilizes, WRITE_FAIL ) {
+// Test as_write
+TEST ( AgentUnitTest, WRITE_FAIL ) {
     GEN_MOCK_OBJECT( mock );
     
-    EXPECT_CALL( mock, write(_,_,_) ).WillOnce( Return(-1) );
-    EXPECT_CALL( mock, agent_printf("The connection to the agent server is broken while reading\n") ).Times( 1 );
-    EXPECT_CALL( mock, agent_cleanup() ).Times( 1 );
-
-    _agent_init(NULL, 1111, NULL);
+    EXPECT_CALL( mock, sendto(_,_,_,_,_,_)).WillOnce( Return( -1 ) );
+    EXPECT_CALL( mock, agent_printf(_));
+    EXPECT_CALL( mock, agent_cleanup());
+    testing::internal::CaptureStdout();
+    string output = testing::internal::GetCapturedStdout();
+    _as_write(123,NULL,1111);
 }
+
+// Test as_read
+TEST ( AgentUnitTest, READ_FAIL ) {
+    GEN_MOCK_OBJECT( mock );
+    
+    EXPECT_CALL( mock, sendto(_,_,_,_,_,_)).WillOnce( Return( -1 ) );
+    EXPECT_CALL( mock, agent_printf(_));
+    EXPECT_CALL( mock, agent_cleanup());
+    _as_write(123,NULL,1111);
+}
+
+// Test set_agent_action
+TEST ( AgentUnitTest, SET_ACTION_ACTION ) {
+    GEN_MOCK_OBJECT( mock );
+    pthread_mutex_t *lock;
+    pthread_mutex_t *unlock;
+
+    EXPECT_CALL( mock, pthread_mutex_lock(_)).WillOnce( SaveArg<0>(&lock) );
+    EXPECT_CALL( mock, pthread_mutex_unlock(_)).WillOnce( SaveArg<0>(&unlock) );
+    set_agent_action(AGENT_ACT_IMPO);
+    EXPECT_EQ( unlock, lock );
+    EXPECT_EQ( ac->act.type, AGENT_ACT_IMPO );
+}
+
+// Test import_host_file
+TEST ( AgentUnitTest, IMPORT_HOST_FILE ) {
+    GEN_MOCK_OBJECT( mock );
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
