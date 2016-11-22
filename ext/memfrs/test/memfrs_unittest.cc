@@ -38,7 +38,6 @@ struct hook_func {
                 uint8_t *buf, int len, int is_write) = 0;
     virtual void cpu_physical_memory_read(hwaddr addr,
                 void *buf, int len) = 0;
-    //virtual void monitor_printf(Monitor *mon, const char *fmt, ...) = 0; 
    
 
     // obhook functions/API
@@ -48,7 +47,6 @@ struct mock_func : hook_func {
     public:
         MOCK_METHOD3( cpu_physical_memory_read, void(hwaddr, void *, int));
         MOCK_METHOD5( cpu_memory_rw_debug, int(void *, target_ulong, uint8_t *, int, int));
-        //MOCK_METHOD3( monitor_printf, void(Monitor *, const char *, ##__VA_ARGS__));     
 } *mock_ptr;
 
 #define GEN_MOCK_OBJECT(x)  mock_func x; mock_ptr = &x;
@@ -96,7 +94,6 @@ TEST( MEMFRS_VIRMEMTEST, GetVirMemContent) {
     GEN_MOCK_OBJECT( mock );   
     EXPECT_CALL( mock, cpu_memory_rw_debug(_,_,_,_,_) ).WillOnce( DoAll( StrCpyToArg2("hello"), Return(0) ));
     memfrs_get_virmem_content(&cpu, 0x1234, 0x1234, 4, b); 
-    //printf("%s", b);
     ASSERT_EQ( 0, memcmp(b, "hello", 6));
     //ASSERT_EQ( 1, memfrs_get_virmem_content(&cpu, 0x1234, 0x1234, 4, b));
 } 
@@ -152,7 +149,6 @@ int addFieldToStruct(json_object *parent_obj, char* field_name, char* field_type
 
     json_object_object_add( parent_obj, field_name, field_info);
 
-    printf("to_string()=%s\n", json_object_to_json_string(parent_obj));
     return 0;
 }
 
@@ -169,7 +165,6 @@ TEST( MEMFRS_DATASTRUCT, Q_Struct) {
     //addFieldToStruct(kpcr, "Self", "_KPCR", 0x18, 8, true);
     //addFieldToStruct(kpcr, "Prcb", "_KPRCB", 0x180, 0x6900, false);
     json_object_object_add(tyde_definition, "_KPCR", kpcr);
-    printf("%p\n", kpcr);
 
     g_struct_info = tyde_definition;
 
@@ -190,7 +185,6 @@ TEST( MEMFRS_DATASTRUCT, Q_Field) {
     addFieldToStruct(kpcr, (char*)"Self", (char*)"_KPCR", 0x18, 8, true);
     addFieldToStruct(kpcr, (char*)"Prcb", (char*)"_KPRCB", 0x180, 0x6900, false);
     json_object_object_add(tyde_definition, "_KPCR", kpcr);
-    printf("%p\n", kpcr);
 
     g_struct_info = tyde_definition;
     obj = memfrs_q_struct("_KPCR");
@@ -530,7 +524,6 @@ TEST_F( MEMFRS_VAD, VAD_PARSE_NO_FILEPOINTER ){
     vad_node* node =NULL;
     GEN_MOCK_OBJECT( mock );
 
-    printf("testtest %d\n", VadImageMap);
 
     EXPECT_CALL( mock, cpu_memory_rw_debug(_,_,_,_,_))
                 .WillOnce( Return(0) )
@@ -551,7 +544,6 @@ TEST_F( MEMFRS_VAD, VAD_PARSE_NO_FILELENGTH ){
     vad_node* node =NULL;
     GEN_MOCK_OBJECT( mock );
     
-    printf("testtest %d\n", VadImageMap);
 
     EXPECT_CALL( mock, cpu_memory_rw_debug(_,_,_,_,_))
                 .WillOnce( Return(0) )
@@ -575,7 +567,6 @@ TEST_F( MEMFRS_VAD, VAD_PARSE_NO_FILELENGTH2 ){
     vad_node* node =NULL;
     GEN_MOCK_OBJECT( mock );
     
-    printf("testtest %d\n", VadImageMap);
 
     EXPECT_CALL( mock, cpu_memory_rw_debug(_,_,_,_,_))
                 .WillOnce( Return(0) )
@@ -599,7 +590,6 @@ TEST_F( MEMFRS_VAD, VAD_PARSE_WRONG_TYPE ){
     GEN_MOCK_OBJECT( mock );
     vad_node* node =NULL;
 
-    printf("testtest %d\n", VadImageMap);
 
     EXPECT_CALL( mock, cpu_memory_rw_debug(_,_,_,_,_))
                 .WillOnce( Return(0) )

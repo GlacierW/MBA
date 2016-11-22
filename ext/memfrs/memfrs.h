@@ -27,6 +27,7 @@
 #include "qom/cpu.h"
 #include "json-c/json.h"
 #include "include/utarray.h"
+#include "include/uthash.h"
 #endif
 
 #define STRLEN 128
@@ -41,6 +42,13 @@ typedef struct field_info
     bool is_pointer;               // idicate if the field is pointer
     json_object* jobject_type;     // the json object to the field type
 } field_info;
+
+typedef struct reverse_symbol {
+    int offset;            /* we'll use this field as the key */
+    char* symbol;
+    UT_hash_handle hh; /* makes this structure hashable */
+} reverse_symbol;
+
 
 extern uint64_t g_kpcr_ptr;
 
@@ -62,7 +70,9 @@ extern uint64_t memfrs_find_nt_kernel_base(CPUState* cpu);
 extern uint64_t memfrs_get_nt_kernel_base(void);
 extern UT_array*  memfrs_scan_module(CPUState *cpu);
 extern UT_array* memfrs_traverse_vad_tree(uint64_t eprocess_ptr, CPUState *cpu);
-
+extern reverse_symbol* memfrs_build_gvar_lookup_map(void);
+extern char* memfrs_get_symbolname_via_address(reverse_symbol* rsym_tab, int offset);
+extern int memfrs_free_reverse_lookup_map(reverse_symbol* rsym_tab);
 /*
 extern void parse_unicode_strptr(uint64_t ustr_ptr, CPUState *cpu);
 extern void parse_unicode_str(uint8_t* ustr, CPUState *cpu);

@@ -25,6 +25,7 @@
 #include "include/exec/cpu-common.h"
 #include "exec/cpu-all.h"
 #include "include/utarray.h"
+#include "include/uthash.h"
 #include "json.h"
 #endif
 
@@ -551,21 +552,17 @@ char* parse_unicode_str(uint8_t* ustr, CPUState *cpu)
     buf_ptr = *((uint64_t*)(ustr+offset));
     memfrs_close_field(f_info);
     
-    printf("testtesttest\n");
 
     buf = (uint8_t*)malloc(max_length+2);
     str = (char*)malloc(max_length+1);
     memset(str, 0, max_length+1);
-    printf("testtesttest\n");
     cpu_memory_rw_debug( cpu, buf_ptr, buf, max_length, 0 );
-    printf("buf %s\n", buf);
     //Hardcode Unicode Parse
     //wcstombs(str, (const wchar_t *)buf, max_length);
     for(i=0; i<max_length;i+=2)
         str[i/2] = buf[i];
     str[i] = 0x00;
     //printf("Filename %ls\n", (wchar_t*p)buf);
-    printf("Filename %s\n", str);
     free(buf);
     return str;
 }
@@ -629,4 +626,66 @@ int64_t memfrs_gvar_offset(json_object* gvarobj)
     json_object* tmp_jobject = json_object_array_get_idx(gvarobj, 0);
     uint64_t offset = json_object_get_int(tmp_jobject);
     return offset;
+}
+
+/*
+typedef struct reverse_symbol {
+    int offset;            // we'll use this field as the key //
+    char* symbol;             
+    UT_hash_handle hh; // makes this structure hashable //
+} reverse_symbol;*/
+
+reverse_symbol* memfrs_build_gvar_lookup_map(void)
+{
+    //json_object* lookup_map = NULL;
+    // Check if kernel base and global var exist
+    uint64_t kernel_base = memfrs_get_nt_kernel_base();
+    if( kernel_base ==0 ){
+        printf("Kernel not found\n");
+        return NULL;
+    }
+    if( g_globalvar_info==NULL ){
+        printf("gvar information not found\n");
+        return NULL;
+    }
+    
+    //lookup_map = json_object_new_object();
+    reverse_symbol *rev_symtab = NULL; 
+    json_object_object_foreach( g_globalvar_info, key, val){
+        json_object* tmp_jobject = json_object_array_get_idx(val, 0);
+        uint64_t offset = json_object_get_int(tmp_jobject);
+        reverse_symbol* rec = (reverse_symbol*)malloc(sizeof(reverse_symbol)); 
+        rec->offset = offset;
+        rec->symbol = key;
+        HASH_ADD_INT( rev_symtab, offset, rec ); 
+    }
+    return rev_symtab;
+}
+
+char* memfrs_get_symbolname_via_address(reverse_symbol* rsym_tab, int offset)
+{
+    reverse_symbol* sym = NULL;
+
+    if(rsym_tab == NULL)
+        return NULL;
+
+    HASH_FIND_INT(rsym_tab, &offset, sym);
+
+    if(sym == NULL)
+        return NULL;
+    return sym->symbol; 
+}
+
+int memfrs_free_reverse_lookup_map(reverse_symbol* rsym_tab)
+{
+    reverse_symbol *current_sym, *tmp;
+
+    if(rsym_tab == NULL)
+        return -1;
+
+    HASH_ITER(hh, rsym_tab, current_sym, tmp){
+        HASH_DEL(rsym_tab, current_sym);
+        free(current_sym);
+    }
+    return 0;
 }
