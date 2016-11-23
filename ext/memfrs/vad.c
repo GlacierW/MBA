@@ -17,10 +17,13 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#if !defined(CONFIG_MEMFRS_TEST)
 #include "qemu-common.h"
-#include "ext/memfrs/memfrs.h"
-#include "ext/memfrs/memfrs-priv.h"
-#include "ext/memfrs/vad.h"
+#endif
+
+#include "memfrs.h"
+#include "memfrs-priv.h"
+#include "vad.h"
 
 // Mapping between VAD type and it's name
 const char *MI_VAD_TYPE_STR[] = {
@@ -79,9 +82,9 @@ Output is throw to stdout.
 INPUT: uint64_t mmvad_ptr       the virtual address to the VAD node
        CPUState *cpu            pointer to current cpu
 
-OUTPUT: int                     return the error state
+OUTPUT: vad_node                     return vad node pointer, and NULL if error
 **********************************************************************************/
-int parse_mmvad_node(uint64_t mmvad_ptr, CPUState *cpu)
+vad_node* parse_mmvad_node(uint64_t mmvad_ptr, CPUState *cpu)
 {
     json_object* jmmvad = NULL;
     json_object* jobj = NULL;
@@ -98,6 +101,9 @@ int parse_mmvad_node(uint64_t mmvad_ptr, CPUState *cpu)
     // Hard code Unicode String Size
     // TODO: Add length support in ds query system
     uint32_t u;
+    char* filename;
+
+    vad_node* vad = (vad_node*)malloc(sizeof(vad_node));
 
     // Qery DS for VAD Virtual Address range
     jmmvad = memfrs_q_struct("_MMVAD_SHORT");
@@ -124,7 +130,7 @@ int parse_mmvad_node(uint64_t mmvad_ptr, CPUState *cpu)
 
     start_viraddr = (( (uint64_t)starting_vpn_high << 32 ) + starting_vpn ) << 12;
     end_viraddr = ((( (uint64_t)ending_vpn_high << 32 ) + ending_vpn ) << 12 ) + 0xfff;
-    printf("VAD vir range %" PRIx64 " <---------> %" PRIx64 "\n", start_viraddr, end_viraddr);
+    //printf("VAD vir range %" PRIx64 " <---------> %" PRIx64 "\n", start_viraddr, end_viraddr);
 
     // Query for VAD node metadata
     f_info = memfrs_q_field(jmmvad, "u");
@@ -133,14 +139,20 @@ int parse_mmvad_node(uint64_t mmvad_ptr, CPUState *cpu)
     memfrs_close_field(f_info);
 
     vad_type = u & 0b111;
-    printf("VAD type: %s(%x)\n", MI_VAD_TYPE_STR[vad_type], vad_type);
+    //printf("VAD type: %s(%x)\n", MI_VAD_TYPE_STR[vad_type], vad_type);
 
     vad_protection =  ((u >> 3) & 0b11111);
-    printf("Permission: %s(%x)\n", PAGE_PERMISSION_STR[vad_protection], vad_protection);
+    //printf("Permission: %s(%x)\n", PAGE_PERMISSION_STR[vad_protection], vad_protection);
+
+    vad->start_viraddr = start_viraddr; 
+    vad->end_viraddr = end_viraddr;
+    vad->vad_type = vad_type;
+    vad->vad_protection = vad_protection;
+    vad->filename = NULL;   
 
     // Check if mode is immage mapping
     if(vad_type != VadImageMap)
-        return 0;
+        return vad;
 
     // Quey image filename by following path 
     // _MMVAD->Subsection->ControlArea->FilePointer/_FILE_OBJECT->FileName
@@ -167,7 +179,7 @@ int parse_mmvad_node(uint64_t mmvad_ptr, CPUState *cpu)
     file_pointer_ptr &= 0xfffffffffffffff0;
 
     if(file_pointer_ptr==0)
-        return 0;
+        return vad;
 
     jobj = memfrs_q_struct("_FILE_OBJECT");
     f_info = memfrs_q_field( jobj, "FileName" );
@@ -177,12 +189,14 @@ int parse_mmvad_node(uint64_t mmvad_ptr, CPUState *cpu)
     memfrs_close_field(f_info);
 
     // Parse the unicode string
-    parse_unicode_strptr(file_name_unicode_ptr, cpu);
-    return 0;
+    filename = parse_unicode_strptr(file_name_unicode_ptr, cpu);
+    vad->filename = filename;
+    return vad;
 }
 
 // UT_array's eelement structure for vad address
 UT_icd vad_adr_icd = {sizeof(uint64_t), NULL, NULL, NULL };
+UT_icd vad_node_icd = {sizeof(vad_node), NULL, NULL, NULL };
 
 /*********************************************************************************
 void memfrs_traverse_vad_tree(uint64_t eprocess_ptr, CPUState *cpu)
@@ -195,18 +209,21 @@ INPUT: uint64_t eprocess_ptr    the virtual address to the eprocess structure
 
 OUTPUT: void
 **********************************************************************************/
-void memfrs_traverse_vad_tree(uint64_t eprocess_ptr, CPUState *cpu)
+UT_array* memfrs_traverse_vad_tree(uint64_t eprocess_ptr, CPUState *cpu)
 {
     int offset_vadroot_to_eprocess = 0;
     int offset_left_to_vadnode = 0;
     int offset_right_to_vadnode = 0;
 
-    UT_array *vad_node_queue;
+    UT_array *vad_adr_queue;
     uint64_t vad_root, left, right;
     uint64_t* current_node;
+    UT_array *vad_node_queue;
 
     // Initialize vad_node_queue, use UT_arry as the queue 
-    utarray_new(vad_node_queue, &vad_adr_icd);
+    utarray_new(vad_adr_queue, &vad_adr_icd);
+    utarray_new(vad_node_queue, &vad_node_icd);
+
 
     json_object* jeprocess = NULL;
     json_object* jvadnode = NULL;
@@ -216,7 +233,7 @@ void memfrs_traverse_vad_tree(uint64_t eprocess_ptr, CPUState *cpu)
     if( memfrs_check_struct_info() == 0)
     {
         printf("Data structure information is not loaded\n");
-        return;
+        return NULL;
     }
 
     // Prepare some offset that will be used later
@@ -240,19 +257,21 @@ void memfrs_traverse_vad_tree(uint64_t eprocess_ptr, CPUState *cpu)
 
     // Read vad root node from memory 
     cpu_memory_rw_debug( cpu, eprocess_ptr + offset_vadroot_to_eprocess, (uint8_t*)&vad_root, sizeof(vad_root), 0 );
-    printf("vad root: %" PRIx64 "\n", vad_root);
+    //printf("vad root: %" PRIx64 "\n", vad_root);
 
     // Put vad root into queue as first element
-    utarray_push_back(vad_node_queue, &vad_root);
+    if(vad_root!=0)
+        utarray_push_back(vad_adr_queue, &vad_root);
    
     // Walk through the QUEUE
-    while(utarray_len(vad_node_queue) != 0)
+    while(utarray_len(vad_adr_queue) != 0)
     {
-        current_node = (uint64_t*)utarray_back(vad_node_queue);
+        current_node = (uint64_t*)utarray_back(vad_adr_queue);
         //printf("Find Node %" PRIx64 "\n", *current_node);
 
         // Parse the vad node   
-        parse_mmvad_node(*current_node, cpu);
+        vad_node* vad = parse_mmvad_node(*current_node, cpu);
+        utarray_push_back(vad_node_queue, vad);
 
         // Read Left node
         cpu_memory_rw_debug( cpu, (*current_node)+offset_left_to_vadnode, (uint8_t*)&left, sizeof(left), 0 );
@@ -261,15 +280,18 @@ void memfrs_traverse_vad_tree(uint64_t eprocess_ptr, CPUState *cpu)
         cpu_memory_rw_debug( cpu, (*current_node)+offset_right_to_vadnode, (uint8_t*)&right, sizeof(right), 0 );
 
         // Find the next node
-        utarray_pop_back(vad_node_queue);
+        utarray_pop_back(vad_adr_queue);
+   
+        //printf("Node left %" PRIx64 "\n", left);
+        //printf("Node left %" PRIx64 "\n", right);
 
         // Push node into queue if the node found
         if(left != 0)
-            utarray_push_back(vad_node_queue, &left);
+            utarray_push_back(vad_adr_queue, &left);
         if(right != 0)
-            utarray_push_back(vad_node_queue, &right);
+            utarray_push_back(vad_adr_queue, &right);
     }
 
-    return ;
+    return vad_node_queue;
 }
 

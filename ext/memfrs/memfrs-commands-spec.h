@@ -93,3 +93,11 @@
         .help       = "get the virtual memory address of the global variable/symbol",
         .mhandler.cmd = do_get_gvar_vmem,
 },
+{
+        .name = "gvar_lookup",
+        .args_type  = "addr:i",
+        .params     = "addr",
+        .help       = "get the symbolname at specific virtual memory address",
+        .mhandler.cmd = do_gvar_lookup,
+},
+

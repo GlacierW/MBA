@@ -1,8 +1,10 @@
 
-
+#if !defined(CONFIG_MEMFRS_TEST)
 #include "qemu-common.h"
-#include "ext/memfrs/memfrs.h"
-#include "ext/memfrs/kernel.h"
+#endif
+
+#include "memfrs.h"
+#include "kernel.h"
 
 #define PE_HEADER "MZ"
 #define RSDS_HEADER_SIG "RSDS"
@@ -10,9 +12,14 @@
 #define RSDS_HEADER_IMAGE_NAME_OFF 0x18
 
 #define INIT_LOADER_MAP_LOW 0xFFFFF80000000000 
-#define INIT_LOADER_MAP_HIGH 0xFFFFF87FFFFFFFFF
 
+#if !defined(CONFIG_MEMFRS_TEST)
+#define INIT_LOADER_MAP_HIGH 0xFFFFF87FFFFFFFFF
 #define SEARCH_MAX 0x1000000
+#else
+#define INIT_LOADER_MAP_HIGH INIT_LOADER_MAP_LOW+0x2000
+#define SEARCH_MAX 0x100
+#endif
 
 uint64_t nt_kernel_base = 0;
 
@@ -23,6 +30,15 @@ uint64_t memfrs_find_nt_kernel_base(CPUState* cpu)
     bool find = 0;
     uint8_t* buf = (uint8_t*)malloc(RSDS_HEADER_SIZE);
     const char* kernel_list[] = {"ntoskrnl.pdb", "ntkrnlpa.pdb", "ntkrnlmp.pdb", 0};
+
+    // Check if ds metadata is already loaded
+    if( memfrs_check_struct_info() == 0)
+    {
+        printf("Data structure information is not loaded\n");
+        return 0;
+    }
+
+    nt_kernel_base = 0;
 
     for(i = INIT_LOADER_MAP_LOW; i < INIT_LOADER_MAP_HIGH; i+=0x1000)
     {
@@ -45,7 +61,7 @@ uint64_t memfrs_find_nt_kernel_base(CPUState* cpu)
             {
                 if(memcmp(buf+RSDS_HEADER_IMAGE_NAME_OFF, kernel_list[x], strlen(kernel_list[x]))==0)
                 {
-                    printf("find %s in offset %"PRIx64"\n", (char*)(buf+RSDS_HEADER_IMAGE_NAME_OFF), i);
+                    printf("find %s in offset %lx\n", (char*)(buf+RSDS_HEADER_IMAGE_NAME_OFF), i);
                     find = 1;
                     nt_kernel_base = i;
                 }
@@ -56,6 +72,8 @@ uint64_t memfrs_find_nt_kernel_base(CPUState* cpu)
     }
 
     free(buf);
+    if(find==0)
+        return 0;
     return nt_kernel_base;
 }
 

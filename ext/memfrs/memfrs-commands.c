@@ -85,41 +85,19 @@ void do_scan_virmem(Monitor *mon, const QDict *qdict)
     uint64_t start_addr = qdict_get_int(qdict, "start");
     uint64_t end_addr = qdict_get_int(qdict, "end");
     const char* pattern = qdict_get_str(qdict, "pattern");
-    //uint64_t i;
     UT_array *match_addr;
     uint64_t *p;
-    //CPUState *cpu, 
     CPUState *thiscpu=NULL;
 
-    /*
-    uint8_t* buf = (uint8_t*)malloc(strlen(pattern));
-    if(buf == NULL){
-        monitor_printf(mon, "Cannot allocate memory for do_show_memory_taint_map()\n");
-        return;
-    }
-
-    monitor_printf(mon, "Scan for pattern %s\n", pattern);
-    */
 
     thiscpu = ENV_GET_CPU((CPUArchState*)mba_mon_get_cpu());
-    match_addr = memfrs_scan_virmem(thiscpu, start_addr, end_addr, pattern);
+    match_addr = memfrs_scan_virmem(thiscpu, start_addr, end_addr, pattern, strlen(pattern));
 
     printf("%p\n", match_addr);
     for(p=(uint64_t*)utarray_front(match_addr); p!=NULL; p=(uint64_t*)utarray_next(match_addr,p))
     {
         printf("%"PRIx64"\n",*p);
     }
-    /*
-    for(i = start_addr; i < end_addr-strlen(pattern)+1; i++)
-    {
-        //if(i %0x10000000 == 0)
-        //    monitor_printf(mon, "Current addr %"PRIx64"\n", i);
-        cpu_memory_rw_debug(thiscpu, i, buf, strlen(pattern), 0);
-        if(memcmp(buf, pattern, strlen(pattern))==0)
-        {
-            monitor_printf(mon, "pattern found %"PRIx64"\n", i);
-        }
-    }*/
     
 }
 
@@ -131,7 +109,7 @@ void do_scan_phymem(Monitor *mon, const QDict *qdict)
     uint64_t *p;
     UT_array *match_addr;
 
-    match_addr = memfrs_scan_phymem(start_addr, end_addr, pattern);   
+    match_addr = memfrs_scan_phymem(start_addr, end_addr, pattern, strlen(pattern));   
 
     for(p=(uint64_t*)utarray_front(match_addr); p!=NULL; p=(uint64_t*)utarray_next(match_addr,p))
     {
@@ -189,6 +167,8 @@ void do_traverse_vad(Monitor *mon, const QDict *qdict)
 {
     CPUState *cpu, *thiscpu=NULL;
     uint64_t eprocess_ptr = qdict_get_int(qdict, "eprocess_addr");
+    UT_array *vad_list;
+    vad_node* p;
 
     monitor_printf(mon, "vad parse\n");
 
@@ -200,7 +180,13 @@ void do_traverse_vad(Monitor *mon, const QDict *qdict)
         break;
     }
 
-    memfrs_traverse_vad_tree(eprocess_ptr ,  thiscpu);
+    vad_list = memfrs_traverse_vad_tree(eprocess_ptr ,  thiscpu);
+    for(p=(vad_node*)utarray_front(vad_list); p!=NULL; p=(vad_node*)utarray_next(vad_list,p))
+    {
+        printf("%"PRIx64" -- %"PRIx64" %s\n", p->start_viraddr, p->end_viraddr, p->filename);
+        //printf("%"PRIx64"\n",p->end_viraddr);
+        //printf("%s")
+    }
 }
 
 #define MAXMEM 0x80000000
@@ -210,32 +196,9 @@ void do_traverse_vad(Monitor *mon, const QDict *qdict)
 
 void do_module_list(Monitor *mon, const QDict *qdict)
 {
-    //uint64_t i ;
-    //uint8_t* module_tag = (uint8_t*)malloc(strlen(POOL_TAG_MODULE));
-    //uint8_t buf[SIZEOFUNICODESTRING];
     CPUState *cpu=NULL;
     cpu = ENV_GET_CPU((CPUArchState*)mba_mon_get_cpu());
 
-    /*if(buf == NULL){
-        monitor_printf(mon, "Cannot allocate memory for do_show_memory_taint_map()\n");
-        return;
-    }*/
-
-    /*monitor_printf(mon, "Scan for pattern %s\n", POOL_TAG_MODULE);
-    for(i = 0; i < MAXMEM-strlen(POOL_TAG_MODULE); i++)
-    {
-        cpu_physical_memory_read(i, module_tag, strlen(POOL_TAG_MODULE));
-        if(memcmp( module_tag, POOL_TAG_MODULE, strlen(POOL_TAG_MODULE))==0)
-        {
-            monitor_printf(mon, "pattern found %"PRIx64"\n", i);
-            //ret = cpu_memory_rw_debug((CPUState *)&copied_cpu, target_addr, (uint8_t*)buf, target_length, 0);
-            cpu_physical_memory_read(i-0x4+0x10+0x48, buf, SIZEOFUNICODESTRING);
-            parse_unicode_str(buf, cpu);
-            cpu_physical_memory_read(i-0x4+0x10+0x58, buf, SIZEOFUNICODESTRING);
-            parse_unicode_str(buf, cpu);
-            monitor_printf(mon, "\n");
-        }
-    }*/
     memfrs_scan_module(cpu); 
 }
 
@@ -279,4 +242,17 @@ void do_get_gvar_vmem(Monitor *mon, const QDict *qdict)
    if( gvar != NULL )
        monitor_printf(mon, "%s @ %"PRIx64"\n", name, memfrs_gvar_offset(gvar) + base);
    return; 
+}
+
+void do_gvar_lookup(Monitor *mon, const QDict *qdict)
+{
+    reverse_symbol* sym_rev_hash = NULL;
+    uint64_t addr = qdict_get_int(qdict, "addr");
+    char* name = NULL;
+
+    printf("Symbol Lookup\n");
+    sym_rev_hash = memfrs_build_gvar_lookup_map();
+    name = memfrs_get_symbolname_via_address( sym_rev_hash, addr);
+    printf("%s\n", name);
+    memfrs_free_reverse_lookup_map(sym_rev_hash);
 }
