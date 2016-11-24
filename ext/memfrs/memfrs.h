@@ -73,6 +73,42 @@ extern UT_array* memfrs_traverse_vad_tree(uint64_t eprocess_ptr, CPUState *cpu);
 extern reverse_symbol* memfrs_build_gvar_lookup_map(void);
 extern char* memfrs_get_symbolname_via_address(reverse_symbol* rsym_tab, int offset);
 extern int memfrs_free_reverse_lookup_map(reverse_symbol* rsym_tab);
+/// get field content of some struct in virtual memory
+///
+/// e.g. To get content of following structure,
+/// which struct A *p = 0xdeadbeef in guest virtual memory:
+/// struct A {
+///     struct B field1;
+/// };
+/// struct B {
+///     struct C *field2;
+/// };
+/// struct C {
+///     uint64_t field3;
+/// };
+///
+/// memfrs_get_virmem_struct_content(cpu, cr3, buffer, sizeof(uint64_t), 0xdeadbeef, "A",
+///         3, "#field1", "*field2", "#field3");
+/// 
+/// \param cpu              the running cpu
+/// \param cr3              cr3 register of target virtual memory space
+/// \param buffer           output buffer
+/// \param len              length of centent to read
+/// \param struct_addr      the virtual address of the target structure
+/// \param struct_type_name the type name of the target structure
+/// \param depth            the field access chain depth
+/// \param ...              field names in the query chain
+/// 
+/// return -1 on error, 0 on success
+extern int memfrs_get_virmem_struct_content(
+        CPUState   *cpu,
+        uint64_t    cr3,
+        uint8_t    *buffer,
+        int         len,
+        uint64_t    struct_addr,
+        const char *struct_type_name,
+        int         depth,
+        ...);
 /*
 extern void parse_unicode_strptr(uint64_t ustr_ptr, CPUState *cpu);
 extern void parse_unicode_str(uint8_t* ustr, CPUState *cpu);

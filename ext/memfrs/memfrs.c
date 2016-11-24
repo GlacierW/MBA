@@ -689,3 +689,57 @@ int memfrs_free_reverse_lookup_map(reverse_symbol* rsym_tab)
     }
     return 0;
 }
+
+int memfrs_get_virmem_struct_content(
+        CPUState   *cpu,
+        uint64_t    cr3,
+        uint8_t    *buffer,
+        int         len,
+        uint64_t    struct_addr,
+        const char *struct_type_name,
+        int         depth,
+        ...) {
+    // XXX: Now use extra char at beginning of field name to
+    // indicate that the field is a pointer or not.
+    // Should load and parse the structure file correctly instead.
+    // XXX: assuming pointer has size of 8
+    json_object *struct_type;
+    va_list vl;
+    field_info *info = NULL;
+    int errcode;
+    const char *field_name;
+
+    struct_type = memfrs_q_struct(struct_type_name);
+    if (struct_type == NULL)
+        return -1;
+
+    va_start(vl, depth);
+    // Process field query
+    while (depth--) {
+        if (info && info->is_pointer) {
+            errcode = memfrs_get_virmem_content(cpu, cr3, struct_addr, 8, (uint8_t*)&struct_addr);
+            if (errcode == -1)
+                goto FAIL;
+        }
+
+        free(info);
+        field_name = va_arg(vl, const char*);
+        info = memfrs_q_field(struct_type, field_name+1);
+        if (info == NULL)
+            goto FAIL;
+
+        if (field_name[0] == '*') {
+            field_name++;
+            info->is_pointer = true;
+        }
+        struct_addr += info->offset;
+        struct_type = info->jobject_type;
+    }
+    free(info);
+    va_end(vl);
+
+    return memfrs_get_virmem_content(cpu, cr3, struct_addr, len, buffer);
+FAIL:
+    va_end(vl);
+    return -1;
+}
