@@ -71,8 +71,15 @@ extern bool agent_is_ready( void );
 ///
 ///        no param
 ///
-/// Return true if ready, false otherwise
+/// Return true if in execute command mode, false otherwise
 extern bool agent_is_exec( void );
+
+/// Check if agent is currently idle
+///
+///        no param
+///
+/// Return true if idel, false otherwise
+extern bool agent_is_idle( void );
 
 /// Print out the agent extension message
 /// If a monitor of QEMU is assigned at the initialization
