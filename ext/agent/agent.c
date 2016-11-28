@@ -200,11 +200,23 @@ static bool _MOCKABLE(ecm_read)( void ) {
 /// 
 ///     \param act_type     a enum value indicating the action type
 /// 
-/// Return none
-static void set_agent_action( MBA_AGENT_ACTION act_type ) {
-    pthread_mutex_lock( &ac->act.mtx );
-    ac->act.type = act_type;
-    pthread_mutex_unlock( &ac->act.mtx );
+/// Return AGENT_RET_SUCCESS, no error
+///        AGENT_RET_EBUSY, the previous command is not consumed by agent server, still busy (even lock acquired)
+///        AGENT_RET_EFAIL, general fail
+static MBA_AGENT_RETURN set_agent_action( MBA_AGENT_ACTION act_type ) {
+
+    if( pthread_mutex_lock(&ac->act.mtx) )
+        return AGENT_RET_EFAIL;
+
+    if( act_type != AGENT_ACT_IDLE && ac->act.type != AGENT_ACT_IDLE )
+        return AGENT_RET_EBUSY;
+    else
+        ac->act.type = act_type;
+
+    if( pthread_mutex_unlock(&ac->act.mtx) )
+        return AGENT_RET_EFAIL;
+
+    return AGENT_RET_SUCCESS;
 }
 
 /// Import a host file into guest
@@ -740,7 +752,7 @@ static void* agent_client_mainloop( void* null_arg ) {
                 break;
 
             default:
-                agent_printf( "Unkown agent action type: %d\n", ac->act.type );
+                agent_printf( "Unknown agent action type: %d\n", ac->act.type );
                 break;
         }
         
@@ -771,6 +783,17 @@ bool _MOCKABLE(agent_is_exec)( void ) {
 
     pthread_mutex_lock( &ac->act.mtx );
     ret = (ac->act.type == AGENT_ACT_EXEC);
+    pthread_mutex_unlock( &ac->act.mtx );
+
+    return ret;
+}
+
+bool agent_is_idle( void ) {
+
+    bool ret = false;
+
+    pthread_mutex_lock( &ac->act.mtx );
+    ret = (ac->act.type == AGENT_ACT_IDLE);
     pthread_mutex_unlock( &ac->act.mtx );
 
     return ret;
@@ -807,6 +830,8 @@ void agent_handle_exec_command( const char* cmdline ) {
 
 MBA_AGENT_RETURN _MOCKABLE(agent_import)( const char* dst_path, const char* src_path ) {
 
+    MBA_AGENT_RETURN ret;
+
     if( !agent_is_ready() )
         return AGENT_RET_EINIT;
 
@@ -815,7 +840,9 @@ MBA_AGENT_RETURN _MOCKABLE(agent_import)( const char* dst_path, const char* src_
         return AGENT_RET_EBUSY;
 
     // setup 'import' action
-    set_agent_action( AGENT_ACT_IMPO );
+    ret = set_agent_action( AGENT_ACT_IMPO );
+    if( ret != AGENT_RET_SUCCESS )
+        return ret;
 
     bzero( ac->act.dst_path, SZ_MAX_FILEPATH );
     bzero( ac->act.src_path, SZ_MAX_FILEPATH );
@@ -836,6 +863,8 @@ MBA_AGENT_RETURN _MOCKABLE(agent_import)( const char* dst_path, const char* src_
 
 MBA_AGENT_RETURN _MOCKABLE(agent_export)( const char* dst_path, const char* src_path ) {
  
+    MBA_AGENT_RETURN ret;
+
     if( !agent_is_ready() )
         return AGENT_RET_EINIT;
 
@@ -844,7 +873,9 @@ MBA_AGENT_RETURN _MOCKABLE(agent_export)( const char* dst_path, const char* src_
         return AGENT_RET_EBUSY;
 
     // setup export action
-    set_agent_action( AGENT_ACT_EXPO );
+    ret = set_agent_action( AGENT_ACT_EXPO );
+    if( ret != AGENT_RET_SUCCESS )
+        return ret;
 
     bzero( ac->act.dst_path, SZ_MAX_FILEPATH );
     bzero( ac->act.src_path, SZ_MAX_FILEPATH );
@@ -865,6 +896,8 @@ MBA_AGENT_RETURN _MOCKABLE(agent_export)( const char* dst_path, const char* src_
 
 MBA_AGENT_RETURN _MOCKABLE(agent_execute)( const char* cmdline ) {
 
+    MBA_AGENT_RETURN ret;
+
     if( !agent_is_ready() )
         return AGENT_RET_EINIT;
 
@@ -873,7 +906,9 @@ MBA_AGENT_RETURN _MOCKABLE(agent_execute)( const char* cmdline ) {
         return AGENT_RET_EBUSY;
 
     // setup execute action
-    set_agent_action( AGENT_ACT_EXEC );
+    ret = set_agent_action( AGENT_ACT_EXEC );
+    if( ret != AGENT_RET_SUCCESS )
+        return ret;
 
     bzero( ac->act.cmdline, SZ_MAX_COMMAND );
     strncpy( ac->act.cmdline, cmdline, SZ_MAX_COMMAND );
@@ -891,6 +926,8 @@ MBA_AGENT_RETURN _MOCKABLE(agent_execute)( const char* cmdline ) {
 
 MBA_AGENT_RETURN _MOCKABLE(agent_invoke)( const char* cmdline ) {
     
+    MBA_AGENT_RETURN ret;
+
     if( !agent_is_ready() )
         return AGENT_RET_EINIT;
 
@@ -899,7 +936,9 @@ MBA_AGENT_RETURN _MOCKABLE(agent_invoke)( const char* cmdline ) {
         return AGENT_RET_EBUSY;
 
     // setup invoke action
-    set_agent_action( AGENT_ACT_INVO );
+    ret = set_agent_action( AGENT_ACT_INVO );
+    if( ret != AGENT_RET_SUCCESS )
+        return ret;
 
     bzero( ac->act.cmdline, SZ_MAX_COMMAND );
     strncpy( ac->act.cmdline, cmdline, SZ_MAX_COMMAND );
@@ -917,6 +956,8 @@ MBA_AGENT_RETURN _MOCKABLE(agent_invoke)( const char* cmdline ) {
 
 MBA_AGENT_RETURN _MOCKABLE(agent_sync)( void ) {
     
+    MBA_AGENT_RETURN ret;
+
     if( !agent_is_ready() )
         return AGENT_RET_EINIT;
 
@@ -925,7 +966,9 @@ MBA_AGENT_RETURN _MOCKABLE(agent_sync)( void ) {
         return AGENT_RET_EBUSY;
 
     // setup invoke action
-    set_agent_action( AGENT_ACT_SYNC );
+    ret = set_agent_action( AGENT_ACT_SYNC );
+    if( ret != AGENT_RET_SUCCESS )
+        return ret;
 
     // wake up agent thread
     if( pthread_cond_signal(&ac->thread.cond) != 0 )
