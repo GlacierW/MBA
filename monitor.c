@@ -100,9 +100,10 @@
 
 #if defined(CONFIG_OBHOOK)
 #include "ext/obhook/obhook-commands.h"
+#endif
 
-#if defined(CONFIG_ANALYSES)
-#include "ext/analyses/analyses-commands.h"
+#if defined(CONFIG_DBA)
+#include "ext/dba/dba-commands.h"
 #endif
 
 //#define DEBUG
@@ -225,7 +226,7 @@ struct Monitor {
     QString *outbuf;
     guint out_watch;
 
-    /* Read under either BQL or out_lock, written with BQL+out_lock.  */
+    /* Read under either BQL or out_lock, written with BQL+out_lock. */
     int mux_out;
 
     ReadLineState *rs;
@@ -2985,12 +2986,12 @@ static mon_cmd_t mon_cmds[] = {
 #include "ext/memfrs/memfrs-commands-spec.h"
 #endif
 
-#if defined(CONFIG_ANALYSES)
-#include "ext/analyses/analyses-commands-spec.h"
-#endif
-
 #if defined(CONFIG_OBHOOK)
 #include "ext/obhook/obhook-commands-spec.h"
+#endif
+
+#if defined(CONFIG_DBA)
+#include "ext/dba/dba-commands-spec.h"
 #endif
 
     { NULL, NULL, },
@@ -5548,10 +5549,19 @@ void qmp_rtc_reset_reinjection(Error **errp)
 /// the following MBA wrapper APIs (mba_xxx) are exported to invoke
 /// the certain static functions of monitor.c for general use.
 /// 
-/// However, if possible, the wrapper should be avoided too. 
+/// However, if possible, the wrappers should be avoided too. 
 /// Otherwise, the static decalration of monitor.c may become meaningless.
 ///
-void *mba_mon_get_cpu(void)
-{
+void *mba_mon_get_cpu( void ) {
     return mon_get_cpu();
 }
+
+void mba_readline_start( Monitor* mon, const char *prompt, int read_password,
+                         ReadLineFunc *readline_func, void *opaque) {
+    readline_start( mon->rs, prompt, read_password, readline_func, opaque );
+}
+
+void mba_readline_show_prompt( Monitor* mon ) {
+    readline_show_prompt( mon->rs );
+}
+

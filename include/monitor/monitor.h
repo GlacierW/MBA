@@ -45,7 +45,11 @@ int monitor_get_cpu_index(void);
 
 /* MBA extension--- */
 /// Returns CPUArchState (not determined here) pointer.
-void *mba_mon_get_cpu(void);
+void* mba_mon_get_cpu(void);
+void  mba_readline_start( Monitor* mon, const char *prompt, int read_password,
+                          ReadLineFunc *readline_func, void *opaque );
+void  mba_readline_show_prompt( Monitor* mon );
+
 /* ---MBA extension */
 
 

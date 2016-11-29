@@ -1,10 +1,7 @@
 /*
- *  mba analysis extension of qemu command header
+ *  MBA Dynamic Behavior Analyzer QEMU command specification
  *
- *  Copyright (c)   2012 Chiwei Wang
- *                  2016 Chiawei Wang
- *                  2016 Chongkuan Chen
- *                  2016 Hao Li
+ *  Copyright (c)   2016 Chiawei Wang
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -19,13 +16,10 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef __ANALYSIS_COMMAND_H_
-#define __ANALYSIS_COMMAND_H_
-
-#include "qemu-common.h"
-struct Monitor;
-struct QDict;
-void do_get_analysis_result(Monitor *mon, const QDict *qdict);
-void do_analyze_tainted_files(Monitor *mon, const QDict *qdict);
-void do_scan_tainted_files(Monitor *mon, const QDict *qdict);
-#endif
+{
+        .name         = "start_dba_task",
+        .args_type    = "sample:F,timer:i",
+        .params       = "sample timer",
+        .help         = "Start dynamic behavior analysis(DBA) on the given sample",
+        .mhandler.cmd = do_start_dba_task,
+},

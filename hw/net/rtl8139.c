@@ -1841,7 +1841,8 @@ static void rtl8139_transfer_frame(RTL8139State *s, uint8_t *buf, int size,
 static void parse_pkt_tainted( void ) 
 {
     // TODO: parse & show info.
-    printf( "TODO: parse tainted packet content\n" );
+    //printf( "TODO: parse tainted packet content\n" );
+    return;
 }
 
 static int is_pkt_tainted( dma_addr_t begin, dma_addr_t end )
