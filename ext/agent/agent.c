@@ -27,6 +27,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <fcntl.h>
 #include <arpa/inet.h>
 
 #ifndef CONFIG_AGENT_TEST
@@ -203,7 +204,7 @@ static bool _MOCKABLE(ecm_read)( void ) {
 /// Return AGENT_RET_SUCCESS, no error
 ///        AGENT_RET_EBUSY, the previous command is not consumed by agent server, still busy (even lock acquired)
 ///        AGENT_RET_EFAIL, general fail
-static MBA_AGENT_RETURN set_agent_action( MBA_AGENT_ACTION new_act_type ) {
+static MBA_AGENT_RETURN _MOCKABLE(set_agent_action)( MBA_AGENT_ACTION new_act_type ) {
 
     if( pthread_mutex_lock(&ac->act.mtx) )
         return AGENT_RET_EFAIL;
@@ -776,11 +777,11 @@ static void* agent_client_mainloop( void* null_arg ) {
 /// Public API
 /// Each API should be named with the 'agent_' prefix.
 /// Note that an agent thread (via agent_init()) should exists to co-work with
-inline bool _MOCKABLE(agent_is_ready)( void ) {
+inline bool agent_is_ready( void ) {
     return ac->ready;
 }
 
-bool _MOCKABLE(agent_is_exec)( void ) {
+bool agent_is_exec( void ) {
 
     bool ret = false;
 
@@ -831,7 +832,7 @@ void agent_handle_exec_command( const char* cmdline ) {
     as_write( ac->sock, cmd_emit, SZ_MAX_COMMAND );
 }    
 
-MBA_AGENT_RETURN _MOCKABLE(agent_import)( const char* dst_path, const char* src_path ) {
+MBA_AGENT_RETURN agent_import( const char* dst_path, const char* src_path ) {
 
     MBA_AGENT_RETURN ret;
 
@@ -864,7 +865,7 @@ MBA_AGENT_RETURN _MOCKABLE(agent_import)( const char* dst_path, const char* src_
     return AGENT_RET_SUCCESS;
 }
 
-MBA_AGENT_RETURN _MOCKABLE(agent_export)( const char* dst_path, const char* src_path ) {
+MBA_AGENT_RETURN agent_export( const char* dst_path, const char* src_path ) {
  
     MBA_AGENT_RETURN ret;
 
@@ -897,7 +898,7 @@ MBA_AGENT_RETURN _MOCKABLE(agent_export)( const char* dst_path, const char* src_
     return AGENT_RET_SUCCESS;
 } 
 
-MBA_AGENT_RETURN _MOCKABLE(agent_execute)( const char* cmdline ) {
+MBA_AGENT_RETURN agent_execute( const char* cmdline ) {
 
     MBA_AGENT_RETURN ret;
 
@@ -927,7 +928,7 @@ MBA_AGENT_RETURN _MOCKABLE(agent_execute)( const char* cmdline ) {
     return AGENT_RET_SUCCESS;   
 } 
 
-MBA_AGENT_RETURN _MOCKABLE(agent_invoke)( const char* cmdline ) {
+MBA_AGENT_RETURN agent_invoke( const char* cmdline ) {
     
     MBA_AGENT_RETURN ret;
 
@@ -957,14 +958,14 @@ MBA_AGENT_RETURN _MOCKABLE(agent_invoke)( const char* cmdline ) {
     return AGENT_RET_SUCCESS;   
 }
 
-MBA_AGENT_RETURN _MOCKABLE(agent_sync)( void ) {
+MBA_AGENT_RETURN agent_sync( void ) {
     
     MBA_AGENT_RETURN ret;
 
     if( !agent_is_ready() )
         return AGENT_RET_EINIT;
 
-    // get thread lock to setup INVOke action parameters
+    // get thread lock to setup SYNC action parameters
     if( pthread_mutex_trylock( &ac->thread.mtx ) == EBUSY )
         return AGENT_RET_EBUSY;
 
@@ -984,7 +985,7 @@ MBA_AGENT_RETURN _MOCKABLE(agent_sync)( void ) {
     return AGENT_RET_SUCCESS;   
 }
 
-MBA_AGENT_RETURN _MOCKABLE(agent_logfile)( const char* dst_path ) {
+MBA_AGENT_RETURN agent_logfile( const char* dst_path ) {
 
     MBA_AGENT_RETURN ret;
 
@@ -1037,12 +1038,6 @@ MBA_AGENT_RETURN _MOCKABLE(agent_init)( Monitor *mon, uint16_t fwd_port_in, int 
     // Check whether it needs to do the port redirection
     if ( fwd_port_in == 0 && forward_port!=NULL ) {
         
-        // check if the agent extension has been initialized
-        if( agent_is_ready() ) {
-            agent_printf( "The agent has been initialized\n" );
-            goto init_fail;
-        }
-
         // setup port forwarding for in-VM agent server, 10 times trying with random port
         srand( time(NULL) );
         while( try_countdown ) {

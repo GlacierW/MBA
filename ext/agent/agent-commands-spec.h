@@ -19,7 +19,7 @@
  */
 {
     .name         = "w_impo",
-    .args_type    = "srcpath:s,dstpath:s",
+    .args_type    = "srcpath:F,dstpath:s",
     .params       = "fullpath_host_srcfile fullpath_guest_dstfile",
     .help         = "Import a host file into the guest."
                     "\n\t\t\tFullpath without spaces of both the source file and the destination file are required.",
@@ -27,7 +27,7 @@
 },
 {
     .name         = "w_expo",
-    .args_type    = "srcpath:s,dstpath:s",
+    .args_type    = "srcpath:s,dstpath:F",
     .params       = "fullpath_guest_srcfile fullpath_host_dstfile",
     .help         = "Export a guest file to the host."
                     "\n\t\t\tFullpath without spaces of both the source file and the destination file are required.",
