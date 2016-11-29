@@ -198,20 +198,23 @@ static bool _MOCKABLE(ecm_read)( void ) {
 /// The agent action type is shared by the QEMU emulation & Agent threads.
 /// Thereby, a mutex(lock) is required to perform mutually exclusive access.
 /// 
-///     \param act_type     a enum value indicating the action type
+///     \param new_act_type     a enum value indicating the action type
 /// 
 /// Return AGENT_RET_SUCCESS, no error
 ///        AGENT_RET_EBUSY, the previous command is not consumed by agent server, still busy (even lock acquired)
 ///        AGENT_RET_EFAIL, general fail
-static MBA_AGENT_RETURN set_agent_action( MBA_AGENT_ACTION act_type ) {
+static MBA_AGENT_RETURN set_agent_action( MBA_AGENT_ACTION new_act_type ) {
 
     if( pthread_mutex_lock(&ac->act.mtx) )
         return AGENT_RET_EFAIL;
 
-    if( act_type != AGENT_ACT_IDLE && ac->act.type != AGENT_ACT_IDLE )
-        return AGENT_RET_EBUSY;
-    else
-        ac->act.type = act_type;
+    // if both the new action and the current action are not idle, it means
+    // that the new action is going to overwrite the previous one before it
+    // can be consumed by the agent mainloop thread.
+    if( new_act_type != AGENT_ACT_IDLE && ac->act.type != AGENT_ACT_IDLE ) 
+        return (pthread_mutex_unlock(&ac->act.mtx) == 0) ? AGENT_RET_EBUSY : AGENT_RET_EFAIL;
+
+    ac->act.type = new_act_type;
 
     if( pthread_mutex_unlock(&ac->act.mtx) )
         return AGENT_RET_EFAIL;
@@ -983,6 +986,8 @@ MBA_AGENT_RETURN _MOCKABLE(agent_sync)( void ) {
 
 MBA_AGENT_RETURN _MOCKABLE(agent_logfile)( const char* dst_path ) {
 
+    MBA_AGENT_RETURN ret;
+
     if( !agent_is_ready() )
         return AGENT_RET_EINIT;
 
@@ -991,7 +996,9 @@ MBA_AGENT_RETURN _MOCKABLE(agent_logfile)( const char* dst_path ) {
         return AGENT_RET_EBUSY;
 
     // setup log file action
-    set_agent_action( AGENT_ACT_LOGF );
+    ret = set_agent_action( AGENT_ACT_LOGF );
+    if( ret != AGENT_RET_SUCCESS )
+        return ret;
 
     bzero( ac->act.dst_path, SZ_MAX_FILEPATH );
     strncpy( ac->act.dst_path, dst_path, SZ_MAX_FILEPATH );
