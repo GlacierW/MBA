@@ -207,9 +207,11 @@ endif
 
 ifdef CONFIG_DBA
 all-obj-y += ../ext/dba/dba.o
-../ext/dba/dba.o-cflags := -DHAVE_CONFIG_H -I$(SRC_PATH)/ext/tsk/sleuthkit
-../ext/dba/dba-commands.o-cflags := -DHAVE_CONFIG_H -I$(SRC_PATH)/ext/tsk/sleuthkit
+all-obj-y += ../ext/dba/dba_taint.o
 all-obj-y += ../ext/dba/dba-commands.o
+../ext/dba/dba.o-cflags := -DHAVE_CONFIG_H -I$(SRC_PATH)/ext/tsk/sleuthkit
+../ext/dba/dba_taint.o-cflags := -DHAVE_CONFIG_H -I$(SRC_PATH)/ext/tsk/sleuthkit
+../ext/dba/dba-commands.o-cflags := -DHAVE_CONFIG_H -I$(SRC_PATH)/ext/tsk/sleuthkit
 endif
 
 

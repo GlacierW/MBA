@@ -18,6 +18,7 @@
  */
 
 #include "dba.h"
+#include "dba_taint.h"
 
 #include "net/slirp.h"
 #include "qmp-commands.h"
@@ -69,20 +70,6 @@ static bool config_check_syscall( dba_context* ctx ) {
     return (ctx->syscall.is_enabled)? true : false;
 }
 
-static const char* get_ide0hd0_disk_image( void ) {
-
-    BlockInfoList* blk_list;
-    BlockInfoList* info;
-
-    blk_list = qmp_query_block( NULL );
-    for( info = blk_list; info != NULL; info = info->next ) {
-        if( info->value->has_inserted ) 
-            if( strcmp(info->value->device, "ide0-hd0" ) == 0 )
-                return info->value->inserted->file;
-    }
-    return NULL;
-}
-
 // macro for agent action polling
 #define AGENT_ACT( x ) \
     while( (aret = x) == AGENT_RET_EBUSY ) { asm volatile("pause"); } \
@@ -90,24 +77,12 @@ static const char* get_ide0hd0_disk_image( void ) {
 
 static void* dba_main_internal( void* ctx_arg ) {
 
-    dba_context* ctx = ctx_arg;
-
     MBA_AGENT_RETURN aret;
 
-    const char* guest_image;
-    
+    dba_context* ctx = ctx_arg;
 
-    UT_array* fblocks;
-    
-    TSK_DADDR_T  st_haddr, ed_haddr;
-    TSK_DADDR_T* haddr_tuple;
 
-    uint64_t haddr;
-    
-    char**    p_fname;
-    UT_array* fnames;
-    
-
+    /*
     printf( "\n===== DBA task =====\n" );
     printf( "sample(host):    %s\n",  ctx->sample_hpath );
     printf( "sample(guest):   %s\n",  ctx->sample_gpath );
@@ -115,41 +90,14 @@ static void* dba_main_internal( void* ctx_arg ) {
     printf( "taint analysis:  %s\n",  (ctx->taint.is_enabled)? "enabled" : "disabled" );
     printf( "syscall tracer:  %s\n",  (ctx->syscall.is_enabled)? "enabled" : "disabled" );
     printf( "\n" );
+    */
 
     // import sample from host into guest & flush disk cache
     AGENT_ACT( agent_import(ctx->sample_gpath, ctx->sample_hpath) );
     AGENT_ACT( agent_sync() );
 
-    // get disk image patch for disk forensics
-    // XXX: currently we by default think that ide0-hd0 is mounted with system image
-    qemu_mutex_lock( &qemu_global_mutex );
-    guest_image = get_ide0hd0_disk_image();
-    fblocks = tsk_find_haddr_by_filename( guest_image, ctx->sample_gpath );
-   
-    for( haddr_tuple = (TSK_DADDR_T*)utarray_front(fblocks); 
-         haddr_tuple != NULL;
-         haddr_tuple = (TSK_DADDR_T*)utarray_next(fblocks, haddr_tuple) ) {
-
-        st_haddr = haddr_tuple[0];
-        ed_haddr = haddr_tuple[1];
-
-        fnames = tsk_get_filename_by_haddr( guest_image, st_haddr );
-        if( fnames == NULL )
-            continue;
-
-        for( p_fname = (char**)utarray_front(fnames);
-             p_fname != NULL;
-             p_fname = (char**)utarray_next(fnames, p_fname) ) {
-            
-            if( strcasecmp(*p_fname, ctx->sample_gpath) == 0 ) {
-                dift_contaminate_disk_or( st_haddr, ed_haddr - st_haddr + 1, ctx->taint.tag );
-                break;
-            }
-        }
-        utarray_free( fnames );
-    }
-    utarray_free( fblocks );
-    qemu_mutex_unlock( &qemu_global_mutex );
+    if( ctx->taint.is_enabled )
+        set_sample_tainted( ctx );
 
     // invoke sample
     AGENT_ACT( agent_invoke(ctx->sample_gpath) );
@@ -160,29 +108,8 @@ static void* dba_main_internal( void* ctx_arg ) {
     // flush buffered read/write of the guest OS
     AGENT_ACT( agent_sync() );
 
-    if( ctx->taint.is_enabled ) {
-        
-        // TOOD: replace the hardcoded 4096 block size
-        for( haddr = 0; haddr < HD_MAX_SIZE; haddr += 4096 ) {
-
-            // check disk address is tainted
-            if( dift_get_disk_dirty(haddr) != ctx->taint.tag )
-                continue;
-
-            // check if tainted address corresponds to a file
-            fnames = tsk_get_filename_by_haddr( guest_image, haddr );
-            if( fnames == NULL )
-                continue;
-
-            for( p_fname = (char**)utarray_front(fnames);
-                 p_fname != NULL;
-                 p_fname = (char**)utarray_next(fnames, p_fname) ) {
-                
-                printf( "%s\n", *p_fname );
-            }
-            utarray_free( fnames );
-        }
-    }
+    if( ctx->taint.is_enabled ) 
+        enum_tainted_file( ctx );
 
     return NULL;
 }
@@ -269,17 +196,11 @@ int dba_start_analysis( dba_context* ctx ) {
     }
 
     // valid sample path
-    if( strlen(ctx->sample_hpath) == 0 ) {
+    if( ctx->sample_hpath == NULL || strlen(ctx->sample_hpath) == 0 ) {
         dba_errno = DBA_ERR_SAMPLE;
         return -1;
     }
     
-    // valid execution timer
-    if( ctx->sample_timer == 0 ) {
-        dba_errno = DBA_ERR_TIMER;
-        return -1;
-    }
-
     // config check for any executable analysis
     if( 
         config_check_taint( ctx )   == false
