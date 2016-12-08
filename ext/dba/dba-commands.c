@@ -13,6 +13,20 @@ static void cb_dba_set_syscall( void* mon, const char* yn, void* opaque );
 static void cb_dba_set_taint_tag( void* mon, const char* yn, void* opaque );
 static void cb_dba_set_taint( void* mon, const char* yn, void* opaque );
 
+static void show_dba_context_info( Monitor* mon, dba_context* ctx ) {
+
+    if( mon == NULL || ctx == NULL )
+        return;
+
+    monitor_printf( mon, "\n" );
+    monitor_printf( mon, "Host sample:     %s\n", ctx->sample_hpath );
+    monitor_printf( mon, "Guest sample:    %s\n", ctx->sample_gpath );
+    monitor_printf( mon, "Taint analysis:  %s\n", (ctx->taint.is_enabled)? "Enabled" : "Disabled" );
+    if( ctx->taint.is_enabled )
+        monitor_printf( mon, "Taint tag:       %d\n", ctx->taint.tag );
+    monitor_printf( mon, "Syscall tracer:  %s\n", (ctx->syscall.is_enabled)? "Enabled" : "Disabled" );
+}
+
 // DBA - confirm ?
 static void cb_dba_confirm( void* mon, const char* yn, void* opaque ) {
 
@@ -25,8 +39,7 @@ static void cb_dba_confirm( void* mon, const char* yn, void* opaque ) {
 
     // goto taint
     if( strcasecmp( "n", yn ) == 0 || strcasecmp( "no", yn ) == 0 ) {
-        mba_readline_start( (Monitor*)mon, PROMPT_DBA_Q1, 0, cb_dba_set_taint, opaque );
-        mba_readline_show_prompt( mon );
+        monitor_read_command( mon, 1 );
         return;
     }
 
@@ -43,15 +56,7 @@ static void cb_dba_set_syscall( void* mon, const char* yn, void* opaque ) {
     // goto confirm
     if( strcasecmp( "y", yn ) == 0 || strcasecmp( "yes", yn ) == 0 ) {
         dba_enable_syscall_trace( (dba_context*)opaque );
-   
-        monitor_printf( mon, "\n" );
-        monitor_printf( mon, "Sample:            %s\n", ctx->sample_hpath );
-        monitor_printf( mon, "Sample:            %s\n", ctx->sample_gpath );
-        monitor_printf( mon, "Taint analysis:    %s\n", (ctx->taint.is_enabled)? "Enabled" : "Disabled" );
-        if( ctx->taint.is_enabled )
-            monitor_printf( mon, "Taint tag:         %d\n", ctx->taint.tag );
-        monitor_printf( mon, "Syscall tracer:    %s\n", (ctx->syscall.is_enabled)? "Enabled" : "Disabled" );
-
+        show_dba_context_info( mon, ctx );
         mba_readline_start( (Monitor*)mon, PROMPT_DBA_Q4, 0, cb_dba_confirm, opaque );
         mba_readline_show_prompt( mon );
         return;
@@ -60,15 +65,7 @@ static void cb_dba_set_syscall( void* mon, const char* yn, void* opaque ) {
     // goto confirm
     if( strcasecmp( "n", yn ) == 0 || strcasecmp( "no", yn ) == 0 ) {
         dba_disable_syscall_trace( (dba_context*)opaque );
-        
-        monitor_printf( mon, "\n" );
-        monitor_printf( mon, "Host sample:       %s\n", ctx->sample_hpath );
-        monitor_printf( mon, "Guest sample:      %s\n", ctx->sample_gpath );
-        monitor_printf( mon, "Taint analysis:    %s\n", (ctx->taint.is_enabled)? "Enabled" : "Disabled" );
-        if( ctx->taint.is_enabled )
-            monitor_printf( mon, "Taint tag:         %d\n", ctx->taint.tag );
-        monitor_printf( mon, "Syscall tracer:    %s\n", (ctx->syscall.is_enabled)? "Enabled" : "Disabled" );
-
+        show_dba_context_info( mon, ctx );
         mba_readline_start( (Monitor*)mon, PROMPT_DBA_Q4, 0, cb_dba_confirm, opaque );
         mba_readline_show_prompt( mon );
         return;
@@ -118,7 +115,6 @@ static void cb_dba_set_taint( void* mon, const char* yn, void* opaque ) {
     mba_readline_show_prompt( mon );
 }
 
-
 void do_start_dba_task( Monitor* mon, const QDict* qdict ) {
 
     const char* sample = qdict_get_str( qdict, "sample" );
@@ -151,4 +147,30 @@ void do_start_dba_task( Monitor* mon, const QDict* qdict ) {
     //  3. ask user for syscall trace option
     //  4. final confirm & launch analysis
     mba_readline_start( (void*)mon, PROMPT_DBA_Q1, 0, cb_dba_set_taint, (void*)ctx );
+}
+
+void do_list_dba_task( Monitor* mon, const QDict* qdict ) {
+
+    int i;
+    dba_context* ctx;
+
+    monitor_printf( mon, "%8s%8s%12s%12s%12s\t%s -> %s\n", "TaskID", "State", "Taint(Tag)", "Syscall", "Timer", "HostSample", "GuestSample" );
+    monitor_printf( mon, "===================================================================================================\n" );
+
+    for( i = 0; i < DBA_MAX_TASKS; ++i ) {
+        
+        ctx = dba_tasks[i];
+        if( ctx == NULL )
+            break;
+
+        monitor_printf( mon, "%8d%8s%7s(%3d)%12s%12zu\t%s -> %s\n",
+                        i,
+                        (ctx->state == DBA_TASK_BUSY)? "BUSY" : "DONE",
+                        (ctx->taint.is_enabled)? "TRUE" : "FALSE",
+                        (ctx->taint.is_enabled)? ctx->taint.tag : 0 ,
+                        (ctx->syscall.is_enabled)? "TRUE" : "FALSE",
+                        ctx->sample_timer,
+                        ctx->sample_hpath,
+                        ctx->sample_gpath );
+    }
 }

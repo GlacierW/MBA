@@ -23,3 +23,10 @@
         .help         = "Start dynamic behavior analysis(DBA) on the given sample",
         .mhandler.cmd = do_start_dba_task,
 },
+{
+        .name         = "list_dba_task",
+        .args_type    = "",
+        .params       = "",
+        .help         = "List DBA tasks",
+        .mhandler.cmd = do_list_dba_task,
+},

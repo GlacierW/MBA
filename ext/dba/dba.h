@@ -27,8 +27,12 @@
 #include "ext/dift/dift.h"
 #include "ext/agent/agent.h"
 
+#define DBA_MAX_TASKS        0x1000
 #define DBA_MAX_FILENAME     255
 #define DBA_GUEST_SAMPLE_DIR "/Users/dsns/Desktop/" 
+
+#define DBA_JSON_KEY_TAINT   "TAINT"
+#define DBA_JSON_KEY_SYSCALL "SYSCALL"
 
 enum DBA_ERRNO {
     DBA_ERR_FAIL,
@@ -37,12 +41,22 @@ enum DBA_ERRNO {
     DBA_ERR_TAINT_TAG,
     DBA_ERR_EMPTY_ANALYSIS,
 
+    DBA_TASKERR_NOTASKSLOT,
     DBA_TASKERR_DIFT_NOTREADY,
     DBA_TASKERR_AGENT_NOTREADY
 };
 typedef enum DBA_ERRNO DBA_ERRNO;
 
+enum DBA_TASK_STATE {
+    DBA_TASK_IDLE,
+    DBA_TASK_BUSY,
+    DBA_TASK_DONE
+};
+typedef enum DBA_TASK_STATE DBA_TASK_STATE;
+
 struct dba_context {
+
+    int task_id;
 
     struct {
         bool is_enabled;
@@ -60,11 +74,13 @@ struct dba_context {
     json_object* result;
 
     pthread_t thread;
+
+    DBA_TASK_STATE state;
 };
 typedef struct dba_context dba_context;
 
-
-extern DBA_ERRNO dba_errno;
+extern dba_context* dba_tasks[DBA_MAX_TASKS];
+extern DBA_ERRNO    dba_errno;
 
 extern dba_context* dba_alloc_context( void );
 extern int          dba_free_context( dba_context* ctx );
