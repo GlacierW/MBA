@@ -5,6 +5,7 @@
  *                  2016 Chiawei Wang
  *                  2016 Chongkuan Chen
  *                  2016 Hao Li
+ *                  2016 ChuanHua Cheng
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -20,6 +21,11 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 #include <stdint.h>
+
+#include "tsk/tsk_tools_i.h"
+#include "tsk/fs/tsk_fs_i.h"
+#include "tsk/fs/tsk_hfs.h"
+#include "tsk/fs/tsk_ntfs.h"
 
 #include "tsk.h"
 
@@ -81,17 +87,17 @@ static TSK_WALK_RET_ENUM
 log_attr_offsets_in_filesystem(TSK_FS_FILE * fs_file, TSK_OFF_T a_off,
         TSK_DADDR_T addr, char *buf, size_t size, TSK_FS_BLOCK_FLAG_ENUM flags,
         void *ptr){
-
     if (is_run_on_disk(flags)){
         find_file_data                    *data = (find_file_data*)ptr;
         TSK_DADDR_T    offset_start_and_last[2] = {
             addr * fs_file->fs_info->block_size, 
             (addr+1) * fs_file->fs_info->block_size - 1
         };
-
+        
         utarray_push_back(data->offsets_in_filesystem, &offset_start_and_last);
         data->file_found_in_partiton = 1;
-    }
+    } 
+    
     return TSK_WALK_CONT;
 }
 
@@ -139,7 +145,7 @@ static TSK_WALK_RET_ENUM find_file_in_partiton(
     file       = tsk_fs_file_open(filesystem, NULL, file_path);
     if (OPEN_FAIL(file))
         return TSK_WALK_CONT;
-    
+
     data->file_found_in_partiton = 0;
     utarray_new(data->offsets_in_filesystem, &ut_tsk_daddr_tuple_icd);
     log_file_offsets_in_filesystem(data, file);
@@ -154,6 +160,7 @@ static TSK_WALK_RET_ENUM find_file_in_partiton(
                 p[0] + part->start*vs->img_info->sector_size,
                 p[1] + part->start*vs->img_info->sector_size
             };
+
             utarray_push_back(data->offsets_in_disk, &offset_start_and_last);
         }
         data->file_found = 1;
@@ -471,10 +478,10 @@ static TSK_DADDR_T search_partition(TSK_VS_INFO *vs, uint64_t target_addr)
 Public API for disk forensic
 */
 
-// Find the filename of the specified hardward byte offset
+// Find the filename of the specified harddisk byte offset
 // 
 // \param imgname           path of target image
-// \param haddr_img_offset  the target hardware byte address
+// \param haddr_img_offset  the target harddisk byte address
 // 
 // Return NULL if error, otherwise a UT_array of filename 
 UT_array* tsk_get_filename_by_haddr(const char* imgname, uint64_t haddr_img_offset)
@@ -546,6 +553,7 @@ UT_array* tsk_get_filename_by_haddr(const char* imgname, uint64_t haddr_img_offs
     //calculate offset to the current partition
     part_byte_offset = haddr_img_offset - (partition_offset * img->sector_size);
     part_block_offset = part_byte_offset/fs->block_size;
+
 //find the inode of this block
     ifind_data = fs_ifind_data(fs, (TSK_FS_IFIND_FLAG_ENUM) 0, part_block_offset);
     if(ifind_data == NULL)
@@ -587,18 +595,18 @@ UT_array* tsk_get_filename_by_haddr(const char* imgname, uint64_t haddr_img_offs
     return ret;
 }
 
-// Find all the hardware address corresponding to target file
+// Find all the harddisk address corresponding to target file
 // 
 // \param img_path          path of target image
 // \param file_path         the target filename
 // 
-// Return NULL if error, otherwise a UT_array of (start, end) tuple will returned, where start and end are the hardware byte addrsesses
+// Return NULL if error, otherwise a UT_array of (start, end) tuple will returned, where start and end are the harddisk byte addrsesses
 UT_array* tsk_find_haddr_by_filename(const char* img_path, const char* file_path)
 {
-
     TSK_IMG_TYPE_ENUM img_type ;
     TSK_IMG_INFO *img;
     TSK_VS_INFO *vs;
+ 
     find_file_data data;
     UT_array* ret = NULL;
 
@@ -647,3 +655,135 @@ UT_array* tsk_find_haddr_by_filename(const char* img_path, const char* file_path
 
     return ret;
 }
+
+/*
+Public API for disk forensic
+*/
+
+// Get the file of the specified harddisk byte offset
+// 
+// \param imgname           path of target image
+// \param haddr_img_offset  the target harddisk byte address
+// \param file_path         get file by the path from the image
+// \param destination       store file into the given path 
+// 
+// Return NULL if error, otherwise a UT_array of filename 
+
+void tsk_get_file(const char* imgname,uint64_t haddr_img_offset, const char* file_path, const char* destination )
+{
+    TSK_IMG_INFO *img;
+    TSK_VS_INFO *vs;
+    TSK_FS_INFO *fs;
+    uint8_t id_used = 0, type_used = 0;
+
+    TSK_DADDR_T partition_offset = 0;
+    TSK_DADDR_T block_img_offset = 0;
+    TSK_DADDR_T part_byte_offset = 0;
+    TSK_DADDR_T part_block_offset = 0;
+
+    MBA_IFIND_DATA_DATA* ifind_data;
+    TSK_IMG_TYPE_ENUM imgtype;
+    MBA_FFIND_DATA* ffind_data;
+    TSK_FS_FILE *file;
+    FILE* writeHive;
+    char *temp;
+
+    //open image
+    imgtype = tsk_img_type_toid(QCOW_IMG_TYPE);
+    img = tsk_img_open_sing(imgname, imgtype, 0);
+    if(img == NULL)
+    {
+         printf("Image Open Failed!!\n");
+         return;
+    }
+
+    if(haddr_img_offset >= img->size)
+    {
+        printf("Request haddr is larger than image size\n");
+        return;
+    }
+
+    //open volume
+    vs = tsk_vs_open(img, 0 , TSK_VS_TYPE_DETECT);
+    if(vs==NULL)
+    {
+        printf("Volume Open Failed!!\n");
+        return;
+    }
+
+    //calculate block address
+    block_img_offset = haddr_img_offset/img->sector_size;
+
+    //search the partition contain the target block
+    partition_offset = search_partition(vs, block_img_offset);
+    if(partition_offset == 0)
+    {
+        printf("Cannot found partition contains the target haddr\n");
+        return;
+    }
+
+    //open the partition's file system
+    fs = tsk_fs_open_img(img, partition_offset * img->sector_size, TSK_FS_TYPE_DETECT);
+    if(fs==NULL)
+    {
+        printf("Cannot open file system\n");
+        return;
+    }
+
+    //calculate offset to the current partition
+    part_byte_offset = haddr_img_offset - (partition_offset * img->sector_size);
+    part_block_offset = part_byte_offset/fs->block_size;
+
+    file = tsk_fs_file_open( fs, NULL, file_path);
+    if ( OPEN_FAIL(file) ) 
+        printf("open file fail\n\n");
+
+    TSK_OFF_T readFileOff = 0;
+    size_t fileSize = 150000000;
+    temp = calloc( fileSize, sizeof(char));
+    int size = tsk_fs_file_read( file,
+                                 readFileOff,
+                                 temp,
+                                 fileSize,
+                                 TSK_FS_FILE_READ_FLAG_NONE );
+    tsk_fs_file_close(file);
+    writeHive = fopen( destination, "w" );
+    if ( writeHive == NULL )
+        printf("Open fail");
+    else {
+        fwrite( temp, size, sizeof(char), writeHive );
+    } // else
+
+    free(temp);
+    fclose(writeHive);
+
+    //find the inode of this block
+    ifind_data = fs_ifind_data(fs, (TSK_FS_IFIND_FLAG_ENUM) 0, part_block_offset);
+    if(ifind_data == NULL)
+    {
+        return; 
+    }    
+
+    if(ifind_data->found!=1)
+    {
+        printf("Inode not found\n");
+        return;
+    }
+
+    //Find the inode's filename
+    //Note: Do Not Know what to fill in variable type_used and id_used
+    ffind_data =  fs_ffind(fs, 0, ifind_data->curinode, ifind_data->curtype ,
+            type_used, ifind_data->curid , id_used,
+            (TSK_FS_DIR_WALK_FLAG_RECURSE | TSK_FS_DIR_WALK_FLAG_ALLOC | TSK_FS_DIR_WALK_FLAG_UNALLOC));
+
+    if(ffind_data==NULL){
+        printf("Cannot found fdata associate with inode\n");
+        return;
+    }
+
+    free(ifind_data);
+    return;
+}
+
+
+

@@ -22,6 +22,7 @@
 #define __DIFT_H__
 
 #include <stdbool.h>
+#include <stdio.h>
 
 // Config 
 #define CONFIG_SIZE_OF_QUEUE    (16 * 1024 * 1024)
@@ -32,6 +33,7 @@
 #if defined(CONFIG_DIFT_DEBUG)
 // By default we generate color DIFT log. Comment this if unwanted
 #define DIFT_DEBUG_COLOR
+
 
 ///
 /// Herein you should define your condition to log when the debugging
