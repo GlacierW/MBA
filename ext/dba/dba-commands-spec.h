@@ -25,8 +25,15 @@
 },
 {
         .name         = "list_dba_task",
-        .args_type    = "",
-        .params       = "",
+        .args_type    = "tid:i?",
+        .params       = "[task_id]",
         .help         = "List DBA tasks",
         .mhandler.cmd = do_list_dba_task,
+},
+{
+        .name         = "delete_dba_task",
+        .args_type    = "tid:i",
+        .params       = "task_id",
+        .help         = "Delete a DBA task by ID",
+        .mhandler.cmd = do_delete_dba_task,
 },

@@ -114,7 +114,7 @@ int enum_tainted_file( dba_context* ctx ) {
     for( haddr = 0; haddr < HD_MAX_SIZE; haddr += GUEST_FS_BLOCKSIZE ) {
 
         // check disk address is tainted
-        if( dift_get_disk_dirty(haddr) != ctx->taint.tag )
+        if( (dift_get_disk_dirty(haddr) & ctx->taint.tag) == 0 )
             continue;
 
         // check if tainted address corresponds to a file
@@ -154,5 +154,7 @@ int enum_tainted_file( dba_context* ctx ) {
 }
 
 int enum_tainted_registry( dba_context* ctx ) {
+
+    // TODO: tainted registry parsing
     return 1;
 }

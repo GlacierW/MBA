@@ -24,70 +24,119 @@
 #include "qmp-commands.h"
 #include "include/utarray.h"
 
-dba_context* dba_tasks[DBA_MAX_TASKS] = { 0 };
-DBA_ERRNO    dba_errno;
+DBA_ERRNO dba_errno;
 
-extern QemuMutex qemu_global_mutex;
+// next Task ID could be used, round by DBA_MAX_TASKS
+static DBA_TID next_tid = 0;
 
-// next Task ID, round by DBA_MAX_TASKS
-static int next_tid = 0;
+// locally global array to store all DBA tasks
+static dba_context* dba_tasks[DBA_MAX_TASKS] = { 0 };
 
 // Private functions
-static int toggle_taint_analysis( dba_context* ctx, CONTAMINATION_RECORD tag, bool is_enable ) {
-    
-    if( ctx == NULL ) {
-        dba_errno = DBA_ERR_FAIL;
-        return -1;
+static bool is_valid_tid( DBA_TID tid ) {
+    return (tid >= 0 && tid < DBA_MAX_TASKS)? true : false;
+}
+
+static bool is_valid_sample( DBA_TID tid ) {
+
+    dba_context* ctx;
+
+    if( !is_valid_tid(tid) )
+        return false;
+
+    ctx = dba_tasks[tid];
+    if( ctx == NULL )
+        return false;
+
+    if( 
+        ctx->sample_hpath         == NULL 
+     || strlen(ctx->sample_hpath) == 0
+     || ctx->sample_gpath         == NULL
+     || strlen(ctx->sample_gpath) == 0
+     ) 
+        return false;
+    return true;
+}
+
+static bool is_task_configurable( DBA_TID tid ) {
+
+    if( !is_valid_tid(tid) ) {
+        dba_errno = DBA_ERR_INVALID_TID;
+        return false;
     }
+
+    // the config of a task is mutable only if the task is IDLE
+    if( dba_tasks[tid]->state != DBA_TASK_IDLE ) {
+        dba_errno = DBA_ERR_INVALID_TSTATE;
+        return false;
+    }
+
+    return true;
+}
+
+static int toggle_taint_analysis( DBA_TID tid, CONTAMINATION_RECORD tag, bool is_enable ) {
+    
+    if( !is_task_configurable(tid) )
+        return -1;
 
     if( tag == 0 ) {
-        dba_errno = DBA_ERR_TAINT_TAG;
+        dba_errno = DBA_ERR_DIFT_TAG;
         return -1;
     }
 
-    ctx->taint.is_enabled = is_enable;
-    ctx->taint.tag        = tag;
+    dba_tasks[tid]->taint.is_enabled = is_enable;
+    dba_tasks[tid]->taint.tag        = tag;
     return 0;
 }
 
-static int toggle_syscall_tracer( dba_context* ctx, bool is_enable ) {
-
-    if( ctx == NULL ) {
-        dba_errno = DBA_ERR_FAIL;
+static int toggle_syscall_tracer( DBA_TID tid, bool is_enable ) {
+    
+    if( !is_task_configurable(tid) )
         return -1;
-    }
 
-    ctx->syscall.is_enabled = is_enable;
+    dba_tasks[tid]->syscall.is_enabled = is_enable;
     return 0;
 }
 
-static int get_available_tid( void ) {
+static DBA_TID get_available_tid( void ) {
  
-    int  avai_tid  = next_tid;
-    bool available = false;
+    DBA_TID tid,
+            null_tid = -1, // TID of the nearest unused task slot
+            done_tid = -1; // TID of the nearest DONE task slot
 
-    // search for DONE task and reuse the record slot
-    if( dba_tasks[avai_tid] != NULL ) {
-        do {
-            // free the old record for reuse
-            if( dba_tasks[avai_tid]->state == DBA_TASK_DONE ) {
-                json_object_put( dba_tasks[avai_tid]->result );
-                free( dba_tasks[avai_tid] );
-                available = true;
-                break;
-            }
-            avai_tid = (avai_tid + 1) % DBA_MAX_TASKS;
-        } while( avai_tid != next_tid );
+    /// scan the whole tasks for usable task slot
+    /// the slot with NULL DBA task object is the 
+    /// priori choice and then the DONE DBA tasks
+    tid = next_tid;
+    do {
+        if( dba_tasks[tid] == NULL ) {
+            null_tid = tid;
+            break;
+        }
 
-        // no empty slot
-        if( !available ) 
-            return -1;
+        /// we do not break in this case to 
+        /// continue the search of NULL object
+        if( dba_tasks[tid]->state == DBA_TASK_DONE && done_tid == -1 ) 
+            done_tid = tid;
+
+        tid = (tid + 1) % DBA_MAX_TASKS;
+    } while( tid != next_tid );
+
+    if( null_tid != -1 ) {
+        next_tid = null_tid;
     }
+    else if( done_tid != -1 ) {
+    
+        // reuse the DONE task slot
+        json_object_put( dba_tasks[done_tid]->result );
+        free( dba_tasks[done_tid] );
+        dba_tasks[done_tid] = NULL;
+        next_tid = done_tid;
+    }
+    else
+        return -1;
 
-    // update the next task ID
-    next_tid = (avai_tid + 1) % DBA_MAX_TASKS;
-
-    return avai_tid;
+    return next_tid;
 }
 
 // macro for agent action polling
@@ -130,50 +179,88 @@ static void* dba_main_internal( void* ctx_arg ) {
 #undef AGENT_ACT
 
 // Public APIs
-dba_context* dba_alloc_context( void ) {
+DBA_TID dba_new_task( void ) {
     
+    DBA_TID new_tid; 
     dba_context* ctx = NULL;
 
+    new_tid = get_available_tid();
+    if( new_tid == -1 ) {
+        dba_errno = DBA_ERR_TASK_FULL;
+        return -1; 
+    }
+
     ctx = (dba_context*)malloc( sizeof(dba_context) );
-    if( ctx == NULL ) 
+    if( ctx == NULL ) {
         dba_errno = DBA_ERR_FAIL;
+        return -1;
+    }
 
     ctx->result = json_object_new_object();
     ctx->state  = DBA_TASK_IDLE;
 
-    return ctx;
+    dba_tasks[new_tid] = ctx;
+
+    return new_tid;
 }
 
-int dba_free_context( dba_context* ctx ) {
+int dba_delete_task( DBA_TID tid ) {
 
-    if( ctx != NULL ) 
-        json_object_put( ctx->result );
+    if( !is_valid_tid(tid) ) {
+        dba_errno = DBA_ERR_INVALID_TID;
+        return -1;
+    }
+    
+    // nothing to do
+    if( dba_tasks[tid] == NULL )
+        return 0;
+
+    // abort deletion if the task is BUSY
+    if( dba_tasks[tid]->state == DBA_TASK_BUSY ) {
+        dba_errno = DBA_ERR_INVALID_TSTATE;
+        return -1;
+    }
+
+    json_object_put( dba_tasks[tid]->result );
+    free( dba_tasks[tid] );
+
+    dba_tasks[ tid ] = NULL;
 
     return 0;
 }
 
-int dba_set_timer( dba_context* ctx, size_t seconds ) {
+const dba_context* dba_get_task_context( DBA_TID tid ) {
 
-    if( ctx == NULL ) {
-        dba_errno = DBA_ERR_FAIL;
-        return -1;
+    if( !is_valid_tid(tid) ) {
+        dba_errno = DBA_ERR_INVALID_TID;
+        return NULL;
     }
 
-    ctx->sample_timer = seconds;
+    return dba_tasks[tid];
+}
+
+int dba_set_timer( DBA_TID tid, size_t seconds ) {
+
+    if( !is_task_configurable(tid) ) 
+        return -1;
+
+    dba_tasks[tid]->sample_timer = seconds;
     return 0;
 }
 
-int dba_set_sample( dba_context* ctx, const char* path ) {
+int dba_set_sample( DBA_TID tid, const char* path ) {
+    
+    dba_context* ctx;
 
-    if( ctx == NULL ) {
-        dba_errno = DBA_ERR_FAIL;
+    if( !is_task_configurable(tid) ) 
         return -1;
-    }
 
     if( strlen(path) > DBA_MAX_FILENAME ) {
-        dba_errno = DBA_ERR_SAMPLE;
+        dba_errno = DBA_ERR_INVALID_SAMPLE;
         return -1;
     }
+
+    ctx = dba_tasks[tid];
 
     // copy sample host path
     bzero( ctx->sample_hpath, DBA_MAX_FILENAME + 1 );
@@ -186,69 +273,59 @@ int dba_set_sample( dba_context* ctx, const char* path ) {
     return 0;
 }
 
-int dba_enable_syscall_trace( dba_context* ctx ) {
-    return toggle_syscall_tracer( ctx, true );
+int dba_enable_syscall_trace( DBA_TID tid ) {
+    return toggle_syscall_tracer( tid, true );
 }
 
-int dba_disable_syscall_trace( dba_context* ctx ) {
-    return toggle_syscall_tracer( ctx, false );
+int dba_disable_syscall_trace( DBA_TID tid ) {
+    return toggle_syscall_tracer( tid, false );
 }
 
-int dba_enable_taint_analysis( dba_context* ctx, CONTAMINATION_RECORD tag ) {
-    return toggle_taint_analysis( ctx, tag, true );
+int dba_enable_taint_analysis( DBA_TID tid, CONTAMINATION_RECORD tag ) {
+    return toggle_taint_analysis( tid, tag, true );
 }
 
-int dba_disable_taint_analysis( dba_context* ctx ) {
-    return toggle_taint_analysis( ctx, 0, false );
+int dba_disable_taint_analysis( DBA_TID tid ) {
+    return toggle_taint_analysis( tid, 0, false );
 }
 
-int dba_start_analysis( dba_context* ctx ) {
+int dba_start_analysis( DBA_TID tid ) {
 
-    int task_id;
-
-    // valid context
-    if( ctx == NULL ) {
-        dba_errno = DBA_ERR_FAIL;
+    // check TID and if a corresponding DBA context
+    if( !is_valid_tid(tid) || dba_tasks[tid] == NULL ) {
+        dba_errno = DBA_ERR_INVALID_TID;
         return -1;
     }
 
-    // valid host/guest sample path
-    if( 
-        ctx->sample_hpath         == NULL 
-     || strlen(ctx->sample_hpath) == 0
-     || ctx->sample_gpath         == NULL
-     || strlen(ctx->sample_gpath) == 0
-     ) {
-        dba_errno = DBA_ERR_SAMPLE;
+    // the task must be IDLE to start analysis
+    if( dba_tasks[tid]->state != DBA_TASK_IDLE ) {
+        dba_errno = DBA_ERR_INVALID_TSTATE;
+        return -1;
+    }
+        
+    // validate host/guest sample path
+    if( !is_valid_sample(tid) ) {
+        dba_errno = DBA_ERR_INVALID_SAMPLE;
         return -1;
     }
 
     // check agent is ready
     if( !agent_is_ready() ) {
-        dba_errno = DBA_TASKERR_AGENT_NOTREADY;
+        dba_errno = DBA_ERR_AGENT_NOTREADY;
         return -1;
     }
 
-    // check DIFT is on
-    if( ctx->taint.is_enabled && !dift_is_enabled() ) {
-        dba_errno = DBA_TASKERR_DIFT_NOTREADY;
-        return -1;
-    }
-    
-    task_id = get_available_tid();
-    if( task_id == -1 ) {
-        dba_errno = DBA_TASKERR_NOTASKSLOT;
+    // check DIFT is on if taint option is enabled
+    if( dba_tasks[tid]->taint.is_enabled && !dift_is_enabled() ) {
+        dba_errno = DBA_ERR_DIFT_NOTREADY;
         return -1;
     }
     
     // spawn DBA analysis thread
-    if( pthread_create(&ctx->thread, NULL, dba_main_internal, ctx) != 0 ) {
+    if( pthread_create(&dba_tasks[tid]->thread, NULL, dba_main_internal, dba_tasks[tid]) != 0 ) {
         dba_errno = DBA_ERR_FAIL;
         return -1;
     }
  
-    ctx->task_id = task_id;
-    dba_tasks[task_id] = ctx;
-
-    return ctx->task_id;
+    return 0;
 }

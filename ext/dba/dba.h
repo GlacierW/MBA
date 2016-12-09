@@ -34,16 +34,19 @@
 #define DBA_JSON_KEY_TAINT   "TAINT"
 #define DBA_JSON_KEY_SYSCALL "SYSCALL"
 
+// DBA Task ID
+typedef intptr_t DBA_TID;
+
 enum DBA_ERRNO {
     DBA_ERR_FAIL,
-    DBA_ERR_TIMER,
-    DBA_ERR_SAMPLE,
-    DBA_ERR_TAINT_TAG,
-    DBA_ERR_EMPTY_ANALYSIS,
+    DBA_ERR_TASK_FULL,
+    DBA_ERR_INVALID_TID,
+    DBA_ERR_INVALID_TSTATE,
+    DBA_ERR_INVALID_SAMPLE,
 
-    DBA_TASKERR_NOTASKSLOT,
-    DBA_TASKERR_DIFT_NOTREADY,
-    DBA_TASKERR_AGENT_NOTREADY
+    DBA_ERR_DIFT_TAG,
+    DBA_ERR_DIFT_NOTREADY,
+    DBA_ERR_AGENT_NOTREADY
 };
 typedef enum DBA_ERRNO DBA_ERRNO;
 
@@ -79,21 +82,23 @@ struct dba_context {
 };
 typedef struct dba_context dba_context;
 
-extern dba_context* dba_tasks[DBA_MAX_TASKS];
+
 extern DBA_ERRNO    dba_errno;
 
-extern dba_context* dba_alloc_context( void );
-extern int          dba_free_context( dba_context* ctx );
+extern DBA_TID dba_new_task( void );
+extern int     dba_delete_task( DBA_TID tid );
 
-extern int dba_set_timer( dba_context* ctx, size_t seconds );
-extern int dba_set_sample( dba_context* ctx, const char* path );
+extern const dba_context* dba_get_task_context( DBA_TID tid );
 
-extern int dba_enable_syscall_trace( dba_context* ctx );
-extern int dba_disable_syscall_trace( dba_context* ctx );
+extern int dba_set_timer( DBA_TID tid, size_t seconds );
+extern int dba_set_sample( DBA_TID tid, const char* path );
 
-extern int dba_enable_taint_analysis( dba_context* ctx, CONTAMINATION_RECORD tag );
-extern int dba_disable_taint_analysis( dba_context* ctx );
+extern int dba_enable_syscall_trace( DBA_TID tid );
+extern int dba_disable_syscall_trace( DBA_TID tid );
 
-extern int dba_start_analysis( dba_context* ctx );
+extern int dba_enable_taint_analysis( DBA_TID tid, CONTAMINATION_RECORD tag );
+extern int dba_disable_taint_analysis( DBA_TID tid );
+
+extern int dba_start_analysis( DBA_TID tid );
 
 #endif
