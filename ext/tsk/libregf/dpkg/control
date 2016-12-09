@@ -1,0 +1,66 @@
+Source: libregf
+Section: libs
+Priority: extra
+Maintainer: Joachim Metz <joachim.metz@gmail.com>
+Build-Depends: debhelper (>= 7), autotools-dev, libfuse-dev, python-all-dev, python3-all-dev
+Standards-Version: 3.9.5
+Homepage: https://github.com/libyal/libregf/
+
+Package: libregf
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Suggests: libregf-dbg
+Description: Library to access the Windows NT Registry File (REGF) format
+ libregf is a library to access the Windows NT Registry File (REGF) format.
+
+Package: libregf-dbg
+Architecture: any
+Section: debug
+Depends: libregf (= ${binary:Version}), ${misc:Depends}
+Description: Debugging symbols for libregf
+ Debugging symbols for libregf.
+
+Package: libregf-dev
+Section: libdevel
+Architecture: any
+Depends: libregf (= ${binary:Version}), ${misc:Depends}
+Description: Header files and libraries for developing applications for libregf
+ Header files and libraries for developing applications for libregf.
+
+Package: libregf-tools
+Section: utils
+Architecture: any
+Depends: libregf (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Description: Several tools for reading Windows NT Registry Files (REGF)
+ Several tools for reading Windows NT Registry Files (REGF).
+
+Package: libregf-python
+Section: python
+Architecture: any
+Depends: libregf (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Suggests: libregf-python-dbg
+Description: Python 2 bindings for libregf
+ Python 2 bindings for libregf.
+
+Package: libregf-python-dbg
+Section: debug
+Architecture: any
+Depends: libregf-python (= ${binary:Version}), ${misc:Depends}
+Description: Debugging symbols for libregf-python
+ Debugging symbols for libregf-python.
+
+Package: libregf-python3
+Section: python
+Architecture: any
+Depends: libregf (= ${binary:Version}), ${shlibs:Depends}, ${misc:Depends}
+Suggests: libregf-python3-dbg
+Description: Python 3 bindings for libregf
+ Python 3 bindings for libregf.
+
+Package: libregf-python3-dbg
+Section: debug
+Architecture: any
+Depends: libregf-python3 (= ${binary:Version}), ${misc:Depends}
+Description: Debugging symbols for libregf-python3
+ Debugging symbols for libregf-python3.
+

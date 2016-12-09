@@ -1,0 +1,610 @@
+TODO
+* clean up
+  - move named key, value key etc into separate source files
+  - libregf_hive_bins_list_read_element_data remove the need for + 4096
+* dokan add classname and values support
+* libregf:
+  - add file type definitions
+  - add error tollerance for missing value key
+  - add value key flags definitions function (+/-)
+    check documentation for more values
+  - make signal abort part of IO handle
+* pyregf
+  - add multi string value support
+  - as string function: if not a string try to represent the data as a string?
+* profile large regf files
+* libregf_value_item_values_get_data
+  - improve data stream solution
+* libregf_value_get_value_binary_data
+  - optimize to read directly from block or stream
+* get value: add support for an empty string ("") to retrieve the default value
+* refactor libregf_value_item_values_read_element_data to hive bins list
+* merge functionality of evttools registry_file with regftools
+* security descriptor:
+  - add debug print (libfwnt)
+  - add libregf_key_get_security_descriptor_size() API function
+* code clean up
+  - libregf_value_item_values implement libfdata_reference
+
+Tools:
+* regfexport
+  - export keys, values and value data
+  - export specific paths
+  - create .reg similar output?
+* regfinfo
+  - add option to control print of entire hierarchy
+  - print file type
+  - print last part of filename stored in header?
+  - print key index
+  - size usage distribution
+* regfmount:
+  - fix list file of specific value success withouh (values)\
+  - detect key names with (classname), (values)
+  - detect value names with (default)
+  - detect duplicate key and value names
+  - fix regfmount_fuse_read need libregf_value_read_data_at_offset function ?
+  - expose security descriptor
+  - add mode to auto convert utf16 into utf8 ?
+  - check access to (default) still works
+  - deal with duplicate key/value names
+  - test cloning (fix out of file handles issue)
+* add manuals
+  - regfexport.1
+  - regfmount.1
+
+* is the hive bins list placed correctly in the IO handle ?
+  or should it be moved into file ? or other location ?
+* in get key by path functions
+  - handle root key name (ignore proto.hiv)
+* add binary data value seek and read function ?
+* replace libregf_hive_bin_get_cell_at_offset by get _data function
+
+Debug output
+* print file type description
+
+Performance
+* optimizing list of keys with a large amount of sub keys
+  - use hash table/map ? search tree based on hash ?
+* read the security key on demand ?
+
+Library
+* build registry key hierarchy
+  - validate parent key offset
+* string values
+  - how are they stored ?
+  - use codepage in string value conversions
+* file
+  - add get key by path function
+* data recovery
+
+Error tollerance:
+* deal with cyclic keys, add max depth or track key offsets
+
+Python bindings
+* add functionality
+
+Release:
+* check TODOs
+
+20140929
+* see `git log' for more recent change log
+* removed README.macosx
+* changes for project site move
+
+20141009
+* updated dependencies and corresponding changes
+
+20141004
+* update Python-bindings tests
+
+20140905
+* updated libfwsi version check
+
+20140831
+* bug fix in Python-bindings
+
+20140827
+* code clean
+
+20140803
+* worked on regfmount
+
+20140801
+* bug fix in Python-bindings
+* worked on regfmount
+  - moved values to sub directory to prevent value and key name clashes
+  - added class name support
+
+20140729
+* updated dependencies
+
+20140427
+* fix for dealing with size mismatch between value and block list size
+* improved string size corruption handling
+
+20140323
+* worked on Python bindings
+
+20140321
+* worked on Python bindings
+* worked on setup.py
+
+20140304
+* worked on Python bindings
+
+20140217
+* worked on Python bindings
+
+20140118
+* bug fix for call to libfdata_tree_node_set_sub_nodes_data_range
+
+20140112
+* 2014 update
+* updated dependencies
+
+20131230
+* worked on Python bindings
+
+20131229
+* updated dependencies
+* worked on Dokan support for regfmount
+
+20131013
+* improved pyregf as integer functions
+
+20131008
+* improved pyregf as integer functions
+
+20130929
+* worked on setup.py, largely for MSI builds
+
+20130922
+* removed hardcoded codepages from value functions
+* updated msvscpp files
+
+20130916
+* updated dependencies
+
+20130901
+* updated dependencies
+
+20130830
+* worked on automated tests
+
+20130829
+* fixed incorrect year in change log
+
+20130821
+* updated dependencies
+
+20130819
+* fix in pyregf value data as integer function for bounds check being too strict
+
+20130724
+* small changes
+
+20130723
+* worked on shell items support
+
+20130720
+* worked on shell items support
+
+20130718
+* updated dependencies
+* removed unnecessary restriction in library include headers
+* changes due to libfdata update
+
+20130717
+* worked on error tolerance
+* removed LIBREGF_ITEM_FLAGS definition
+
+20130716
+* updated dependencies
+* worked on tests
+* bug fix for large values
+
+20130609
+* updated dependencies
+
+20130608
+* added support for REG_LINK as a string
+
+20130604
+* fixed multiple open issues
+
+20130602
+* updated dependencies
+
+20130601
+* pyregf: fix for retrieving default value by name
+
+20130421
+* worked on tests
+
+20130420
+* bug fix in dependencies
+* changes for strings values with trailing data
+* worked on tests
+
+20130416
+* small update for 64-bit build
+
+20130414
+* Textual changes
+* updates in pyregf
+
+20130413
+* updated dependencies
+* worked on tests
+* fixed codepage 1255 restriction
+* updates and bug fixes in pyregf
+
+20130409
+* fixed codepage 949 and 950 restriction
+
+20130405
+* updated dependencies
+* changes for libfdata update
+
+20130402
+* updated dependencies
+* changes for libfdata update
+* removed item flags
+
+20130319
+* updated dependencies
+* changes for libfdata update
+
+20130307
+* worked on libfdata update
+* updated macosx files
+
+20130306
+* worked on libfdata update
+
+20130303
+* added macosx package files
+* changes for libfdata update
+
+20130113
+* updated msvscpp files
+
+20130110
+* worked on pyregf
+* API changes to no longer expose internal data pointers
+* worked on registry_file merge
+
+20130108
+* 2013 update
+* updated dependencies
+* worked on pyregf
+
+20121127
+* regfmount: worked on exposing class name
+
+20121121
+* pyregf: code clean up
+
+20121112
+* key and value changed get offset to return offset
+  relative from the start of the file
+
+20121107
+* changes for msvscpp 2010 build
+
+20121104
+* pyregf: fix for 32-bit build
+
+20121103
+* updated dependencies
+* bug fixes in pyregf
+* fixed spec file
+
+20120919
+* updated dependencies
+
+20120910
+* update msvscpp files
+* updated dependencies
+
+20120909
+* added support for value corruption scenario
+
+20120906
+* updated dependencies
+
+20120828
+* pyregf: added root_key attribute to file object
+* worked on security key support
+
+20120826
+* updated dependencies
+* worked on retrieving offset of keys and values
+* updated pyregf
+  - added key and value offset functions
+  - added written time as int function
+* worked on man pages
+* worked on security key support
+* changes in debug output
+
+20120821
+* class name functions now returs 0 if not available
+* dpkg files added simple detection of python version
+
+20120819
+* small changes
+* updated msvscpp files
+
+20120817
+* worked on python bindings
+
+20120814
+* updated dependencies
+
+20120719
+* updated dependencies
+
+20120507
+* changes to pyregf
+
+20120503
+* changes to pyregf
+
+20120501
+* updated dependencies
+* fixed several small issues
+* worked on default file issue in regfmount
+
+20120422
+* libfdatetime update
+* libfguid update
+
+20120416
+* added error tollerability
+* fixed memory leak in regfmount for passing info to fuse filler function
+* added destroy function to fix memory leak on termination
+
+20120410
+* updated dependencies
+
+20120409
+* worked on case insensitive key/value support
+* updated dependencies
+
+20120408
+* added parent key data and time values in regfmount
+* added optimized version of XOR32
+* worked on python bindings
+* updated msvscpp files
+* regftools: added support for ASCII codepage
+
+20120407
+* updated dependencies
+* regfmount: worked on optimizing large list of keys
+
+20120312
+* worked on optimizing list of keys with a large amount of sub keys
+
+20120306
+* small changes
+
+20120304
+* small changes
+
+20120301
+* worked on dealing with \ in key names
+
+20120226
+* fix for dealing with \ characters in regfmount paths
+
+20120225
+* fix for libfuse in spec file
+
+20120222
+* worked on report handle
+
+20120220
+* worked on report handle
+
+20120214
+* bug fix in libregf_value_get_value_32bit
+* worked on report handle
+
+20120213
+* 2012 update
+
+20111213
+* bug fix for data of small values
+
+20111203
+* updated msvscpp files
+* fixed missing librefg.rc
+
+20111124
+* added libfcache
+* updated libfdata
+
+20111120
+* code clean up
+* updated libfdata, libfdatetime, libfguid, libfwnt
+
+20111113
+* code clean up
+* updated array type
+* updated libcstring
+
+20111106
+* code clean up
+  - added undefined
+* updated libcstring, libsystem
+
+20111105
+* code clean up
+* regfmount: added support for default values
+
+20111103
+* added const to _by_x functions
+* added default item flags
+
+20111102
+* regfmount worked on default value support
+
+20111101
+* updated m4 files
+* updated libcstring, libsystem, libuna, libbfio, libfdata, libfdatetime
+* added windows codepage 932 and 936 support
+* regfmount fix for key and value names containing /
+  - switched usage of / and \
+
+20111023
+* fixes for make dist
+* refactored regfinfo to use info handle
+* added regfmount
+
+20111020
+* worked on pyregf
+
+20111018
+* worked on pyregf
+* added codepage support functions
+* code clean up
+
+20111014
+* changes for new versions of supportive code
+* regfreport and report handle code clean
+* code clean up
+
+20111013
+* updated configure.ac and m4 files
+* updated spec and pc file
+* updated include/error.h, include/types.h
+* updated array type
+* updated common, libcstring, liberror, libnotify, libsystem
+* updated libuna, libbfio, libfdata, libfdatetime, libfguid, libfwnt, libfwsi
+
+20110711
+* 2011 update
+* partial update of configure.ac
+
+20100915
+* worked on regfreport
+* fixed error in debug output
+* fixed cache out issue
+
+20100914
+* worked on regfreport
+
+20100913
+* updated libbfio, libfdata
+* worked on libfdata cache update support
+* fixed error in debug output
+
+20100825
+* code clean up
+* updated libfdata, libfdatetime
+* worked on libfdata cache update support
+
+20100823
+* worked on libfdata cache update support
+
+20100821
+* worked on libfdata cache update support
+
+20100817
+* updated configure.ac, common, libcstring, liberror, libsystem
+  libuna, libbfio, libfdata, libfdatetime, libfguid, libfwnt, libfwsi
+* worked on libfdata cache update support
+
+20100706
+* updated configure.ac, common, libsystem, libuna, libbfio, libfdata,
+  libfdatetime, libfwnt
+* updated array type 
+* removed list type
+
+20100628
+* updated common, libcstring, liberror, libnotify, libsystem
+* updated libuna, libbfio, libfdata, libfdatetime
+* updated array and list type
+* clean up
+* added libfguid
+* added libfwnt
+
+20100621
+* updated libfdata
+
+20100619
+* small fixes
+* moved ASCII codepage to IO handle
+* items no longer reference file but refence IO handle instead
+* implemented ASCII codepage in name functions
+* libfdata tree separated read of node data and sub nodes
+
+20100618
+* worked on large value support
+* updated libbfio
+* worked on libfdata buffer
+* worked on libfdata block
+* worked on delay of key and value name
+* worked on delay of key class name
+* worked on get key and value by name functions
+
+20100617
+* worked on value item
+* speed improvement in get at offset function for libfdata list element
+
+20100615
+* worked on libfdata list element
+* worked on value item
+
+20100614
+* worked on libfdata tree
+* worked on value item
+
+20100613
+* worked on libfdata tree
+
+20100612
+* worked on libfdata_list as replacement for hive bin list
+* removed key attach and detach functions
+
+20100611
+* added libcstring, libfdata
+* updated common, liberror, libnotify, libuna, libbfio, libfdatetime, libsystem
+
+20091229
+* updated configure, common, liberror, libnotify, libbfio, libsystem
+* updated code for new libnotify
+
+20091220
+* updated common, liberror, libnotify, libuna, libbfio, libsystem, libfdatetime
+* worked on codepage support
+* updated tree type
+* replaced endian by byte stream
+* removed list element from key
+
+20091019
+* worked on key (item) api
+
+20091017
+* removed All rights reserved, no added value
+* worked on key (item) api
+
+20091015
+* worked on key (item) api
+
+20091014
+* worked on key (item) api
+
+20091013
+* worked on key (item) api
+
+20091011
+* worked on libary
+
+20091010
+* worked on libary
+* added libfdatetime
+
+20091004
+* initial version
+
