@@ -28,8 +28,6 @@
 
 using namespace std;
 
-typedef void Monitor;
-
 extern "C" {
 #include "../agent.h"
 }
