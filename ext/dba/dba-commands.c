@@ -4,7 +4,7 @@
 #include "ext/dba/dba-commands.h"
 
 #define PROMPT_DBA_Q1 "DBA - Enable taint analysis? [Y/N]: "
-#define PROMPT_DBA_Q2 "DBA - Taint tag [0~127]: "
+#define PROMPT_DBA_Q2 "DBA - Taint tag [1~127]: "
 #define PROMPT_DBA_Q3 "DBA - Enable syscall tracer? [Y/N]: "
 #define PROMPT_DBA_Q4 "DBA - Start analysis? [Y/N]: "
 
@@ -18,13 +18,17 @@ static void show_dba_context_info( Monitor* mon, const dba_context* ctx ) {
     if( mon == NULL || ctx == NULL )
         return;
 
-    monitor_printf( mon, "\n" );
+    monitor_printf( mon, "Task ID:         %d\n", ctx->task_id );
     monitor_printf( mon, "Host sample:     %s\n", ctx->sample_hpath );
     monitor_printf( mon, "Guest sample:    %s\n", ctx->sample_gpath );
     monitor_printf( mon, "Taint analysis:  %s\n", (ctx->taint.is_enabled)? "Enabled" : "Disabled" );
     if( ctx->taint.is_enabled )
         monitor_printf( mon, "Taint tag:       %d\n", ctx->taint.tag );
     monitor_printf( mon, "Syscall tracer:  %s\n", (ctx->syscall.is_enabled)? "Enabled" : "Disabled" );
+}
+
+static inline void show_dba_report_title( Monitor* mon, const char* str ) {
+    monitor_printf( mon, "========== %s ==========\n", str );
 }
 
 // DBA - confirm ?
@@ -85,7 +89,7 @@ static void cb_dba_set_taint_tag( void* mon, const char* tag_str, void* opaque )
 
     // invalidate taint tag
     tmp = strtol( tag_str, &end, 10 );
-    if( *end != '\0' || tmp < 0 || tmp > 0x7f ) {
+    if( *end != '\0' || tmp < 0x1 || tmp > 0x7f ) {
         // stay taint tag
         mba_readline_start( (Monitor*)mon, PROMPT_DBA_Q2, 0, cb_dba_set_taint_tag, opaque );
         mba_readline_show_prompt( mon );
@@ -216,7 +220,7 @@ void do_list_dba_task( Monitor* mon, const QDict* qdict ) {
 
         monitor_printf( mon, "%8d%8s%7s(%3d)%12s%12zu\t%s -> %s\n",
                         tid,
-                        (ctx->state == DBA_TASK_BUSY)? "BUSY" : "DONE",
+                        (ctx->state == DBA_TASK_BUSY)? "BUSY" : (ctx->state == DBA_TASK_DONE)? "DONE" : "IDLE",
                         (ctx->taint.is_enabled)? "TRUE" : "FALSE",
                         (ctx->taint.is_enabled)? ctx->taint.tag : 0 ,
                         (ctx->syscall.is_enabled)? "TRUE" : "FALSE",
@@ -235,7 +239,7 @@ void do_list_dba_task( Monitor* mon, const QDict* qdict ) {
 
         monitor_printf( mon, "%8d%8s%7s(%3d)%12s%12zu\t%s -> %s\n",
                         i,
-                        (ctx->state == DBA_TASK_BUSY)? "BUSY" : "DONE",
+                        (ctx->state == DBA_TASK_BUSY)? "BUSY" : (ctx->state == DBA_TASK_DONE)? "DONE" : "IDLE",
                         (ctx->taint.is_enabled)? "TRUE" : "FALSE",
                         (ctx->taint.is_enabled)? ctx->taint.tag : 0 ,
                         (ctx->syscall.is_enabled)? "TRUE" : "FALSE",
@@ -263,5 +267,44 @@ void do_delete_dba_task( Monitor* mon, const QDict* qdict ) {
         default:
             monitor_printf( mon, "General failure\n" );
             break;
+    }
+}
+
+void do_show_dba_result( Monitor* mon, const QDict* qdict ) {
+
+    const dba_context* ctx;
+
+    json_object* taint_report;
+
+    int i,
+        tid = qdict_get_int( qdict, "tid" );
+
+    ctx = dba_get_task_context( tid );
+    if( ctx == NULL ) {
+        monitor_printf( mon, "No corresponding DBA context\n" );
+        return;
+    }
+
+    if( ctx->state != DBA_TASK_DONE ) {
+        monitor_printf( mon, "DBA task not done\n" );
+        return;
+    }
+
+    // show summary
+    show_dba_report_title( mon, "SUMMARY" );
+    show_dba_context_info( mon, ctx );
+
+    // show taint result if enabled
+    if( ctx->taint.is_enabled ) {
+        json_object_object_get_ex( ctx->result, DBA_JSON_KEY_TAINT, &taint_report );
+        show_dba_report_title( mon, DBA_JSON_KEY_TAINT );
+        json_object_object_foreach( taint_report, taint_field, taint_records  ) {
+            monitor_printf( mon, "%s:\n", taint_field );
+
+            for( i = 0; i < json_object_array_length(taint_records); ++i ) {
+                monitor_printf( mon, "    %s\n",
+                        json_object_get_string(json_object_array_get_idx(taint_records, i)) );
+            }
+        }
     }
 }

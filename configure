@@ -1161,7 +1161,9 @@ for opt do
   ;;
   --enable-obhook) obhook="yes"
   ;;
-  --enable-dba) dba="yes"
+  --enable-dba) 
+    echo "NOTE: DBA relies on almost every MBA extension!!"
+    dba="yes"
   ;;
   --enable-mba-all)
     dift="yes"

@@ -26,4 +26,5 @@ struct QDict;
 void do_start_dba_task( Monitor* mon, const QDict* qdict );
 void do_list_dba_task( Monitor* mon, const QDict* qdict );
 void do_delete_dba_task( Monitor* mon, const QDict* qdict );
+void do_show_dba_result( Monitor* mon, const QDict* qdict );
 #endif

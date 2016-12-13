@@ -37,3 +37,10 @@
         .help         = "Delete a DBA task by ID",
         .mhandler.cmd = do_delete_dba_task,
 },
+{
+        .name         = "show_dba_result",
+        .args_type    = "tid:i",
+        .params       = "task_id",
+        .help         = "Show the analysis result of the DBA task specified by ID",
+        .mhandler.cmd = do_show_dba_result,
+},

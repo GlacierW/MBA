@@ -79,7 +79,7 @@ static int toggle_taint_analysis( DBA_TID tid, CONTAMINATION_RECORD tag, bool is
     if( !is_task_configurable(tid) )
         return -1;
 
-    if( tag == 0 ) {
+    if( is_enable && tag == 0 ) {
         dba_errno = DBA_ERR_DIFT_TAG;
         return -1;
     }
@@ -196,8 +196,9 @@ DBA_TID dba_new_task( void ) {
         return -1;
     }
 
-    ctx->result = json_object_new_object();
-    ctx->state  = DBA_TASK_IDLE;
+    ctx->task_id = new_tid;
+    ctx->result  = json_object_new_object();
+    ctx->state   = DBA_TASK_IDLE;
 
     dba_tasks[new_tid] = ctx;
 
