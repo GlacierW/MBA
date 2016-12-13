@@ -34,7 +34,8 @@
 #define MSG_REC_SUCCESS "SUCCESS"
 #define MSG_REC_FAIL    "CMDFAIL"
 
-#include "qemu-common.h"
+struct Monitor;
+typedef struct Monitor Monitor;
 // performing agent action
 enum MBA_AGENT_ACTION {
     AGENT_ACT_IDLE,

@@ -1,5 +1,6 @@
 #include "dba_taint.h"
 
+#include "qemu/thread.h"
 #include "qmp-commands.h"
 #include "include/utarray.h"
 
