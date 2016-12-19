@@ -100,4 +100,11 @@
         .help       = "get the symbolname at specific virtual memory address",
         .mhandler.cmd = do_gvar_lookup,
 },
+{
+        .name = "handles",
+        .args_type  = "target_cr3:l?",
+        .params     = "[target_cr3]",
+        .help       = "listing process running handles",
+        .mhandler.cmd = do_process_handles_list,
+},
 

@@ -256,3 +256,31 @@ void do_gvar_lookup(Monitor *mon, const QDict *qdict)
     printf("%s\n", name);
     memfrs_free_reverse_lookup_map(sym_rev_hash);
 }
+
+/******************************************************************
+* PURPOSE : Get the process handles
+******************************************************************/
+void do_process_handles_list(Monitor *mon, const QDict *qdict)
+{
+
+    CPUState *cpu, *thiscpu=NULL;    
+    json_object *handles;
+    handles = json_object_new_object();
+
+    uint64_t target_cr3	= 0x0;
+
+    if(qdict_haskey(qdict, "target_cr3"))
+        target_cr3 = qdict_get_int(qdict, "target_cr3");
+
+    // Find the first CPU
+    CPU_FOREACH(cpu)
+    {
+        monitor_printf(mon, "%p\n", cpu);
+        thiscpu = cpu;
+        break;
+    }
+
+    memfrs_enum_proc_handles( target_cr3, g_kpcr_ptr, thiscpu, handles );
+
+   // printf("\n\n%s\n\n", json_object_to_json_string(handles));
+}
