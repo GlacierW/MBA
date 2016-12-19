@@ -96,7 +96,7 @@ extern int memfrs_display_type(CPUState *cpu, uint64_t addr, const char* struct_
 /// \param cpu              the running cpu
 /// \param cr3              cr3 register of target virtual memory space
 /// \param buffer           output buffer
-/// \param len              length of centent to read
+/// \param len              length of content to read
 /// \param struct_addr      the virtual address of the target structure
 /// \param struct_type_name the type name of the target structure
 /// \param depth            the field access chain depth
@@ -112,6 +112,7 @@ extern int memfrs_get_virmem_struct_content(
         const char *struct_type_name,
         int         depth,
         ...);
+extern int memfrs_get_nested_field_offset(int *out, const char *struct_type_name, int depth, ...);
 /*
 extern void parse_unicode_strptr(uint64_t ustr_ptr, CPUState *cpu);
 extern void parse_unicode_str(uint8_t* ustr, CPUState *cpu);

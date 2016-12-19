@@ -101,7 +101,7 @@ int main(int argc, char **argv)
         eprocess = json_object_new_object();
         addFieldToStruct(eprocess, "Pcb", "_KPROCESS", 0x00, 0x2d8,  false);
         addFieldToStruct(eprocess, "ActiveProcessLinks", "_LIST_ENTRY", 0x2f0, 0x10,  false);
-        addFieldToStruct(eprocess, "Peb", "_PEB", 0x3f8, 0x8,  false);
+        addFieldToStruct(eprocess, "Peb", "_PEB", 0x3f8, 0x8,  true);
         addFieldToStruct(eprocess, "ImageFileName", "UChar[15]", 0x448, 0xf,  false);
         addFieldToStruct(eprocess, "VadRoot", "_RTL_AVL_TREE", 0x608, 0x8,  true);
         json_object_object_add(tyde_definition, "_EPROCESS", eprocess);
