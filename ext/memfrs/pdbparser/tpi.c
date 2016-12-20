@@ -1628,7 +1628,7 @@ void init_stype_info(STypeInfo *type_info)
 		break;
         
 	default:
-		printf("init_stype_info(): unknown type for init\n");
+		//printf("init_stype_info(): unknown type for init\n");
 		type_info->get_name = 0;
 		type_info->get_val = 0;
 		type_info->get_name_len = 0;

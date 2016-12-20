@@ -81,21 +81,22 @@ UT_array*  memfrs_scan_module(CPUState *cpu)
         if(memcmp( module_tag, POOL_TAG_MODULE, strlen(POOL_TAG_MODULE))==0)
         {
             printf( "pattern found %lx\n", i);
-            //TODO: Use ds query api instead
-            kernel_module* kmod = (kernel_module*)malloc(sizeof(kernel_module));
-
             // Retrieve whole path
             cpu_physical_memory_read(i- offset_tag+ SIZE_OF_POOL_HEADER+ offset_fullname, buf, SIZEOFUNICODESTRING);
-            
             char* fullname = parse_unicode_str(buf, cpu);
-            strcpy(kmod->fullname, fullname);
-            // Retrieve base name of kernel module
+
             cpu_physical_memory_read(i- offset_tag+ SIZE_OF_POOL_HEADER+ offset_basename, buf, SIZEOFUNICODESTRING);
             char* basename = parse_unicode_str(buf, cpu);
+
+            if(basename == NULL || fullname == NULL)
+                continue;           
+ 
+            kernel_module* kmod = (kernel_module*)malloc(sizeof(kernel_module));
+
+            strcpy(kmod->fullname, fullname);
             strcpy(kmod->basename, basename);
             
             kmod->base = i;
-            printf("\n");
             utarray_push_back(module_list, kmod);
         }
     }

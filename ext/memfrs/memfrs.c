@@ -371,6 +371,7 @@ int memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
     int offset_blink_to_eprocess = 0;
     int offset_entry_list_to_eprocess = 0;
     int offset_process_name_to_eprocess = 0;
+    int count = 0;
     field_info* f_info, *f_info2 = NULL;
 
     //Check if the data structure information is loaded
@@ -459,7 +460,10 @@ int memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
         cpu_memory_rw_debug( cpu, eprocess_ptr + offset_blink_to_eprocess, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), 0 );
         // Substract entry_list offset to find base address of eprocess
         eprocess_ptr -= offset_entry_list_to_eprocess;
-
+       
+        count++;
+        if(count > 1000)
+            break;
     } while( eprocess_ptr != eprocess_ptr_init );
 
     return 0;
@@ -689,3 +693,43 @@ int memfrs_free_reverse_lookup_map(reverse_symbol* rsym_tab)
     }
     return 0;
 }
+
+int memfrs_display_type(CPUState *cpu, uint64_t addr, const char* struct_name)
+{
+    printf("%s\n", struct_name);
+    json_object* jobj = memfrs_q_struct(struct_name);    
+    uint8_t buf[0x30];
+    char type_info[64];
+    if(jobj==NULL)
+        return -1;
+    json_object_object_foreach(jobj, key, val){
+        //printf("%s: %s\n", key, json_object_to_json_string(val));
+        if( strcmp(key, "[structure_size]")==0)
+            continue;
+        json_object* type = json_object_array_get_idx(val, 0);
+        int offset = json_object_get_int(json_object_array_get_idx(val, 1));
+        int size = json_object_get_int(json_object_array_get_idx(val, 2));
+  
+        strncpy(type_info, key, 63);
+        strncat(type_info, "(", 63);
+        strncat(type_info, json_object_get_string(type), 63);
+        strncat(type_info, ")", 63);
+
+        printf("%-30s@%lx:\t", type_info, addr+offset);
+        int i;
+        if(size > 0x10)
+        {
+            printf("...\n");
+            continue;
+        }
+        cpu_memory_rw_debug( cpu, addr+offset , buf, 0x30, 0 );
+        for(i=0 ; i< size; i++)
+        {
+            printf("%02x ", buf[i]);
+        }
+        
+        printf("\n");
+    }
+    return 0;
+}
+

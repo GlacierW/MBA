@@ -256,3 +256,40 @@ void do_gvar_lookup(Monitor *mon, const QDict *qdict)
     printf("%s\n", name);
     memfrs_free_reverse_lookup_map(sym_rev_hash);
 }
+
+void do_gen_pdb_profiles(Monitor *mon, const QDict *qdict)
+{
+    CPUState *thiscpu=NULL;
+    //const char* pdb = qdict_get_str(qdict, "pdb_path");
+    const char* profile_dir = qdict_get_str(qdict, "profiles_dir");
+    //void* module_struct = NULL;
+    uint64_t base = 0;
+  
+    //Check kernel info
+    if(memfrs_get_nt_kernel_base() == 0)
+    {
+        monitor_printf(mon, "No kernel information available, scan the kernel first...\n");
+      
+    }
+    thiscpu = ENV_GET_CPU((CPUArchState*)mba_mon_get_cpu());
+
+    base = memfrs_find_nt_kernel_base(thiscpu);
+    if(base != 0)
+        monitor_printf(mon, "Kernel found %"PRIx64"\n", base);
+    else
+        monitor_printf(mon, "Kernel not found\n");
+    //module_struct = memfrs_get_kernel_info();
+    memfrs_gen_pdb_profiles(profile_dir);
+    
+
+}
+
+void do_display_type(Monitor *mon, const QDict *qdict)
+{
+    const char* struct_name = qdict_get_str(qdict, "struct");
+    uint64_t addr = qdict_get_int(qdict, "addr");
+    CPUState *thiscpu=NULL;
+
+    thiscpu = ENV_GET_CPU((CPUArchState*)mba_mon_get_cpu());
+    memfrs_display_type(thiscpu, addr, struct_name);
+}
