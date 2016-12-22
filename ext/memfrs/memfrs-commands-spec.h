@@ -101,10 +101,22 @@
         .mhandler.cmd = do_gvar_lookup,
 },
 {
-        .name = "handles",
-        .args_type  = "target_cr3:l?",
-        .params     = "[target_cr3]",
-        .help       = "listing process running handles",
+        .name = "list_handles",
+        .args_type  = "target_type:s?,target:s?",
+        .params     = "[-c cr3 | -e eprocess | -t handles_type]",
+        .help       = "listing process running handles.\n"
+                       "-c cr3 : parse handles of process by process' cr3\n"
+                       "-e eprocess : parse handles of process by process' eprocess\n"
+                       "-p pid : parse handles of process by process' pid\n"
+                       "-t handles_type : parse only handles of handles_type"
+                       "-f full_detail : parse only exactly match full_detail with handles' detail\n"
+                       "-d detail : parse section matched detail with handles' detail",
         .mhandler.cmd = do_process_handles_list,
 },
-
+{
+        .name = "list_handles_types",
+        .args_type  = "",
+        .params     = "",
+        .help       = "listing all types of handles",
+        .mhandler.cmd = do_handles_types_list,
+},
