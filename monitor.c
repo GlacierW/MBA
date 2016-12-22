@@ -102,6 +102,10 @@
 #include "ext/obhook/obhook-commands.h"
 #endif
 
+#if defined(CONFIG_NETTRAMON)
+#include "ext/nettramon/nettramon-commands.h"
+#endif
+
 #if defined(CONFIG_DBA)
 #include "ext/dba/dba-commands.h"
 #endif
@@ -2988,6 +2992,10 @@ static mon_cmd_t mon_cmds[] = {
 
 #if defined(CONFIG_OBHOOK)
 #include "ext/obhook/obhook-commands-spec.h"
+#endif
+
+#if defined(CONFIG_NETTRAMON)
+#include "ext/nettramon/nettramon-commands-spec.h"
 #endif
 
 #if defined(CONFIG_DBA)

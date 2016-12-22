@@ -207,6 +207,12 @@ all-obj-y += ../ext/obhook/obhook.o
 all-obj-y += ../ext/obhook/obhook-commands.o
 endif
 
+ifdef CONFIG_NETTRAMON
+all-obj-y += ../ext/nettramon/nettramon.o
+all-obj-y += ../ext/nettramon/nettramon-commands.o
+../ext/nettramon/nettramon.o-cflags := -I$(SRC_PATH)/ext/nettramon/libpcap 
+endif
+
 ifdef CONFIG_DBA
 all-obj-y += ../ext/dba/dba.o
 all-obj-y += ../ext/dba/dba_taint.o

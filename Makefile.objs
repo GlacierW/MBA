@@ -129,3 +129,7 @@ endif
 ifdef CONFIG_MEMFRS
 common-obj-y += json-c/.libs/libjson-c.a
 endif
+
+ifdef CONFIG_NETTRAMON
+common-obj-y += ext/nettramon/libpcap/libpcap.a
+endif
