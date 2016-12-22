@@ -35,4 +35,4 @@
  * Prototypes for USB-related functions
  */
 int usb_findalldevs(pcap_if_t **alldevsp, char *err_str);
-pcap_t *usb_create(const char *device, char *ebuf, int *is_ours);
+pcap_t * pcap_usb_create(const char *device, char *ebuf, int *is_ours);

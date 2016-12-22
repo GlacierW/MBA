@@ -210,7 +210,7 @@ endif
 ifdef CONFIG_NETTRAMON
 all-obj-y += ../ext/nettramon/nettramon.o
 all-obj-y += ../ext/nettramon/nettramon-commands.o
-../ext/nettramon/nettramon.o-cflags := -I$(SRC_PATH)/ext/nettramon/libpcap 
+../ext/nettramon/nettramon.o-cflags := -I$(SRC_PATH)/ext/nettramon/libpcap
 endif
 
 ifdef CONFIG_DBA

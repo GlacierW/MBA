@@ -318,7 +318,7 @@ static struct capture_source_type {
 	{ bt_monitor_findalldevs, bt_monitor_create },
 #endif
 #ifdef PCAP_SUPPORT_USB
-	{ usb_findalldevs, usb_create },
+	{ usb_findalldevs, pcap_usb_create },
 #endif
 #ifdef PCAP_SUPPORT_NETFILTER
 	{ netfilter_findalldevs, netfilter_create },

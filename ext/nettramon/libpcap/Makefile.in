@@ -38,6 +38,7 @@ mandir = @mandir@
 srcdir = @srcdir@
 VPATH = @srcdir@
 
+
 #
 # You shouldn't need to edit anything below.
 #
@@ -72,13 +73,6 @@ RANLIB = @RANLIB@
 LEX = @LEX@
 YACC = @YACC@
 
-# Explicitly define compilation rule since SunOS 4's make doesn't like gcc.
-# Also, gcc does not remove the .o before forking 'as', which can be a
-# problem if you don't own the file but can write to the directory.
-.c.o:
-	@rm -f $@
-	$(CC) $(FULL_CFLAGS) -c $(srcdir)/$*.c
-
 PSRC =	pcap-@V_PCAP@.c @USB_SRC@ @BT_SRC@ @BT_MONITOR_SRC@ @NETFILTER_SRC@ @DBUS_SRC@
 FSRC =  @V_FINDALLDEVS@
 SSRC =  @SSRC@
@@ -93,7 +87,7 @@ SRC =	$(PSRC) $(FSRC) $(CSRC) $(SSRC) $(GENSRC)
 # We would like to say "OBJ = $(SRC:.c=.o)" but Ultrix's make cannot
 # hack the extra indirection
 OBJ = $(SRC:.c=.o)
-#OBJ =	$(PSRC:.c=.o) $(FSRC:.c=.o) $(CSRC:.c=.o) $(SSRC:.c=.o) $(GENSRC:.c=.o) $(LIBOBJS)
+
 PUBHDR = \
 	pcap.h \
 	pcap-bpf.h \
@@ -361,9 +355,6 @@ EXTRA_DIST = \
 
 all: libpcap.a shared pcap-config
 
-#$(OBJ):$(SRC)
-#	$(CC) $(FULL_CFLAGS) -c $<
-
 libpcap.a: $(OBJ)
 	@rm -f $@
 	$(AR) rc $@ $(OBJ) $(ADDLARCHIVEOBJS)
@@ -447,7 +438,6 @@ libpcap.shareda: $(OBJ)
 #
 libpcap.none:
 
-
 scanner.c: $(srcdir)/scanner.l
 	$(LEX) -P pcap_ --header-file=scanner.h --nounput -o scanner.c $<
 scanner.h: scanner.c
@@ -505,6 +495,10 @@ bpf_filter.c: $(srcdir)/bpf/net/bpf_filter.c
 
 bpf_filter.o: bpf_filter.c
 	$(CC) $(FULL_CFLAGS) -c bpf_filter.c
+
+%.o: %.c
+	$(CC) $(FULL_CFLAGS) -c $<
+
 
 #
 # Generate the pcap-config script.

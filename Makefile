@@ -264,10 +264,10 @@ endif
 ifdef  CONFIG_NETTRAMON
 ext/nettramon/libpcap/libpcap.a:
 	cd ext/nettramon/libpcap &&\
-    ./configure &&\
-    make V=1
+	./configure &&\
+	$(MAKE) 
 ext/nettramon/nettramon.o: ext/nettramon/libpcap/libpcap.a
-ext/nettramon/nettramon.o-cflags := I'ext/nettramon/libpcap/'
+ext/nettramon/nettramon.o-cflags = -I'$(SRC_PATH)/ext/nettramon/libpcap'
 endif
 ######################################################################
 

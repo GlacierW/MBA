@@ -334,7 +334,7 @@ probe_devices(int bus)
 #endif /* HAVE_LINUX_USBDEVICE_FS_H */
 
 pcap_t *
-usb_create(const char *device, char *ebuf, int *is_ours)
+pcap_usb_create(const char *device, char *ebuf, int *is_ours)
 {
 	const char *cp;
 	char *cpend;
