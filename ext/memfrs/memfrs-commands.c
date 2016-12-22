@@ -29,6 +29,7 @@
 #include "ext/memfrs/kernel.h"
 #include "ext/memfrs/vad.h"
 #include "ext/memfrs/kmod.h"
+#include "ext/memfrs/handles.h"
 
 #include "qmp-commands.h"
 
@@ -48,6 +49,8 @@ void do_load_structures(Monitor *mon, const QDict *qdict)
 void do_process_list(Monitor *mon, const QDict *qdict)
 {
     CPUState *cpu, *thiscpu=NULL;    
+    UT_array *proc_list;
+    process_list_st *print_proc_list;
 
     // Find the first CPU
     CPU_FOREACH(cpu)
@@ -57,7 +60,16 @@ void do_process_list(Monitor *mon, const QDict *qdict)
         break;
     }
 
-    memfrs_enum_proc_list(g_kpcr_ptr, thiscpu);
+    proc_list = memfrs_enum_proc_list(g_kpcr_ptr, thiscpu);
+
+    if( proc_list != NULL ){
+        print_proc_list = NULL;
+        monitor_printf(mon, "Eprocess              CR3                 PID   Full Process Path / [Process Name]\n");
+        monitor_printf(mon, "--------------------- ------------------- ----- ----------------------------------\n");
+        while( (print_proc_list=(process_list_st*)utarray_next(proc_list,print_proc_list)) ){
+            printf( "0x%-20lx%-20lx%-5"PRId64" %s\n", print_proc_list->eprocess, print_proc_list->CR3, print_proc_list->pid, print_proc_list->full_file_path);
+        }
+    }
 }
 
 void do_scan_kernel(Monitor *mon, const QDict *qdict)
@@ -293,19 +305,23 @@ void do_display_type(Monitor *mon, const QDict *qdict)
     thiscpu = ENV_GET_CPU((CPUArchState*)mba_mon_get_cpu());
     memfrs_display_type(thiscpu, addr, struct_name);
 /******************************************************************
-* PURPOSE : Get the process handles
+* PURPOSE : Show the process handles
 ******************************************************************/
 void do_process_handles_list(Monitor *mon, const QDict *qdict)
 {
+    CPUState *cpu, *thiscpu=NULL;
+    UT_array *handles;
+    handles_st *print_handles;
+    handles_node_st *print_handles_node;
+    uint64_t handles_cr3 = 0x0;
 
-    CPUState *cpu, *thiscpu=NULL;    
-    json_object *handles;
-    handles = json_object_new_object();
+    const char *target_type = NULL,
+          *target = NULL;
 
-    uint64_t target_cr3	= 0x0;
-
-    if(qdict_haskey(qdict, "target_cr3"))
-        target_cr3 = qdict_get_int(qdict, "target_cr3");
+    if( qdict_haskey(qdict, "target_type") )
+        target_type = qdict_get_str(qdict, "target_type");
+    if( qdict_haskey(qdict, "target") )
+        target = qdict_get_str(qdict, "target");
 
     // Find the first CPU
     CPU_FOREACH(cpu)
@@ -315,7 +331,88 @@ void do_process_handles_list(Monitor *mon, const QDict *qdict)
         break;
     }
 
-    memfrs_enum_proc_handles( target_cr3, g_kpcr_ptr, thiscpu, handles );
 
-   // printf("\n\n%s\n\n", json_object_to_json_string(handles));
+    // Choose parsing type
+    if( (qdict_haskey(qdict, "target_type")^qdict_haskey(qdict, "target")) == 1 ){
+        monitor_printf(mon, "Wrong format\n");
+        return;
+    }
+    else if(target_type == NULL && target ==NULL)
+        handles = memfrs_enum_proc_handles( PARSING_HANDLE_TYPE_ALL, 0, g_kpcr_ptr, thiscpu );
+    else{
+        if( strcmp(target_type, "-c")==0 || strcmp(target_type, "-C")==0 )
+            handles = memfrs_enum_proc_handles( PARSING_HANDLE_TYPE_CR3, (uint64_t)strtoull(target, NULL, 16), g_kpcr_ptr, thiscpu );
+        else if( strcmp(target_type, "-e")==0 || strcmp(target_type, "-E")==0 )
+            handles = memfrs_enum_proc_handles( PARSING_HANDLE_TYPE_EPROCESS, (uint64_t)strtoull(target, NULL, 16), g_kpcr_ptr, thiscpu );
+        else if( strcmp(target_type, "-p")==0 || strcmp(target_type, "-P")==0 )
+            handles = memfrs_enum_proc_handles( PARSING_HANDLE_TYPE_PID, (uint64_t)strtoull(target, NULL, 10), g_kpcr_ptr, thiscpu );
+        else if( strcmp(target_type, "-t")==0 || strcmp(target_type, "-T")==0 )
+            handles = memfrs_enum_proc_handles_detail( PARSING_HANDLE_TYPE_TYPE, target, g_kpcr_ptr, thiscpu );
+        else if( strcmp(target_type, "-f")==0 || strcmp(target_type, "-F")==0 )
+            handles = memfrs_enum_proc_handles_detail( PARSING_HANDLE_TYPE_FULL_DETAIL, target, g_kpcr_ptr, thiscpu );
+        else if( strcmp(target_type, "-d")==0 || strcmp(target_type, "-D")==0 )
+            handles = memfrs_enum_proc_handles_detail( PARSING_HANDLE_TYPE_DETAIL, target, g_kpcr_ptr, thiscpu );
+        else{
+            monitor_printf(mon, "Wrong format\n");
+            return;
+        }
+    }
+
+
+    if( handles != NULL ){
+        print_handles = NULL;
+        while( (print_handles=(handles_st*)utarray_next(handles,print_handles)) ){
+            if( handles_cr3 == 0x0 || print_handles->CR3 != handles_cr3){
+                handles_cr3 = print_handles->CR3;
+                monitor_printf(mon, "\nCR3 : %"PRIx64"\tERPOCESS: 0x%"PRIx64 "\tPID: %"PRId64 "\tImage name: %s\n", 
+                                    print_handles->CR3, print_handles->eprocess, print_handles->pid, print_handles->imagename);
+                monitor_printf(mon, "Handle entry address  Index   Granted access Type                      Detail\n");
+                monitor_printf(mon, "-------------------- -------- -------------- ------------------------- ----------\n");
+            }
+            print_handles_node = NULL;
+            while( (print_handles_node=(handles_node_st*)utarray_next(print_handles->handles_node, print_handles_node)) ){
+                monitor_printf(mon, "0x%-18"PRIx64 " 0x%-6"PRIx16 " 0x%-12"PRIx64 " %-25s %s\n",
+                        print_handles_node->handle_table_entry_address, 
+                        print_handles_node->handle_table_entry_index, 
+                        print_handles_node->grantedaccess, 
+                        print_handles_node->type,
+                        print_handles_node->detail);
+            }
+        }
+        utarray_free(handles);
+    }
+
+}
+
+/******************************************************************
+* PURPOSE : listing all types of handles
+******************************************************************/
+void do_handles_types_list(Monitor *mon, const QDict *qdict)
+{
+    CPUState *cpu, *thiscpu=NULL;
+    UT_array *handles_types;
+    char **print_handles_types;
+
+    // Find the first CPU
+    CPU_FOREACH(cpu)
+    {
+        monitor_printf(mon, "%p\n", cpu);
+        thiscpu = cpu;
+        break;
+    }
+
+    handles_types = memfrs_enum_handles_types( g_kpcr_ptr, thiscpu );
+
+    if( handles_types !=NULL ){
+
+        monitor_printf(mon, " Handles Types \n");
+        monitor_printf(mon, "---------------\n");
+
+        print_handles_types = NULL;
+        while ( (print_handles_types=(char**)utarray_next(handles_types,print_handles_types))) {
+            if(*print_handles_types!=NULL)
+                printf("%s\n", *print_handles_types);
+        }
+        utarray_free(handles_types); 
+    }
 }

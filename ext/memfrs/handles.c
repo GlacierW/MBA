@@ -31,6 +31,8 @@
 #include "memfrs-priv.h"
 #include<stdlib.h>
 
+#include "handles.h"
+
 #define _OBJECT_HEADER_CREATOR_INFO 0x20
 #define _OBJECT_HEADER_NAME_INFO 0x20
 #define _OBJECT_HEADER_HANDLE_INFO 0x10
@@ -44,11 +46,11 @@ static int g_body_to_object_header;
 
 
 /*******************************************************************
-static void add_handle_field_to_struct(json_object *parent_obj, int entry_index, uint64_t handle_table_entry_ptr, uint64_t grantedaccess, char* true_type, char* detail)
+static void add_handle_field_to_struct(UT_array *handle_node, int entry_index, uint64_t handle_table_entry_ptr, uint64_t grantedaccess, char* true_type, char* detail)
 
-add a handle entry data in json structure process
+add a handle entry data in UT_array structure process
 
-INPUT:     json_object *parent_obj,             target json object
+INPUT:     UT_array *handle_node                target handles_node structure
            int entry_index,                     entry table index
            uint64_t handle_table_entry_ptr,     address of handle table entey 
            uint64_t grantedaccess,              granted access
@@ -56,35 +58,26 @@ INPUT:     json_object *parent_obj,             target json object
            char* detail                         details of handles table entry
 OUTPUT:    void
 *******************************************************************/
-static void add_handle_field_to_struct(json_object *parent_obj, int entry_index, uint64_t handle_table_entry_ptr, uint64_t grantedaccess, char* true_type, char* detail)
+static void add_handle_field_to_struct(UT_array *handle_node, int entry_index, uint64_t handle_table_entry_ptr, uint64_t grantedaccess, char* true_type, char* detail)
 {
-    json_object *field_info;
-    field_info = json_object_new_array();
-    char str_handle_table_entry[19]={0};
-    char str_grantedaccess[19]={0};
-    char str_entry_index[8] = {0};
-
-    // handle_table_entry_ptr
-    sprintf(str_handle_table_entry, "0x%"PRIx64, handle_table_entry_ptr);
-    json_object_array_add(field_info, json_object_new_string(str_handle_table_entry));
-
-    // grantedaccess
-    sprintf(str_grantedaccess, "0x%"PRIx64, grantedaccess);
-    json_object_array_add(field_info, json_object_new_string(str_grantedaccess));
-
-    // true_typr
-    json_object_array_add(field_info, json_object_new_string(true_type));
-
-    // detail 
-    if(detail)
-        json_object_array_add(field_info, json_object_new_string(detail));
-    else
-        json_object_array_add(field_info, json_object_new_string(""));
+    handles_node_st handle_node_data;
 
     // entry_index
-    sprintf(str_entry_index, "0x%"PRIx32, entry_index);
-    json_object_object_add(parent_obj, str_entry_index, field_info);
+    handle_node_data.handle_table_entry_index = entry_index;
 
+    // handle_table_entry_ptr
+    handle_node_data.handle_table_entry_address = handle_table_entry_ptr;
+
+    // grantedaccess
+    handle_node_data.grantedaccess = grantedaccess;
+
+    // true_typr
+    handle_node_data.type = true_type;
+
+    // detail 
+    handle_node_data.detail = detail ? detail : calloc(1, sizeof(char));
+
+    utarray_push_back(handle_node, &handle_node_data);
 }
 
 
@@ -101,36 +94,31 @@ OUTPUT:    char*                     return the ascii string
 static char* parse_unicode_str_ptr(uint64_t ustr_ptr, CPUState *cpu)
 {
     int i;
-    int offset;
-    json_object* ustr = NULL;
-    field_info* f_info = NULL;
-    uint16_t length, max_length;
     uint64_t buf_ptr;
+    uint16_t length, max_length;
     uint8_t *buf;
     char* str;
 
-    ustr = memfrs_q_struct("_UNICODE_STRING");
+    int offset_maxlength_to_unicode,
+        offset_length_to_unicode,
+        offset_buffer_to_unicode;
+
 
     // Get maximum length
-    f_info = memfrs_q_field(ustr, "MaximumLength");
-    offset = f_info->offset;
-    cpu_memory_rw_debug( cpu, ustr_ptr+offset, (uint8_t*)&max_length, sizeof(max_length), 0 );
-    memfrs_close_field(f_info);
+    memfrs_get_nested_field_offset(&offset_maxlength_to_unicode, "_UNICODE_STRING", 1, "MaximumLength");
+    cpu_memory_rw_debug( cpu, ustr_ptr+offset_maxlength_to_unicode, (uint8_t*)&max_length, sizeof(max_length), 0 );
 
     // Get length
-    f_info = memfrs_q_field(ustr, "Length");
-    offset = f_info->offset;
-    cpu_memory_rw_debug( cpu, ustr_ptr+offset, (uint8_t*)&length, sizeof(length), 0 );
-    memfrs_close_field(f_info);
+    memfrs_get_nested_field_offset(&offset_length_to_unicode, "_UNICODE_STRING", 1, "Length");
+    cpu_memory_rw_debug( cpu, ustr_ptr+offset_length_to_unicode, (uint8_t*)&length, sizeof(length), 0 );
 
     if(length == 0 || length > 256 || max_length ==0 || max_length > 256)
         return NULL;
 
     // Get buffer
-    f_info = memfrs_q_field(ustr, "Buffer");
-    offset = f_info->offset;
-    cpu_memory_rw_debug( cpu, ustr_ptr+offset, (uint8_t*)&buf_ptr, sizeof(buf_ptr), 0 );
-    memfrs_close_field(f_info); 
+    memfrs_get_nested_field_offset(&offset_buffer_to_unicode, "_UNICODE_STRING", 1, "Buffer");
+    cpu_memory_rw_debug( cpu, ustr_ptr+offset_buffer_to_unicode, (uint8_t*)&buf_ptr, sizeof(buf_ptr), 0 );
+
 
     buf = (uint8_t*)malloc(max_length+2);
     str = (char*)malloc(max_length+1);
@@ -150,12 +138,12 @@ static char* parse_unicode_str_ptr(uint64_t ustr_ptr, CPUState *cpu)
 /*******************************************************************
 static void extract_file_detail( uint64_t handle_table_entry_ptr, CPUState *cpu )
 
-extract handle table name info detail from handle table entry name info of handle table entry
+extract handle table name info detail from handle_table_entry_name_info of handle table entry
 
-INPUT:     handle_table_entrt_ptr,   the address of handle table entry
-           uint64_t cr3,             the current cr3
-           CPUState *cpu,            the pointer to current cpu
-OUTPUT:    char*                     return the string of name info detail
+INPUT:     uint64_t handle_table_entrt_ptr,   the address of handle table entry
+           uint64_t cr3,                      the current cr3
+           CPUState *cpu,                     the pointer to current cpu
+OUTPUT:    char*                              return the string of name info detail
 *******************************************************************/
 static char* extract_entry_name_info_detail( uint64_t handle_table_entry_ptr, uint64_t cr3, CPUState *cpu )
 {
@@ -163,17 +151,10 @@ static char* extract_entry_name_info_detail( uint64_t handle_table_entry_ptr, ui
     uint8_t infomask;
     char *name_info_detail = NULL;
 
-    json_object* jobject_type = NULL;
     int offset_name_to_object_header_name_info = 0;
-    field_info* f_info = NULL;
 
-    // Retrieve the _OBJECT_HEADER_NAME_INFO structure
-    jobject_type = memfrs_q_struct("_OBJECT_HEADER_NAME_INFO");
-    // Query Name in _OBJECT_HEADER_NAME_INFO
-    f_info = memfrs_q_field(jobject_type, "Name");
-    // Calculate Entry List offset from _OBJECT_HEADER_NAME_INFO
-    offset_name_to_object_header_name_info = f_info->offset;
-    memfrs_close_field(f_info);
+    // Get Name offset from _OBJECT_HEADER_NAME_INFO
+    memfrs_get_nested_field_offset(&offset_name_to_object_header_name_info, "_OBJECT_HEADER_NAME_INFO", 1, "Name");
 
 
     memfrs_get_virmem_struct_content( cpu, cr3, (uint8_t*)&infomask, sizeof(infomask), handle_table_entry_ptr, "_OBJECT_HEADER", 1, "#InfoMask");
@@ -196,10 +177,10 @@ static char* extract_process_detail( uint64_t handle_table_entry_ptr, uint64_t c
 
 extract registry detail from handle table entry
 
-INPUT:     handle_table_entrt_ptr,   the address of handle table entry
-           uint64_t cr3,             the current cr3
-           CPUState *cpu,            the pointer to current cpu
-OUTPUT:    char*                     return the string of process detail
+INPUT:     uint64_t handle_table_entrt_ptr,   the address of handle table entry
+           uint64_t cr3,                      the current cr3
+           CPUState *cpu,                     the pointer to current cpu
+OUTPUT:    char*                              return the string of process detail
 *******************************************************************/
 static char* extract_process_detail( uint64_t handle_table_entry_ptr, uint64_t cr3, CPUState *cpu )
 {
@@ -226,10 +207,10 @@ static char* extract_registry_detail( uint64_t handle_table_entry_ptr, uint64_t 
 
 extract registry detail from handle table entry
 
-INPUT:     handle_table_entrt_ptr,   the address of handle table entry
-           uint64_t cr3,             the current cr3
-           CPUState *cpu,            the pointer to current cpu
-OUTPUT:    char*                     return the string of registry detail
+INPUT:     uint64_t handle_table_entrt_ptr,   the address of handle table entry
+           uint64_t cr3,                      the current cr3
+           CPUState *cpu,                     the pointer to current cpu
+OUTPUT:    char*                              return the string of registry detail
 *******************************************************************/
 static char* extract_registry_detail( uint64_t handle_table_entry_ptr, uint64_t cr3, CPUState *cpu )
 {
@@ -291,10 +272,10 @@ static char* extract_thread_detail( uint64_t handle_table_entry_ptr, uint64_t cr
 
 extract thread detail from handle table entry
 
-INPUT:     handle_table_entrt_ptr,   the address of handle table entry
-           uint64_t cr3,             the current cr3
-           CPUState *cpu,            the pointer to current cpu
-OUTPUT:    char*                     return the string of thread detail
+INPUT:     uint64_t handle_table_entrt_ptr,   the address of handle table entry
+           uint64_t cr3,                      the current cr3
+           CPUState *cpu,                     the pointer to current cpu
+OUTPUT:    char*                              return the string of thread detail
 *******************************************************************/
 static char* extract_thread_detail( uint64_t handle_table_entry_ptr, uint64_t cr3, CPUState *cpu )
 {
@@ -316,36 +297,29 @@ static char* extract_thread_detail( uint64_t handle_table_entry_ptr, uint64_t cr
 
 
 /*******************************************************************
-static void extract_file_detail( uint64_t handle_table_entry_ptr, CPUState *cpu )
+static char* extract_file_detail( uint64_t handle_table_entry_ptr, uint64_t cr3, CPUState *cpu )
 
 extract file detail from handle table entry
 
-INPUT:     handle_table_entrt_ptr,   the address of handle table entry
-           uint64_t cr3,             the current cr3
-           CPUState *cpu,            the pointer to current cpu
-OUTPUT:    char*                     return the string of file detail
+INPUT:     uint64_t handle_table_entrt_ptr,   the address of handle table entry
+           uint64_t cr3,                      the current cr3
+           CPUState *cpu,                     the pointer to current cpu
+OUTPUT:    char*                              return the string of file detail
 *******************************************************************/
 static char* extract_file_detail( uint64_t handle_table_entry_ptr, uint64_t cr3, CPUState *cpu )
 {
     uint64_t handle_table_entry_body_ptr,
              Device_entry_body_ptr;
     uint8_t device_infomask;
-    char *device_detail = NULL;
-    char *file_detail = NULL;
-    char *device_file_detail = NULL;
+    char *device_detail = NULL,
+         *file_detail = NULL,
+         *device_file_detail = NULL;
     uint16_t max_file_length = 0;
 
-    json_object* jobject_type = NULL;
     int offset_filename_to_file_object = 0;
-    field_info* f_info = NULL;
 
-    // Retrieve the _FILE_OBJECT structure
-    jobject_type = memfrs_q_struct("_FILE_OBJECT");
-    // Query FileName in _FILE_OBJECT
-    f_info = memfrs_q_field(jobject_type, "FileName");
-    // Calculate Entry List offset from _FILE_OBJECT
-    offset_filename_to_file_object = f_info->offset;
-    memfrs_close_field(f_info);
+    // Get FileName offset from _FILE_OBJECT
+    memfrs_get_nested_field_offset(&offset_filename_to_file_object, "_FILE_OBJECT", 1, "FileName");
 
 
     // Check and extract device path info
@@ -385,43 +359,37 @@ static char* extract_file_detail( uint64_t handle_table_entry_ptr, uint64_t cr3,
 
 
 /*******************************************************************
-static void do_table_entry( uint64_t grantedaccess, int table_entry_index, int entry_index, uint64_t handle_table_entry_ptr, CPUState *cpu )
+static void do_table_entry( int entry_index, uint64_t handle_table_entry_ptr, uint64_t grantedaccess, uint64_t cr3, UT_array *process, CPUState *cpu )
 
 extract data of handle
 
-INPUT:     grantedaccess             the granted access of handle
-           entry_index               the index of level 0
-           handle_table_entrt_ptr,   the address of handle table entry
-           uint64_t cr3,             the current cr3
-           json_object *process,     the json structure of one process for json structure handles
-           CPUState *cpu,            the pointer to current cpu
+INPUT:     int entry_index                    the index of level 0
+           uint64_t handle_table_entrt_ptr,   the address of handle table entry
+           uint64_t grantedaccess             the granted access of handle
+           uint64_t cr3,                      the current cr3
+           UT_array *process,                 the UT_array structure with handles data of one process
+           CPUState *cpu,                     the pointer to current cpu
 OUTPUT:    void
 *******************************************************************/
-static void do_table_entry( uint64_t grantedaccess, int entry_index, uint64_t handle_table_entry_ptr, uint64_t cr3, json_object *process, CPUState *cpu )
+static void do_table_entry( int entry_index, uint64_t handle_table_entry_ptr, uint64_t grantedaccess, uint64_t cr3, UT_array *process, CPUState *cpu )
 {
-    uint8_t type_index, true_type_index;
-
     uint64_t object_type_ptr;
+    uint8_t cookie,
+            type_index,
+            true_type_index;
+    char *true_type_name;
+    char *detail = NULL;
+
 
     uint64_t nt_kernel_base = 0,
              g_ObTypeIndexTable_ptr,
              g_ObHeaderCookie_ptr;
     json_object *gvar = NULL;
-    uint8_t cookie;
-    char *true_type_name;
-    char *detail = NULL;
-
-    json_object* jobject_type = NULL;
     int offset_name_to_object_type = 0;
-    field_info* f_info = NULL;
 
-    // Retrieve the _OBJECT_TYPE structure
-    jobject_type = memfrs_q_struct("_OBJECT_TYPE");
-    // Query Name in _OBJECT_TYPE
-    f_info = memfrs_q_field(jobject_type, "Name");
-    // Calculate Entry List offset from _OBJECT_TYPE
-    offset_name_to_object_type = f_info->offset;
-    memfrs_close_field(f_info);
+    // Get Name offset from _OBJECT_TYPE
+    memfrs_get_nested_field_offset(&offset_name_to_object_type, "_OBJECT_TYPE", 1, "Name"); 
+
 
     // Get global variable "ObTypeIndexTable" address 
     nt_kernel_base = memfrs_get_nt_kernel_base();
@@ -442,6 +410,15 @@ static void do_table_entry( uint64_t grantedaccess, int entry_index, uint64_t ha
     cpu_memory_rw_debug( cpu, g_ObHeaderCookie_ptr, (uint8_t*)&cookie, sizeof(cookie), 0 );
 
 
+    // Handle table entry format in Windows10
+    // Unlocked        : Bitfield Pos 0, 1 Bit
+    // RefCnt          : Bitfield Pos 1, 16 Bit
+    // Attributes      : Bitfield Pos 17, 3 Bit
+    // ObjectPointerBits : Bitfield Pos 20, 44 Bit
+    // GrantedAccessBits : Bitfield Pos 0, 25 Bit
+    // NoRightsUpgrade : Bitfield Pos 25, 1 Bit
+    // Spare1          : Bitfield Pos 26, 6 Bit
+    // Spare2          : Uint4B
     if( memfrs_get_virmem_struct_content( cpu, cr3, (uint8_t*)&type_index, sizeof(type_index), handle_table_entry_ptr, "_OBJECT_HEADER", 1, "#TypeIndex") !=-1 ){
         true_type_index =  (uint8_t)((type_index ^ cookie ^ ((handle_table_entry_ptr & 0x0000ffffffffffff)>>8))& 0xff );
 
@@ -464,21 +441,21 @@ static void do_table_entry( uint64_t grantedaccess, int entry_index, uint64_t ha
             detail = extract_entry_name_info_detail(handle_table_entry_ptr, cr3, cpu);
 
 
-        add_handle_field_to_struct(process, entry_index*4, handle_table_entry_ptr, grantedaccess, true_type_name, detail);
+        add_handle_field_to_struct( process, entry_index*4, handle_table_entry_ptr, grantedaccess, true_type_name, detail );
     }
 }
 
 
 
 /*******************************************************************
-static int entry_is_legal( uint64_t handle_table_entry_ptr, CPUState *cpu )
+static int entry_is_legal( uint64_t handle_table_entry_ptr, uint64_t cr3, CPUState *cpu )
 
 Check whether handle table entry is legal
 
-INPUT:     handle_table_entrt_ptr,   the address of handle table entry
-           uint64_t cr3,             the current cr3
-           CPUState *cpu,            the pointer to current cpu
-OUTPUT:    int                       return 1 if entry is legal
+INPUT:     uint64_t handle_table_entrt_ptr,   the address of handle table entry
+           uint64_t cr3,                      the current cr3
+           CPUState *cpu,                     the pointer to current cpu
+OUTPUT:    int                                return 1 if entry is legal
 *******************************************************************/
 static int entry_is_legal( uint64_t handle_table_entry_ptr, uint64_t cr3, CPUState *cpu )
 {
@@ -508,10 +485,10 @@ static int entry_is_legal( uint64_t handle_table_entry_ptr, uint64_t cr3, CPUSta
         if( infomask > 0x7f )
             return 0;
 
-    // the range of type index is 2 to about 50 ,
+    // the range of type index is 2 to about 53 ,
     // lower bound is 2, but higher bound depending on Windows version
     if( memfrs_get_virmem_struct_content( cpu, cr3, (uint8_t*)&typeindex, sizeof(typeindex), handle_table_entry_ptr, "_OBJECT_HEADER", 1, "#TypeIndex") !=-1 )
-        if( typeindex >=50 || typeindex < 1 )
+        if( typeindex >53 || typeindex < 1 )
             return 0;
 
     return 1;
@@ -520,18 +497,18 @@ static int entry_is_legal( uint64_t handle_table_entry_ptr, uint64_t cr3, CPUSta
 
 
 /*******************************************************************
-static void do_table_level_0( uint64_t tablecode_ptr, CPUState *cpu )
+static void do_table_level_0( int level1_index, uint64_t level0_ptr, uint64_t cr3, UT_array *process, CPUState *cpu )
 
 Find handle table entry in level 0 from handle table
 
-INPUT:     level1_index              the index of level 1
-           level0_ptr,               the address of level 0
+INPUT:     int level1_index          the index of level 1
+           uint64_t level0_ptr,      the address of level 0
            uint64_t cr3,             the current cr3
-           json_object *process,     the json structure of one process for json structure handles
+           UT_array *process,        the UT_array structure with handles data of one process
            CPUState *cpu,            the pointer to current cpu
 OUTPUT:    void
 *******************************************************************/
-static void do_table_level_0( int level1_index, uint64_t level0_ptr, uint64_t cr3, json_object *process, CPUState *cpu )
+static void do_table_level_0( int level1_index, uint64_t level0_ptr, uint64_t cr3, UT_array *process, CPUState *cpu )
 {
     int i;
     uint64_t handle_table_entry_ptr,
@@ -551,29 +528,30 @@ static void do_table_level_0( int level1_index, uint64_t level0_ptr, uint64_t cr
         cpu_memory_rw_debug( cpu, level0_ptr+0x8, (uint8_t*)&grantedaccess, sizeof(grantedaccess), 0 );
         grantedaccess = grantedaccess & 0x0000000001ffffff;
 
-        do_table_entry( grantedaccess, i+level1_index*256, handle_table_entry_ptr, cr3, process, cpu );
+        do_table_entry( i+level1_index*256, handle_table_entry_ptr, grantedaccess, cr3, process, cpu );
     }
 }
 
 
 
 /*******************************************************************
-static void do_table_level_1( uint64_t tablecode_ptr, CPUState *cpu )
+static void do_table_level_1( int level2_index, uint64_t level1_ptr, uint64_t cr3, UT_array *process, CPUState *cpu )
 
 Find level 0 in level 1 from handle table
 
 INPUT:     int level2_index,         the index of level 2 table
-           level1_ptr,              the address of level 1
+           uint64_t level1_ptr,      the address of level 1
            uint64_t cr3,             the current cr3
-           json_object *process,     the json structure of one process for json structure handles
+           UT_array *process,        the UT_array structure with handles data of one process
            CPUState *cpu,            the pointer to current cpu
 OUTPUT:    void
 *******************************************************************/
-static void do_table_level_1( int level2_index, uint64_t level1_ptr, uint64_t cr3, json_object *process, CPUState *cpu )
+static void do_table_level_1( int level2_index, uint64_t level1_ptr, uint64_t cr3, UT_array *process, CPUState *cpu )
 {
     int i=0;
     uint64_t level0_ptr;
 
+    // Every 0x8 stored a level 0 address in level 1 of handle table
     while( i<512 && cpu_memory_rw_debug( cpu, level1_ptr, (uint8_t*)&level0_ptr, sizeof(level0_ptr), 0) !=-1 ){
         if(level0_ptr==0x0)
             break;
@@ -586,17 +564,17 @@ static void do_table_level_1( int level2_index, uint64_t level1_ptr, uint64_t cr
 
 
 /*******************************************************************
-static void do_table_level_2( uint64_t level2_ptr, uint64_t cr3, json_object *process, CPUState *cpu )
+static void do_table_level_2( uint64_t level2_ptr, uint64_t cr3, UT_array *process, CPUState *cpu )
 
 Find level 1 in level 2 from handle table
 
-INPUT:     level2_ptr,               the address of level 2 table
+INPUT:     uint64_t level2_ptr,      the address of level 2 table
            uint64_t cr3,             the current cr3
-           json_object *process,     the json structure of one process for json structure handles
+           UT_array *process,        the UT_array structure with handles data of one process
            CPUState *cpu,            the pointer to current cpu
 OUTPUT:    void
 *******************************************************************/
-static void do_table_level_2( uint64_t level2_ptr, uint64_t cr3, json_object *process, CPUState *cpu )
+static void do_table_level_2( uint64_t level2_ptr, uint64_t cr3, UT_array *process, CPUState *cpu )
 {
 
     /* [XXX] Not yet find level2 sample */
@@ -615,35 +593,50 @@ static void do_table_level_2( uint64_t level2_ptr, uint64_t cr3, json_object *pr
 
 
 
+static void handles_node_dtor(void *_elt) {
+    handles_node_st *elt = (handles_node_st*)_elt;
+    if(elt->type) free(elt->type);
+    if(elt->detail) free(elt->detail);
+}
+
+static void handles_dtor(void *_elt) {
+    handles_st *elt = (handles_st*)_elt;
+
+    if(elt->imagename) free(elt->imagename);
+    if(elt->handles_node) utarray_free(elt->handles_node);
+}
+
+UT_icd hanldes_node_icd = {sizeof(handles_node_st), NULL, NULL, handles_node_dtor};
+UT_icd hanldes_icd = {sizeof(handles_st), NULL, NULL, handles_dtor};
 /*******************************************************************
-int memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
+extern UT_array* memfrs_enum_proc_handles( int target_type, uint64_t target, uint64_t kpcr_ptr, CPUState *cpu )
 
-Eumerate the running process
+Eumerate the running process handles
 
-INPUT:     uint64_t target_cr3       the target cr3. if target_cr3=0x0, stored handles of all process
+INPUT:     int target_type,          searching type of handles
+           uint64_t target,          searching target
            uint64_t kpcr_ptr,        the address of _KPCR struct
            CPUState *cpu,            the pointer to current cpu
-           json_object *handles      the json structure of handles
-OUTPUT:    int,                      return 0 if sucess, and not 0 otherwise
+OUTPUT:    UT_array*                 return a UT_array with handles data
 *******************************************************************/
-int memfrs_enum_proc_handles( uint64_t target_cr3, uint64_t kpcr_ptr, CPUState *cpu, json_object *handles )
+extern UT_array* memfrs_enum_proc_handles( int target_type, uint64_t target, uint64_t kpcr_ptr, CPUState *cpu )
 {
-    json_object *process;
-    char str_cr3[17];
+    // final return
+    UT_array *process_handles,
+             *process_handles_node;
+    handles_st handles;
 
+    int i;
     uint64_t cr3,
              kthread_ptr,
              eprocess_ptr_init = 0,
              eprocess_ptr,
              tablecode_ptr;
+    uint64_t processid;
 
-    json_object *jeprocess = NULL,
-                *jobject_header = NULL;
-
-    uint8_t buf[256];
+    uint8_t buf[15];
 
     int offset_entry_list_to_eprocess = 0;
-    field_info* f_info = NULL;
 
     int table_level;
 
@@ -651,23 +644,22 @@ int memfrs_enum_proc_handles( uint64_t target_cr3, uint64_t kpcr_ptr, CPUState *
     //Check if the data structure information is loaded
     if(g_struct_info ==NULL)
     {
-        printf("Data structure information is not loaded\n");
-        return -1;
+        memfrs_errno = MEMFRS_ERR_NOT_LOADED_GLOBAL_STRUCTURE;
+        return NULL;
     }
-
     //Check if kpcr is already found
     if(kpcr_ptr == 0)
     {
-        printf("Not yet find kpcr address\n");
-        return -1;
+        memfrs_errno = MEMFRS_ERR_NOT_FOUND_KPCR;
+        return NULL;
     }
-
     //Check the cpu pointer valid
     if(cpu == NULL)
     {
-        printf("CPU state is null\n");
-        return -1;
+        memfrs_errno = MEMFRS_ERR_INVALID_CPU;
+        return NULL;
     }
+
     // Read the concrete memory value of kthread_ptr(CurrentThread) via _KPCR address
     memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&kthread_ptr, sizeof(kthread_ptr), kpcr_ptr, "_KPCR", 2, "#Prcb", "#CurrentThread");
 
@@ -675,21 +667,15 @@ int memfrs_enum_proc_handles( uint64_t target_cr3, uint64_t kpcr_ptr, CPUState *
     // Get the first PROCESS
     memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), kthread_ptr, "_KTHREAD", 1, "#Process");
 
-    // Retrieve the _EPROCESS structure
-    jeprocess = memfrs_q_struct("_EPROCESS");
-    // Query ActiveProcessLinks in _EPROCESS
-    f_info = memfrs_q_field(jeprocess, "ActiveProcessLinks");
-    // Calculate Entry List offset from eprocess
-    offset_entry_list_to_eprocess = f_info->offset;
-    memfrs_close_field(f_info);
+    // Get ActiveProcessLinks offset from _EPROCESS
+    memfrs_get_nested_field_offset(&offset_entry_list_to_eprocess, "_EPROCESS", 1, "ActiveProcessLinks");
 
-    // Retrieve the _EPROCESS structure
-    jobject_header = memfrs_q_struct("_OBJECT_HEADER");
-    // Query ActiveProcessLinks in _EPROCESS
-    f_info = memfrs_q_field(jobject_header, "Body");
-    // Calculate Entry List offset from eprocess
-    g_body_to_object_header = f_info->offset;
-    memfrs_close_field(f_info);
+    // Get Body offset from _OBJECT_HEADER
+    memfrs_get_nested_field_offset(&g_body_to_object_header, "_OBJECT_HEADER", 1, "Body");
+
+
+    // Assign process_handles be a 'handles_st' structure UTarray
+    utarray_new( process_handles, &hanldes_icd);
 
 
     // Start iteration process list
@@ -699,15 +685,16 @@ int memfrs_enum_proc_handles( uint64_t target_cr3, uint64_t kpcr_ptr, CPUState *
         //Read CR3 & Process name
         memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&cr3, sizeof(cr3), eprocess_ptr, "_EPROCESS", 2, "#Pcb", "#DirectoryTableBase");
         memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)buf, sizeof(buf), eprocess_ptr, "_EPROCESS", 1, "#ImageFileName");
+        memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&processid, sizeof(processid), eprocess_ptr, "_EPROCESS", 1, "#UniqueProcessId");
 
-        memset(str_cr3, 0, 17);
-        sprintf(str_cr3, "%"PRIx64, cr3);
         if( cr3!=0 ){
 
-            if( target_cr3==0x0 || target_cr3==cr3 ){
+            utarray_new( process_handles_node, &hanldes_node_icd );
 
-                process = json_object_new_object();
-
+            if( target_type==PARSING_HANDLE_TYPE_ALL || 
+                    ( target_type==PARSING_HANDLE_TYPE_CR3 && target==cr3 ) || 
+                    ( target_type==PARSING_HANDLE_TYPE_EPROCESS && target==eprocess_ptr ) || 
+                    ( target_type==PARSING_HANDLE_TYPE_PID && target==processid ) ){
                 memfrs_get_virmem_struct_content( cpu, cr3, (uint8_t*)&tablecode_ptr, sizeof(tablecode_ptr), eprocess_ptr, "_EPROCESS", 2, "*ObjectTable", "#TableCode");
                 table_level = tablecode_ptr & 0x3;
                 tablecode_ptr = tablecode_ptr & 0xfffffffffffffffc ;
@@ -715,15 +702,22 @@ int memfrs_enum_proc_handles( uint64_t target_cr3, uint64_t kpcr_ptr, CPUState *
                 // table level == 0 means we are at the bottom level and this is a table of _HANDLE_TABLE_ENTRY
                 // otherwise, it means we are a table of pointers to lower tables.
                 if( table_level == 0 )
-                    do_table_level_0(0, tablecode_ptr, cr3, process, cpu);
-                
-                else if ( table_level == 1 )
-                    do_table_level_1(0, tablecode_ptr, cr3, process, cpu);
-                
-                else 
-                    do_table_level_2(tablecode_ptr, cr3, process, cpu);
+                    do_table_level_0(0, tablecode_ptr, cr3, process_handles_node, cpu);
 
-                json_object_object_add(handles, str_cr3, process);
+                else if ( table_level == 1 )
+                    do_table_level_1(0, tablecode_ptr, cr3, process_handles_node, cpu);
+
+                else 
+                    do_table_level_2(tablecode_ptr, cr3, process_handles_node, cpu);
+
+                handles.CR3 = cr3;
+                handles.eprocess = eprocess_ptr;
+                handles.pid = processid;
+                handles.imagename = (char*)malloc(15);
+                for(i=0;i<15;i=i+1)
+                    handles.imagename[i]=buf[i];
+                handles.handles_node = process_handles_node;
+                utarray_push_back(process_handles, &handles);
 
             }
         }
@@ -735,5 +729,147 @@ int memfrs_enum_proc_handles( uint64_t target_cr3, uint64_t kpcr_ptr, CPUState *
 
     }while( eprocess_ptr != eprocess_ptr_init );
 
-    return 0;
+    return process_handles;
+}
+
+
+
+/*******************************************************************
+extern UT_array* memfrs_enum_proc_handles_detail( int target_type, const char* target, uint64_t kpcr_ptr, CPUState *cpu )
+
+Eumerate the running process handles, expect for types and details
+
+INPUT:     int target_type,          searching type of handles
+           const char* target        searching target
+           uint64_t kpcr_ptr,        the address of _KPCR struct
+           CPUState *cpu,            the pointer to current cpu
+OUTPUT:    UT_array*                 return a UT_array with handles data
+*******************************************************************/
+extern UT_array* memfrs_enum_proc_handles_detail( int target_type, const char* target, uint64_t kpcr_ptr, CPUState *cpu )
+{
+    // final return
+    UT_array *process_handles,
+             *process_handles_node;
+    handles_st handles;
+
+    //tmp handles
+    UT_array *tmp_process_handles;
+    handles_st *tmp_handles;
+    handles_node_st *tmp_handles_node;
+
+    int has_entry;
+
+    tmp_process_handles = memfrs_enum_proc_handles( PARSING_HANDLE_TYPE_ALL, 0, kpcr_ptr, cpu );
+
+
+    // Assign process_handles be a 'handles_st' structure UTarray
+    utarray_new( process_handles, &hanldes_icd);
+
+
+    tmp_handles = NULL;
+    while( (tmp_handles=(handles_st*)utarray_next(tmp_process_handles,tmp_handles)) ){
+
+        tmp_handles_node = NULL;
+        has_entry = 0;
+        utarray_new( process_handles_node, &hanldes_node_icd);
+
+        while( (tmp_handles_node=(handles_node_st*)utarray_next(tmp_handles->handles_node, tmp_handles_node)) ){
+            if( ( target_type==PARSING_HANDLE_TYPE_TYPE && strcmp(tmp_handles_node->type, target)==0 ) || 
+                    ( target_type==PARSING_HANDLE_TYPE_FULL_DETAIL && strcmp(tmp_handles_node->detail, target)==0 ) || 
+                    ( target_type==PARSING_HANDLE_TYPE_DETAIL && strstr(tmp_handles_node->detail, target) ) ){
+                has_entry=1;
+                // add_handle_field_to_struct(UT_array *handle_node, int entry_index, uint64_t handle_table_entry_ptr, uint64_t grantedaccess, char* true_type, char* detail)
+                add_handle_field_to_struct( process_handles_node, 
+                        tmp_handles_node->handle_table_entry_index , 
+                        tmp_handles_node->handle_table_entry_address, 
+                        tmp_handles_node->grantedaccess,
+                        tmp_handles_node->type, 
+                        tmp_handles_node->detail );
+            }
+        }
+
+        if( has_entry ){
+            handles.CR3 = tmp_handles->CR3;
+            handles.eprocess = tmp_handles->eprocess;
+            handles.pid = tmp_handles->pid;
+            handles.imagename = (char*)malloc(15);
+            sprintf(handles.imagename, "%s", tmp_handles->imagename);
+            handles.handles_node = process_handles_node;
+            utarray_push_back(process_handles, &handles);
+        }
+        else
+            free(process_handles_node);
+    }
+
+    free(tmp_process_handles);
+    return process_handles;
+}
+
+
+
+/*******************************************************************
+extern UT_array* memfrs_enum_handles_types( uint64_t kpcr_ptr, CPUState *cpu )
+
+Eumerate the handles types
+
+INPUT:     uint64_t kpcr_ptr,        the address of _KPCR struct
+           CPUState *cpu,            the pointer to current cpu
+OUTPUT:    UT_array*                 return a UT_array with handles types
+*******************************************************************/
+extern UT_array* memfrs_enum_handles_types( uint64_t kpcr_ptr, CPUState *cpu )
+{
+    int i;
+    UT_array *handles_types = NULL;
+
+    uint64_t object_type_ptr,
+             type_buf_ptr;
+    int type_index;
+    char *type_name = NULL;
+    char type_buf[256];
+    uint16_t length;
+
+    uint64_t nt_kernel_base = 0,
+             g_ObTypeIndexTable_ptr;
+    json_object *gvar = NULL;
+    int offset_name_to_object_type = 0;
+
+    // Get Name offset from _OBJECT_TYPE
+    if( memfrs_get_nested_field_offset(&offset_name_to_object_type, "_OBJECT_TYPE", 1, "Name") ==-1 )
+        return NULL;
+
+    // Get global variable "ObTypeIndexTable" address 
+    nt_kernel_base = memfrs_get_nt_kernel_base();
+    if(nt_kernel_base == 0)
+        nt_kernel_base = memfrs_find_nt_kernel_base(cpu);
+    gvar = memfrs_q_globalvar("ObTypeIndexTable");
+    g_ObTypeIndexTable_ptr = memfrs_gvar_offset(gvar) + nt_kernel_base;
+
+
+    utarray_new( handles_types, &ut_str_icd);
+
+
+    type_index=0;
+    while(type_index<256){
+        if ( cpu_memory_rw_debug( cpu, g_ObTypeIndexTable_ptr + 0x8*type_index , (uint8_t*)&object_type_ptr, sizeof(object_type_ptr), 0 ) ==0 ){
+            if( memfrs_get_virmem_struct_content(cpu, 0, (uint8_t*)&length, sizeof(length), object_type_ptr, "_OBJECT_TYPE", 2, "#Name", "#Length") == -1 )
+                length=0;
+            if( memfrs_get_virmem_struct_content(cpu, 0, (uint8_t*)&type_buf_ptr, sizeof(type_buf_ptr), object_type_ptr, "_OBJECT_TYPE", 2, "#Name", "*Buffer") == -1 )
+                type_buf_ptr=0;
+
+            if( type_buf_ptr!=0 && memfrs_get_virmem_content( cpu, 0, type_buf_ptr, sizeof(type_buf), (uint8_t*)type_buf ) != -1 ){
+
+                type_name=(char*)malloc(length/2+1);
+                for(i=0;i<length;i=i+1){
+                    if( i%2==0 )
+                        type_name[i/2]=(char)(*(type_buf+i));
+                }
+                type_name[length/2]='\0';
+
+                utarray_push_back(handles_types, &type_name);
+            }
+        }
+        type_index = type_index+1;
+    }
+
+    return handles_types;
 }

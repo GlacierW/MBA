@@ -229,11 +229,12 @@ TEST( MEMFRS_DATASTRUCT, Q_Field_TypeSize) {
 ACTION_P( MEMREADKPCR, kpcr) { *(uint64_t*)arg2 = kpcr; }
 
 class MEMFRS_PROCLIST : public MemfrsContextInitialized{}; 
+/*
 TEST_F( MEMFRS_PROCLIST, KPCR_SELF_CHECK) {
     GEN_MOCK_OBJECT( mock );
     uint64_t kpcr_ptr = 0xdeadbeef;
     bool kpcr_check;
-    EXPECT_CALL( mock, cpu_memory_rw_debug(_,_,_,_,_) ).WillOnce( DoAll( MEMREADKPCR(kpcr_ptr), Return( 0 ) ));
+     EXPECT_CALL( mock, cpu_memory_rw_debug(_,_,_,_,_) ).WillOnce( DoAll( MEMREADKPCR(kpcr_ptr), Return( 0 ) ));
     kpcr_check = memfrs_kpcr_self_check(kpcr_ptr);
     ASSERT_EQ(true, kpcr_check);
     ASSERT_EQ( g_kpcr_ptr, kpcr_ptr );
@@ -301,7 +302,7 @@ TEST_F( MEMFRS_PROCLIST, ProcessList_NoCPU) {
     json_object_put(g_globalvar_info);
     ASSERT_EQ(ret, -1);
 }
-
+*/
 // 
 class MEMFRS_GLOBALVAR : public MemfrsContextInitialized{};
 TEST_F( MEMFRS_GLOBALVAR, Not_Load_DB) {

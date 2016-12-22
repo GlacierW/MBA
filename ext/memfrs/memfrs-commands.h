@@ -40,5 +40,6 @@ void do_gen_pdb_profiles(Monitor *mon, const QDict *qdict);
 void do_display_type(Monitor *mon, const QDict *qdict);
 //void hexdump(Monitor *mon, uint8_t* buf, size_t length);
 void do_process_handles_list(Monitor *mon, const QDict *qdict);
+void do_handles_types_list(Monitor *mon, const QDict *qdict);
 #endif
 
