@@ -462,9 +462,9 @@ typedef struct {
 
 typedef void (*free_func)(void *);
 typedef void (*get_value_name)(void *type, char **res_name);
+typedef void (*get_print_type_)(void *type, char **res_name, int *pointer_count);
 typedef void (*get_value)(void *type, int *res);
 typedef void (*get_value_name_len)(void *type, int *res);
-//typedef void (*get_member_list)(void *type, RList **l);
 typedef void (*get_member_list)(void *type, void **l);
 typedef int (*get_arg_type_)(void *type, void **ret_type);
 typedef int (*get_val_type)(void *type, void **ret_type);
@@ -483,7 +483,6 @@ typedef get_arg_type_ get_index_;
 typedef get_arg_type_ get_mlist_;
 typedef get_arg_type_ get_modified_type_;
 typedef get_value get_index_val;
-typedef get_value_name get_print_type_;
 
 typedef enum {
 	eT_NOTYPE =               0x00000000,

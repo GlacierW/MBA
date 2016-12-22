@@ -110,7 +110,7 @@
 {
         .name = "dt",
         .args_type  = "addr:l,struct:s",
-        .params     = "addr,struct",
+        .params     = "addr struct",
         .help       = "Fit the memory at addr into structure fields.",
         .mhandler.cmd = do_display_type,
 },

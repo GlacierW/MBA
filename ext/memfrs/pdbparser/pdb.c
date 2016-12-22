@@ -53,7 +53,7 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 *
 * OUTPUTS :
 */
-int add_field_to_struct(json_object *parent_obj, char* field_name, char* field_type, int offset, int size, bool is_pointer)
+int add_field_to_struct(json_object *parent_obj, char* field_name, char* field_type, int offset, int size, int pointer_count)
 {
     json_object *field_info;
     field_info = json_object_new_array();
@@ -61,7 +61,7 @@ int add_field_to_struct(json_object *parent_obj, char* field_name, char* field_t
     json_object_array_add( field_info, json_object_new_string(field_type));
     json_object_array_add( field_info, json_object_new_int(offset));
     json_object_array_add( field_info, json_object_new_int(size));
-    json_object_array_add( field_info, json_object_new_boolean(is_pointer));
+    json_object_array_add( field_info, json_object_new_int(pointer_count));
 
     json_object_object_add( parent_obj, field_name, field_info);
 
@@ -226,8 +226,6 @@ void dump_json(R_PDB *pdb, const char* filename) {
 		//if ((tf->leaf_type == eLF_STRUCTURE) || (tf->leaf_type == eLF_UNION)
 		//	|| (tf->leaf_type == eLF_ENUM)) {
                 if (tf->leaf_type == eLF_STRUCTURE){
-
-                        
 			if (tf->is_fwdref) {
 				tf->is_fwdref(tf, &val);
 				if (val == 1) {
@@ -255,6 +253,7 @@ void dump_json(R_PDB *pdb, const char* filename) {
                         offset = -1;
                         while(ptmp!=NULL && ( it2=(STypeInfo *)utarray_next(ptmp,it2))){
                                 int index;
+                                int pcount = 0;
 
                                 STypeInfo* tmp;
                                 SType* stype;
@@ -268,7 +267,7 @@ void dump_json(R_PDB *pdb, const char* filename) {
                                 if (tf->get_name)
                                         tf->get_name(tf, &name);
 				if (tf->get_print_type)
-					tf->get_print_type(tf, &type);                                
+					tf->get_print_type(tf, &type, &pcount);                                
 
                                 // find next field, but skip union(the same offset)
                                 it3 = it2;
@@ -290,9 +289,8 @@ void dump_json(R_PDB *pdb, const char* filename) {
                                 // update field if it is the last field in structure  
                                 if((it3=(STypeInfo *)utarray_next(ptmp,it2)) == NULL)
                                     size = val - offset;
-                                //printf("%s %s %d size %d\n\n", name, type, offset, size);
                                 
-                                add_field_to_struct(jobj, name, type, offset, size, false);
+                                add_field_to_struct(jobj, name, type, offset, size, pcount);
                                 pre_offset = offset;       
                                 i++;
                                 is_first = 0;
