@@ -66,7 +66,6 @@ void do_show_disk_taint_map(struct Monitor *mon, const struct QDict *qdict)
     }
 }
 
-
 void do_get_physic_address(struct Monitor *mon, const struct QDict *qdict)
 {
     uint64_t target_cr3		= qdict_get_int(qdict, "cr3");

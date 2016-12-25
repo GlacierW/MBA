@@ -35,7 +35,6 @@
 #define _MOCKABLE(x) x
 #else
 #include <stdarg.h>
-typedef void Monitor;
 void monitor_vprintf( Monitor* mon, const char* fmt, va_list arg){}
 #include "test/test.h"
 /// Change name to avoid macros in test.h from expanding.

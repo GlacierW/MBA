@@ -776,7 +776,11 @@ static void qemu_tcg_init_cpu_signals(void)
 }
 #endif /* _WIN32 */
 
-static QemuMutex qemu_global_mutex;
+/// MBA 
+/// In order to make synchronization between the threads of MBA extensions
+/// and the QEMU main threads, the qemu_global_mutex is exported for the easy
+/// of MBA implementations
+/*static*/ QemuMutex qemu_global_mutex;
 static QemuCond qemu_io_proceeded_cond;
 static unsigned iothread_requesting_mutex;
 

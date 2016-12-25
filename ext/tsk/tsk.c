@@ -292,7 +292,7 @@ fs_ifind_data(TSK_FS_INFO * fs, TSK_FS_IFIND_FLAG_ENUM lclflags,
     }
 
     if (!data->found) {
-        tsk_printf("Inode not found\n");
+        //tsk_printf("Inode not found\n");
         free(data);
         return NULL;
     }
@@ -515,6 +515,7 @@ UT_array* tsk_get_filename_by_haddr(const char* imgname, uint64_t haddr_img_offs
     if(haddr_img_offset >= img->size)
     {
         printf("Request haddr is larger than image size\n");
+        tsk_img_close(img);
         return NULL;
     }
 
@@ -523,52 +524,51 @@ UT_array* tsk_get_filename_by_haddr(const char* imgname, uint64_t haddr_img_offs
     if(vs==NULL)
     {
         printf("Volume Open Failed!!\n");
+        tsk_img_close(img);
         return NULL;
     }
 
     //calculate block address
-    printf("Image sector size %d\n", img->sector_size);
     block_img_offset = haddr_img_offset/img->sector_size;
-    printf("Block addr %"PRIuINUM"\n", block_img_offset);
 
     //search the partition contain the target block
     partition_offset = search_partition(vs, block_img_offset);
     if(partition_offset == 0)
     {
-        printf("Cannot found partition contains the target haddr\n");
+        tsk_img_close(img);
+        tsk_vs_close(vs);
         return NULL;
     }
-    printf("partition off: %"PRIuINUM"\n", partition_offset);
 
     //open the partition's file system
     fs = tsk_fs_open_img(img, partition_offset * img->sector_size, TSK_FS_TYPE_DETECT);
     if(fs==NULL)
     {
         printf("Cannot open file system\n");
+        tsk_img_close(img);
+        tsk_vs_close(vs);
         return NULL;
     }
 
     //calculate offset to the current partition
     part_byte_offset = haddr_img_offset - (partition_offset * img->sector_size);
-    printf("block_size %d\n", fs->block_size);
     part_block_offset = part_byte_offset/fs->block_size;
-    printf("byte offset to fs %"PRIuINUM"\n", part_byte_offset);
-    printf("block count in current filesystem %"PRIuINUM"\n", fs->block_count);
-    printf("block offset to current filesystem %"PRIuINUM"\n", part_block_offset);
 
-//find the inode of this block
+    //find the inode of this block
     ifind_data = fs_ifind_data(fs, (TSK_FS_IFIND_FLAG_ENUM) 0, part_block_offset);
     if(ifind_data == NULL)
     {
+        tsk_img_close(img);
+        tsk_vs_close(vs);
         return NULL; 
     }    
 
     if(ifind_data->found!=1)
     {
-        printf("Inode not found\n");
+        tsk_img_close(img);
+        tsk_vs_close(vs);
         return NULL;
     }
-    printf("Find inode data %"PRIuINUM"\n", ifind_data->curinode);
 
     //Find the inode's filename
     //Note: Do Not Know what to fill in variable type_used and id_used
@@ -578,6 +578,8 @@ UT_array* tsk_get_filename_by_haddr(const char* imgname, uint64_t haddr_img_offs
 
     if(ffind_data==NULL){
         printf("Cannot found fdata associate with inode\n");
+        tsk_img_close(img);
+        tsk_vs_close(vs);
         return NULL;
     }
 
@@ -587,6 +589,8 @@ UT_array* tsk_get_filename_by_haddr(const char* imgname, uint64_t haddr_img_offs
 
     free(ifind_data);
     free(ffind_data);
+    tsk_vs_close(vs);
+    tsk_img_close(img);
 
     return ret;
 }
@@ -620,6 +624,7 @@ UT_array* tsk_find_haddr_by_filename(const char* img_path, const char* file_path
     if(vs==NULL)
     {
         printf("Volume Open Failed!!\n");
+        tsk_img_close(img);
         return NULL;
     }
 
@@ -640,11 +645,14 @@ UT_array* tsk_find_haddr_by_filename(const char* img_path, const char* file_path
     }
     else {
         printf("file block not found\n");
+        tsk_vs_close(vs);
+        tsk_img_close(img);
         return NULL;
     }
 
     tsk_vs_close(vs);
     tsk_img_close(img);
+
     return ret;
 }
 
