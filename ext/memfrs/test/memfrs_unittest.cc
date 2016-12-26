@@ -394,6 +394,7 @@ TEST_F( MEMFRS_KERNEL, Scan_Kernel_NoFound ){
     ASSERT_EQ(ret , 0);
 }
 
+/*
 TEST_F( MEMFRS_KERNEL, Scan_Kernel_NoStruct ){
     CPUState cpu;
     uint64_t ret;
@@ -409,7 +410,7 @@ TEST_F( MEMFRS_KERNEL, Scan_Kernel_NoStruct ){
 
     ret = memfrs_get_nt_kernel_base();
     ASSERT_EQ(ret , 0);
-}
+}*/
 
 //================== Testing for kmod.c ===============================//
 

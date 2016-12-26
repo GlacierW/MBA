@@ -73,6 +73,9 @@ extern UT_array* memfrs_traverse_vad_tree(uint64_t eprocess_ptr, CPUState *cpu);
 extern reverse_symbol* memfrs_build_gvar_lookup_map(void);
 extern char* memfrs_get_symbolname_via_address(reverse_symbol* rsym_tab, int offset);
 extern int memfrs_free_reverse_lookup_map(reverse_symbol* rsym_tab);
+extern void* memfrs_get_kernel_info(void);
+extern int memfrs_gen_pdb_profiles(const char* profile_dir);
+extern int memfrs_display_type(CPUState *cpu, uint64_t addr, const char* struct_name);
 /*
 extern void parse_unicode_strptr(uint64_t ustr_ptr, CPUState *cpu);
 extern void parse_unicode_str(uint8_t* ustr, CPUState *cpu);

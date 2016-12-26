@@ -24,13 +24,15 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "pdb.h"
 
 int main(int argc, char *argv[])
 {
-    if( argc != 2 ) {
-        printf( "Usage: %s <PDB_FILE>\n\n", argv[0] );
-        printf( "Generate two JSON file: \n\
+    char path[256];
+    if( argc != 3) {
+        printf( "Usage: %s <PDB_FILE> <JSON_DIR>\n\n", argv[0] );
+        printf( "Generate two JSON file in JSON_DIR: \n\
     1. type_definition.json - data structure information\n\
     2. global_variable.json - global variable offset information\n" );
         exit( 1 );
@@ -41,9 +43,13 @@ int main(int argc, char *argv[])
     printf("Start parsing pdb file\n");
     pdb7_parse(&pdb);
     printf("Dumping structure information\n");
-    dump_json(&pdb);
+    strncpy(path, argv[2], 255);
+    strncat(path, "/type_definition.json", 255);
+    dump_json(&pdb, path);
     printf("Dumping global offset information\n");
-    dump_gvar_json(&pdb);
+    strncpy(path, argv[2], 255);
+    strncat(path, "/global_variable.json", 255);
+    dump_gvar_json(&pdb, path);
 }
 
 

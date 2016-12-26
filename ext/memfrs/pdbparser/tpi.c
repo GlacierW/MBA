@@ -216,7 +216,7 @@ void free_lf_fieldlist(void *type)
         free(lf_fieldlist->substructs);
 }
 
-void get_fieldlist_print_type(void *type, char **name)
+void get_fieldlist_print_type(void *type, char **name, int* pcount)
 {
 	int name_len = 0;
 
@@ -287,7 +287,7 @@ void free_lf_enum(void *type)
 	free(lf_enum->name.name);
 }
 
-void get_enum_print_type(void *type, char **name)
+void get_enum_print_type(void *type, char **name, int* pcount)
 {
 	STypeInfo *ti = (STypeInfo *) type;
 	SType *t = 0;
@@ -302,7 +302,7 @@ void get_enum_print_type(void *type, char **name)
 		print_base_type(base_type, &tmp_name);
 	} else {
 		ti = &t->type_data;
-		ti->get_print_type(ti, &tmp_name);
+		ti->get_print_type(ti, &tmp_name, pcount);
 	}
 
 	name_len = strlen("enum ");
@@ -532,7 +532,7 @@ void free_lf_class(void *type)
 	free_sval(&lf_class->size);
 }
 
-void get_class_struct_print_type(void *type, char **name)
+void get_class_struct_print_type(void *type, char **name, int* pcount)
 {
 	STypeInfo *ti = (STypeInfo *) type;
 	ELeafType lt;
@@ -582,7 +582,7 @@ int get_pointer_utype(void *type, void **ret_type)
 	return curr_idx;
 }
 
-void get_pointer_print_type(void *type, char **name)
+void get_pointer_print_type(void *type, char **name, int* pcount )
 {
 	STypeInfo *ti = (STypeInfo *) type;
 	SType *t = 0;
@@ -591,13 +591,15 @@ void get_pointer_print_type(void *type, char **name)
 	int need_to_free = 1;
 	int base_type = 0;
 
+        *pcount = *pcount+1;
+
 	base_type = ti->get_utype(ti, (void **)&t);
 	if (!t) {
 		need_to_free = 0;
 		print_base_type(base_type, &tmp_name);
 	} else {
 		ti = &t->type_data;
-		ti->get_print_type(ti, &tmp_name);
+		ti->get_print_type(ti, &tmp_name, pcount);
 	}
 
 	//name_len = strlen("*");
@@ -686,7 +688,7 @@ void free_lf_array(void *type)
 	free_sval(&lf_array->size);
 }
 
-void get_array_print_type(void *type, char **name)
+void get_array_print_type(void *type, char **name, int* pcount)
 {
 	STypeInfo *ti = (STypeInfo *) type;
 	SType *t = 0;
@@ -701,7 +703,7 @@ void get_array_print_type(void *type, char **name)
 		print_base_type(base_type, &tmp_name);
 	} else {
 		ti = &t->type_data;
-		ti->get_print_type(ti, &tmp_name);
+		ti->get_print_type(ti, &tmp_name, pcount);
 	}
 
 	name_len = strlen("array: ");
@@ -738,7 +740,7 @@ int get_modifier_modified_type(void *type, void **ret_type)
 	return curr_idx;
 }
 
-void get_modifier_print_type(void *type, char **name)
+void get_modifier_print_type(void *type, char **name, int* pcount)
 {
 	STypeInfo *ti = (STypeInfo *) type;
 	SType *t = 0;
@@ -753,7 +755,7 @@ void get_modifier_print_type(void *type, char **name)
 		print_base_type(base_type, &tmp_name);
 	} else {
 		ti = &t->type_data;
-		ti->get_print_type(ti, &tmp_name);
+		ti->get_print_type(ti, &tmp_name, pcount);
 	}
 
 	name_len = strlen("modifier ");
@@ -782,7 +784,7 @@ void free_lf_arglist(void *type)
 	lf_arglist->arg_type = 0;
 }
 
-void get_arglist_print_type(void *type, char **name)
+void get_arglist_print_type(void *type, char **name, int* pcount)
 {
 	(void) type;
 	int name_len = 0;
@@ -888,7 +890,7 @@ int get_mfunction_arglist(void *type, void **ret_type)
 	return curr_idx;
 }
 
-void get_mfunction_print_type(void *type, char **name)
+void get_mfunction_print_type(void *type, char **name, int* pcount)
 {
 	int name_len = 0;
 
@@ -934,7 +936,7 @@ int get_procedure_arglist(void *type, void **ret_type)
 	return curr_idx;
 }
 
-void get_procedure_print_type(void *type, char **name)
+void get_procedure_print_type(void *type, char **name, int *pcount)
 {
 	int name_len = 0;
 
@@ -1004,7 +1006,7 @@ void free_lf_union(void *type)
 	free_sval(&lf_union->size);
 }
 
-void get_union_print_type(void *type, char **name)
+void get_union_print_type(void *type, char **name, int* pcount)
 {
 	STypeInfo *ti = (STypeInfo *) type;
 //	ELeafType lt;
@@ -1049,7 +1051,7 @@ int get_bitfield_base_type(void *type, void **ret_type)
 	return curr_idx;
 }
 
-void get_bitfield_print_type(void *type, char **name)
+void get_bitfield_print_type(void *type, char **name, int* pcount)
 {
 	STypeInfo *ti = (STypeInfo *) type;
 	SType *t = 0;
@@ -1065,7 +1067,7 @@ void get_bitfield_print_type(void *type, char **name)
 		print_base_type(base_type, &tmp_name);
 	} else {
 		ti = &t->type_data;
-		ti->get_print_type(ti, &tmp_name);
+		ti->get_print_type(ti, &tmp_name, pcount);
 	}
 
 	name_len = strlen("bitfield ");
@@ -1095,7 +1097,7 @@ void free_lf_vtshape(void *type)
 	lf_vtshape->vt_descriptors = 0;
 }
 
-void get_vtshape_print_type(void *type, char **name)
+void get_vtshape_print_type(void *type, char **name, int* pcount)
 {
 	int name_len = 0;
 
@@ -1139,7 +1141,7 @@ void free_lf_enumerate(void *type_info)
 	free_sval(&(lf_en->enum_value));
 }
 
-void get_enumerate_print_type(void *type, char **name)
+void get_enumerate_print_type(void *type, char **name, int* pcount)
 {
 	STypeInfo *ti = (STypeInfo *) type;
 	char *tmp_name = 0, *tmp1 = 0;
@@ -1204,7 +1206,7 @@ void free_lf_nesttype(void *type_info)
 	free(lf_nest->name.name);
 }
 
-void get_nesttype_print_type(void *type, char **name)
+void get_nesttype_print_type(void *type, char **name, int * pcount)
 {
 	STypeInfo *ti = (STypeInfo *) type;
 	SType *t = 0;
@@ -1220,7 +1222,7 @@ void get_nesttype_print_type(void *type, char **name)
 	} else {
 		ti = &t->type_data;
 		if (ti->get_print_type != NULL) {
-			ti->get_print_type(ti, &tmp_name);
+			ti->get_print_type(ti, &tmp_name, pcount);
 		} else {
 			// TODO: need to investigate why this branch can be...
 			//	this is possible because there is no support for
@@ -1286,7 +1288,7 @@ void free_lf_method(void *type_info)
 	free(lf_meth->name.name);
 }
 
-void get_method_print_type(void *type, char **name)
+void get_method_print_type(void *type, char **name, int* pcount)
 {
 	STypeInfo *ti = (STypeInfo *) type;
 	char *tmp_name = 0, *tmp1 = 0;
@@ -1359,7 +1361,7 @@ void free_lf_member(void *type_info)
 	free_sval(&lf_mem->offset);
 }
 
-void get_member_print_type(void *type, char **name)
+void get_member_print_type(void *type, char **name, int* pcount)
 {
 	STypeInfo *ti = (STypeInfo *) type;
 	SType *t = 0;
@@ -1374,7 +1376,7 @@ void get_member_print_type(void *type, char **name)
 		print_base_type(base_type, &tmp_name);
 	} else {
 		ti = &t->type_data;
-		ti->get_print_type(ti, &tmp_name);
+		ti->get_print_type(ti, &tmp_name, pcount);
 	}
 
 	//name_len = strlen("(member) ");
@@ -1442,7 +1444,7 @@ void free_lf_onemethod(void *type)
 	free(lf_onemethod->val.str_data.name);
 }
 
-void get_onemethod_print_type(void *type, char **name)
+void get_onemethod_print_type(void *type, char **name, int* pcount)
 {
 	STypeInfo *ti = (STypeInfo *) type;
 	SType *t = 0;
@@ -1457,7 +1459,7 @@ void get_onemethod_print_type(void *type, char **name)
 		print_base_type(base_type, &tmp_name);
 	} else {
 		ti = &t->type_data;
-		ti->get_print_type(ti, &tmp_name);
+		ti->get_print_type(ti, &tmp_name, pcount);
 	}
 
 	name_len = strlen("onemethod ");
@@ -1628,7 +1630,7 @@ void init_stype_info(STypeInfo *type_info)
 		break;
         
 	default:
-		printf("init_stype_info(): unknown type for init\n");
+		//printf("init_stype_info(): unknown type for init\n");
 		type_info->get_name = 0;
 		type_info->get_val = 0;
 		type_info->get_name_len = 0;

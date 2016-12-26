@@ -53,7 +53,7 @@ along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
 *
 * OUTPUTS :
 */
-int addFieldToStruct(json_object *parent_obj, char* field_name, char* field_type, int offset, int size, bool is_pointer)
+int add_field_to_struct(json_object *parent_obj, char* field_name, char* field_type, int offset, int size, int pointer_count)
 {
     json_object *field_info;
     field_info = json_object_new_array();
@@ -61,20 +61,31 @@ int addFieldToStruct(json_object *parent_obj, char* field_name, char* field_type
     json_object_array_add( field_info, json_object_new_string(field_type));
     json_object_array_add( field_info, json_object_new_int(offset));
     json_object_array_add( field_info, json_object_new_int(size));
-    json_object_array_add( field_info, json_object_new_boolean(is_pointer));
+    json_object_array_add( field_info, json_object_new_int(pointer_count));
 
     json_object_object_add( parent_obj, field_name, field_info);
 
 }
 
+int update_field_size(json_object *parent_obj, char* field_name, int size)
+{
+    json_object *field_info = json_object_object_get(parent_obj, field_name);
+    json_object_array_put_idx(field_info, 2, json_object_new_int(size));    
+}
 
-int addGlobalVar(json_object *parent_obj, char* name, uint64_t offset, int size, char* section_name)
+int add_structure_size(json_object *parent_obj, int size)
+{
+    //magic string for structure size 
+    //json_object *magic_str = json_object_new_string("[structure_size]");
+    json_object *struct_size = json_object_new_int(size);
+    json_object_object_add(parent_obj, "[structure_size]", struct_size);
+}
+
+int add_global_var(json_object *parent_obj, char* name, uint64_t offset, int size, char* section_name)
 {
     json_object *var_info;
     var_info = json_object_new_array();
 
-    //printf("%s\n\n", name);
-    //json_object_array_add( field_info, json_object_new_string(field_type));
     json_object_array_add( var_info, json_object_new_int(offset));
     json_object_array_add( var_info, json_object_new_int(size));
     json_object_array_add( var_info, json_object_new_string(section_name));
@@ -164,7 +175,7 @@ pdb_streams_element* utlist_get_n(pdb_streams_element* plist, int idx)
 }
 
 //Currently, only structures are dump
-void dump_json(R_PDB *pdb) {
+void dump_json(R_PDB *pdb, const char* filename) {
 	ELeafType lt = eLF_MAX;
 	char *command_field = 0;
 	char *name_field = 0;
@@ -180,10 +191,13 @@ void dump_json(R_PDB *pdb) {
 	char *name = NULL;
 	int val = 0;
 	int offset = 0;
+        int leaf_type = 0;
+        int pre_offset = 0;
+        int size = 0;
 	SType *t = 0;
         SType *it = NULL;
 	STypeInfo *tf = NULL;
-        STypeInfo *it2;
+        STypeInfo *it2, *it3;
 	pdb_streams_element *plist = pdb->pdb_streams;
         UT_array *ptmp = NULL;
   
@@ -208,12 +222,10 @@ void dump_json(R_PDB *pdb) {
                 t = it;
 		tf = &t->type_data;
 		lt = tf->leaf_type;
-		if ((tf->leaf_type == eLF_STRUCTURE) || (tf->leaf_type == eLF_UNION)
-			|| (tf->leaf_type == eLF_ENUM)) {
-
-                        // ENUM not yet implement
-                        if( tf->leaf_type == eLF_ENUM ) continue;
-                        
+                //Origin code from radare2, but now only support structure
+		//if ((tf->leaf_type == eLF_STRUCTURE) || (tf->leaf_type == eLF_UNION)
+		//	|| (tf->leaf_type == eLF_ENUM)) {
+                if (tf->leaf_type == eLF_STRUCTURE){
 			if (tf->is_fwdref) {
 				tf->is_fwdref(tf, &val);
 				if (val == 1) {
@@ -221,7 +233,9 @@ void dump_json(R_PDB *pdb) {
 				}
 			}
 
-			is_first = 0;
+                        leaf_type = tf->leaf_type;
+
+			is_first = 1;
 
                         jobj = json_object_new_object();
 
@@ -239,33 +253,57 @@ void dump_json(R_PDB *pdb) {
                         offset = -1;
                         while(ptmp!=NULL && ( it2=(STypeInfo *)utarray_next(ptmp,it2))){
                                 int index;
+                                int pcount = 0;
+
                                 STypeInfo* tmp;
                                 SType* stype;
          
                                 tf = it2;
-				if (tf->get_name)
-					tf->get_name(tf, &name);
 				if (tf->get_val)
-					tf->get_val(tf, &offset);
+				    tf->get_val(tf, &offset);
 				else
-					offset = 0;
+				    offset = 0;
+
+                                if (tf->get_name)
+                                        tf->get_name(tf, &name);
 				if (tf->get_print_type)
-					tf->get_print_type(tf, &type);
-				
-                                addFieldToStruct(jobj, name, type, offset, 0, false);
+					tf->get_print_type(tf, &type, &pcount);                                
+
+                                // find next field, but skip union(the same offset)
+                                it3 = it2;
+                                size = -1;
+                                while((it3=(STypeInfo *)utarray_next(ptmp,it3)) != NULL)
+                                {
+                                    int this_offset = 0;
+                                    if (it3->get_val)
+                                        it3->get_val(it3, &this_offset);
+                                    else
+                                        this_offset = 0;
+
+                                    if(this_offset > offset){
+                                        size = this_offset - offset;
+                                        break;
+                                    }
+                                } 
+                                
+                                // update field if it is the last field in structure  
+                                if((it3=(STypeInfo *)utarray_next(ptmp,it2)) == NULL)
+                                    size = val - offset;
+                                
+                                add_field_to_struct(jobj, name, type, offset, size, pcount);
+                                pre_offset = offset;       
                                 i++;
+                                is_first = 0;
 			}
-                        //printf ("size- %x\n", val - offset);
-                       
-                        //filter
-                        //printf( "Add to json %s\n", type_name);
+                        
+                        add_structure_size(jobj, val);
                         json_object_object_add(tyde_definition, type_name, jobj);
                  }
         } // end of while
-        json_object_to_file("type_definition.json", tyde_definition);
+        json_object_to_file(filename, tyde_definition);
 }
 
-void dump_gvar_json(R_PDB *pdb)
+void dump_gvar_json(R_PDB *pdb, const char* filename)
 {
 	SStreamParseFunc *omap = 0, *sctns = 0, *sctns_orig = 0 , *gsym = 0, *tmp = 0;
 	SIMAGE_SECTION_HEADER *sctn_header = 0;
@@ -314,11 +352,11 @@ void dump_gvar_json(R_PDB *pdb)
                 sctn_header = (SIMAGE_SECTION_HEADER*)utarray_eltptr(pe_stream->sections_hdrs, (gdata->segment -1));
                 if (sctn_header) {
 			char *name = gdata->name.name;
-                        printf("name found: %s %d %x %d %s\n", name, gdata->leaf_type, sctn_header->virtual_address+gdata->offset, gdata->symtype, sctn_header->name);
-                        addGlobalVar( global_var, name, sctn_header->virtual_address+gdata->offset, gdata->symtype, sctn_header->name);
+                        //printf("name found: %s %d %x %d %s\n", name, gdata->leaf_type, sctn_header->virtual_address+gdata->offset, gdata->symtype, sctn_header->name);
+                        add_global_var( global_var, name, sctn_header->virtual_address+gdata->offset, gdata->symtype, sctn_header->name);
                 }
         }
-        json_object_to_file("global_variable.json", global_var);
+        json_object_to_file(filename , global_var);
 }
 
 int init_pdb_parser(R_PDB *pdb, const char *filename) {

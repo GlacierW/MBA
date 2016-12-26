@@ -36,6 +36,8 @@ void do_module_list(Monitor *mon, const QDict *qdict);
 void do_load_global_variable(Monitor *mon, const QDict *qdict);
 void do_get_gvar_vmem(Monitor *mon, const QDict *qdict);
 void do_gvar_lookup(Monitor *mon, const QDict *qdict);
+void do_gen_pdb_profiles(Monitor *mon, const QDict *qdict);
+void do_display_type(Monitor *mon, const QDict *qdict);
 //void hexdump(Monitor *mon, uint8_t* buf, size_t length);
 #endif
 

@@ -95,9 +95,22 @@
 },
 {
         .name = "gvar_lookup",
-        .args_type  = "addr:i",
+        .args_type  = "addr:l",
         .params     = "addr",
         .help       = "get the symbolname at specific virtual memory address",
         .mhandler.cmd = do_gvar_lookup,
 },
-
+{
+        .name = "gen_pdb_profiles",
+        .args_type  = "profiles_dir:s",
+        .params     = "profiles_dir",
+        .help       = "Generate PDB's global var and structure info into profiles_dir",
+        .mhandler.cmd = do_gen_pdb_profiles,
+},
+{
+        .name = "dt",
+        .args_type  = "addr:l,struct:s",
+        .params     = "addr struct",
+        .help       = "Fit the memory at addr into structure fields.",
+        .mhandler.cmd = do_display_type,
+},

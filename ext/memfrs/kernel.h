@@ -8,4 +8,12 @@
 #endif
 //Leave for private APIs
 
+typedef struct win_kernel_module{
+    char name[256];
+    uint64_t base;
+    char guid[80];
+} win_kernel_module;
+
+
+
 #endif
