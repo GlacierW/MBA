@@ -67,9 +67,12 @@ void do_process_list(Monitor *mon, const QDict *qdict)
         monitor_printf(mon, "Eprocess              CR3                 PID   Full Process Path / [Process Name]\n");
         monitor_printf(mon, "--------------------- ------------------- ----- ----------------------------------\n");
         while( (print_proc_list=(process_list_st*)utarray_next(proc_list,print_proc_list)) ){
-            printf( "0x%-20lx%-20lx%-5"PRId64" %s\n", print_proc_list->eprocess, print_proc_list->CR3, print_proc_list->pid, print_proc_list->full_file_path);
+            monitor_printf(mon, "0x%-20lx%-20lx%-5"PRId64" %s\n", print_proc_list->eprocess, print_proc_list->CR3, print_proc_list->pid, print_proc_list->full_file_path);
         }
+        free(proc_list);
     }
+    else
+        monitor_printf(mon, "Something is wrong, please check error number\n");
 }
 
 void do_scan_kernel(Monitor *mon, const QDict *qdict)
@@ -304,6 +307,8 @@ void do_display_type(Monitor *mon, const QDict *qdict)
 
     thiscpu = ENV_GET_CPU((CPUArchState*)mba_mon_get_cpu());
     memfrs_display_type(thiscpu, addr, struct_name);
+}
+
 /******************************************************************
 * PURPOSE : Show the process handles
 ******************************************************************/
@@ -381,7 +386,8 @@ void do_process_handles_list(Monitor *mon, const QDict *qdict)
         }
         utarray_free(handles);
     }
-
+    else
+        monitor_printf(mon, "Something is wrong, please check error number\n");
 }
 
 /******************************************************************
@@ -415,4 +421,6 @@ void do_handles_types_list(Monitor *mon, const QDict *qdict)
         }
         utarray_free(handles_types); 
     }
+    else
+        monitor_printf(mon, "Something is wrong, please check error number\n");
 }

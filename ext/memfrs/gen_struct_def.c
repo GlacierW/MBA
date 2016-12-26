@@ -2,6 +2,7 @@
  *  MBA Virtual Machine Memory Introspection Self-defined Signature Generator
  *
  *  Copyright (c)  2016 ChongKuan Chen
+ *                 2016 ELin Ho
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -72,8 +73,8 @@ int main(int argc, char **argv)
     // nonpointer
     json_object *kprcb, *kprocess, *list_entry, *peb;
 
-json_object *mmvad_short;
-json_object *rtl_node;
+    json_object *mmvad_short;
+    json_object *rtl_node;
     type_definition = json_object_new_object();
 
 #ifdef TEST_FORMATTED
@@ -90,7 +91,7 @@ json_object *rtl_node;
      * create a json object
      * add the field to struct
      * add the new json object to json object "type_definition"
-    */
+     */
 
     // =========== _KPCR =================================
     kpcr = json_object_new_object();

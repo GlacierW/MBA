@@ -402,13 +402,13 @@ UT_array* memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
         memfrs_errno = MEMFRS_ERR_INVALID_CPU;
         return NULL;
     }
+
     // Read the concrete memory value of kthread_ptr(CurrentThread) via _KPCR address
     memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&kthread_ptr, sizeof(kthread_ptr), kpcr_ptr, "_KPCR", 2, "#Prcb", "#CurrentThread");
 
     // Read the concrete memory value of PROCESS via CurrentThread
     // Get the first PROCESS
     memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), kthread_ptr, "_KTHREAD", 1, "#Process");
-
 
     // Assign process_list be a 'process_list_st' structure UTarray
     utarray_new( list, &proc_list_icd);
@@ -418,6 +418,7 @@ UT_array* memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
     eprocess_ptr_init = eprocess_ptr;
 
     do {
+
         //Read CR3 & Process name
         memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&cr3, sizeof(cr3), eprocess_ptr, "_EPROCESS", 2, "#Pcb", "#DirectoryTableBase");
         memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&processid, sizeof(processid), eprocess_ptr, "_EPROCESS", 1, "#UniqueProcessId");
@@ -440,7 +441,7 @@ UT_array* memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
             proc_list.full_file_path[length/2]='\0';
         }
 
-        // [TODO] Image filr path sometimes will stored in unvalid address for unknow reason
+        // [TODO] Image file path sometimes will stored in unvalid address for unknow reason
         else {
             proc_list.full_file_path = (char*)malloc(32);
             sprintf(proc_list.full_file_path, "[Process Name] %-15s", file_name_buf);
@@ -460,8 +461,8 @@ UT_array* memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
         // Substract entry_list offset to find base address of eprocess
         memfrs_get_nested_field_offset(&offset_entry_list_to_eprocess, "_EPROCESS", 1, "ActiveProcessLinks");
         eprocess_ptr = eprocess_ptr-offset_entry_list_to_eprocess;
-    }while( eprocess_ptr != eprocess_ptr_init );
 
+    }while( eprocess_ptr != eprocess_ptr_init );
 
     return list;
 }

@@ -260,9 +260,12 @@ static char* extract_registry_detail( uint64_t handle_table_entry_ptr, uint64_t 
         kcb_ptr = kcb_parent_ptr;
     }
 
-    registry_detail[total_key_length-1]='\0';
-
-    return registry_detail;
+    if(total_key_length>0){
+        registry_detail[total_key_length-1]='\0';
+        return registry_detail;
+    }
+    else
+        return NULL;
 }
 
 
@@ -627,6 +630,7 @@ extern UT_array* memfrs_enum_proc_handles( int target_type, uint64_t target, uin
     handles_st handles;
 
     int i;
+    int count =0;
     uint64_t cr3,
              kthread_ptr,
              eprocess_ptr_init = 0,
@@ -641,19 +645,25 @@ extern UT_array* memfrs_enum_proc_handles( int target_type, uint64_t target, uin
     int table_level;
 
 
-    //Check if the data structure information is loaded
-    if(g_struct_info ==NULL)
+    // Check if the data structure information is loaded
+    if(g_struct_info == NULL)
+    {
+        memfrs_errno = MEMFRS_ERR_NOT_LOADED_STRUCTURE;
+        return NULL;
+    }
+    // Check if the global data structure information is loaded
+    if(g_globalvar_info == NULL)
     {
         memfrs_errno = MEMFRS_ERR_NOT_LOADED_GLOBAL_STRUCTURE;
         return NULL;
     }
-    //Check if kpcr is already found
+    // Check if kpcr is already found
     if(kpcr_ptr == 0)
     {
         memfrs_errno = MEMFRS_ERR_NOT_FOUND_KPCR;
         return NULL;
     }
-    //Check the cpu pointer valid
+    // Check the cpu pointer valid
     if(cpu == NULL)
     {
         memfrs_errno = MEMFRS_ERR_INVALID_CPU;
@@ -722,11 +732,14 @@ extern UT_array* memfrs_enum_proc_handles( int target_type, uint64_t target, uin
             }
         }
 
+        count++;
+        if(count > 1000)
+            break;
+
         // Read next entry
         memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), eprocess_ptr, "_EPROCESS", 2, "#ActiveProcessLinks", "*Blink");
         // Substract entry_list offset to find base address of eprocess
         eprocess_ptr = eprocess_ptr-offset_entry_list_to_eprocess;
-
     }while( eprocess_ptr != eprocess_ptr_init );
 
     return process_handles;
@@ -760,6 +773,8 @@ extern UT_array* memfrs_enum_proc_handles_detail( int target_type, const char* t
     int has_entry;
 
     tmp_process_handles = memfrs_enum_proc_handles( PARSING_HANDLE_TYPE_ALL, 0, kpcr_ptr, cpu );
+    if( tmp_process_handles == NULL)
+        return NULL;
 
 
     // Assign process_handles be a 'handles_st' structure UTarray
@@ -832,6 +847,31 @@ extern UT_array* memfrs_enum_handles_types( uint64_t kpcr_ptr, CPUState *cpu )
              g_ObTypeIndexTable_ptr;
     json_object *gvar = NULL;
     int offset_name_to_object_type = 0;
+
+    // Check if the data structure information is loaded
+    if(g_struct_info == NULL)
+    {
+        memfrs_errno = MEMFRS_ERR_NOT_LOADED_STRUCTURE;
+        return NULL;
+    }
+    // Check if the global data structure information is loaded
+    if(g_globalvar_info == NULL)
+    {
+        memfrs_errno = MEMFRS_ERR_NOT_LOADED_GLOBAL_STRUCTURE;
+        return NULL;
+    }
+    // Check if kpcr is already found
+    if(kpcr_ptr == 0)
+    {
+        memfrs_errno = MEMFRS_ERR_NOT_FOUND_KPCR;
+        return NULL;
+    }
+    // Check the cpu pointer valid
+    if(cpu == NULL)
+    {
+        memfrs_errno = MEMFRS_ERR_INVALID_CPU;
+        return NULL;
+    }
 
     // Get Name offset from _OBJECT_TYPE
     if( memfrs_get_nested_field_offset(&offset_name_to_object_type, "_OBJECT_TYPE", 1, "Name") ==-1 )
