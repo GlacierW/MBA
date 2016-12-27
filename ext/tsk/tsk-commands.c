@@ -237,13 +237,13 @@ static void sort_and_merge_continuous_address(UT_array *arr){
     }
 }
 void download_hive_to_tmp(Monitor *mon) {
-    if ( get_hive_file(mon,"/Windows/System32/config/SAM", "/tmp/SAM") < 0 )
+    if ( get_hive_file(mon,"/Windows/System32/config/SAM", "./SAM") < 0 )
         monitor_printf(mon, "Download SAM to tmp failed\n"); 
-    if ( get_hive_file(mon,"/Windows/System32/config/SYSTEM", "/tmp/SYSTEM") < 0 )
+    if ( get_hive_file(mon,"/Windows/System32/config/SYSTEM", "./SYSTEM") < 0 )
         monitor_printf(mon, "Download SYSTEM to tmp failed\n");
-    if ( get_hive_file(mon,"/Windows/System32/config/SECURITY", "/tmp/SECURITY") < 0 )
+    if ( get_hive_file(mon,"/Windows/System32/config/SECURITY", "./SECURITY") < 0 )
         monitor_printf(mon, "Download SECURITY to tmp failed\n");
-    if ( get_hive_file(mon,"/Windows/System32/config/SOFTWARE", "/tmp/SOFTWARE") < 0 )
+    if ( get_hive_file(mon,"/Windows/System32/config/SOFTWARE", "./SOFTWARE") < 0 )
         monitor_printf(mon, "Download SOFTWARE to tmp failed\n");
 }
 void do_search_registry_by_key(Monitor *mon, const QDict *qdict) {
@@ -294,16 +294,16 @@ int search_registry_by_key(const char* key) {
     strcpy( keyName, key);
     for ( ; runRegistry < 4 ; runRegistry++ ) {
         if ( runRegistry == 0 ) {
-            strcpy(source, "/tmp/SYSTEM");
+            strcpy(source, "./SYSTEM");
         }
         else if ( runRegistry == 1 ) {
-            strcpy( source, "/tmp/SAM");
+            strcpy( source, "./SAM");
         }
         else if ( runRegistry == 2 ) {
-            strcpy( source, "/tmp/SOFTWARE");
+            strcpy( source, "./SOFTWARE");
         }
         else if ( runRegistry == 3 ) {
-            strcpy( source, "/tmp/SECURITY");
+            strcpy( source, "./SECURITY");
         }
 
         libcnotify_verbose_set(
@@ -455,16 +455,16 @@ int print_by_registry_path(const char* path) {
 
     pathHandle(path); 
     if ( strcmp( registrySource[0], "HKLM" ) == 0 &&  strcmp( registrySource[1], "SYSTEM" ) == 0 ) {
-        strcpy( source, "/tmp/SYSTEM" );
+        strcpy( source, "./SYSTEM" );
     } // if
     else if ( strcmp( registrySource[0], "HKLM" ) == 0 &&  strcmp( registrySource[1], "SAM" ) == 0  ) {
-        strcpy( source, "/tmp/SAM" );
+        strcpy( source, "./SAM" );
     } // else if
     else if ( strcmp( registrySource[0], "HKLM" ) == 0 &&  strcmp( registrySource[1], "SECURITY" ) == 0  ) {
-        strcpy( source, "/tmp/SECURITY" );     
+        strcpy( source, "./SECURITY" );     
     } // else if
     else if ( strcmp( registrySource[0], "HKLM" ) == 0 &&  strcmp( registrySource[1], "SOFTWARE" ) == 0  ) {
-        strcpy( source, "/tmp/SOFTWARE" );     
+        strcpy( source, "./SOFTWARE" );     
     } // else if
     else if ( strcmp( registrySource[0], "HKLM" ) == 0 &&  strcmp( registrySource[1], "" ) == 0  ) {
         multPrint = 1, runPrint = 0;
@@ -479,13 +479,13 @@ int print_by_registry_path(const char* path) {
     for ( ; runPrint < 4 ; runPrint++ ) {
         if ( multPrint == 1 ) {
             if ( runPrint == 0 )
-                strcpy( source, "/tmp/SYSTEM" );
+                strcpy( source, "./SYSTEM" );
             else if ( runPrint == 1 )
-                strcpy( source, "/tmp/SAM" );
+                strcpy( source, "./SAM" );
             else if ( runPrint == 2 )
-                strcpy( source, "/tmp/SECURITY" );
+                strcpy( source, "./SECURITY" );
             else if ( runPrint == 3 )
-                strcpy( source, "/tmp/SOFTWARE" );
+                strcpy( source, "./SOFTWARE" );
         } // if
 
 	    libcnotify_verbose_set(

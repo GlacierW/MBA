@@ -752,11 +752,11 @@ void tsk_get_file(const char* imgname,uint64_t haddr_img_offset, const char* fil
         printf("Open fail");
     else {
         fwrite( temp, size, sizeof(char), writeHive );
+        fclose(writeHive);
     } // else
 
     free(temp);
-    fclose(writeHive);
-
+    
     //find the inode of this block
     ifind_data = fs_ifind_data(fs, (TSK_FS_IFIND_FLAG_ENUM) 0, part_block_offset);
     if(ifind_data == NULL)
