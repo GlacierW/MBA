@@ -5,6 +5,7 @@
  *                  2016 Chiawei Wang
  *                  2016 Chongkuan Chen
  *                  2016 Hao Li
+ *                  2016 ChuanHua Cheng 
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -32,4 +33,22 @@
         .params     = "dev filename",
         .help       = "Get the image byte addrs by filename",
         .mhandler.cmd = do_get_haddr_by_filename,
-},
+},{
+        .name = "get_file",
+        .args_type  = "dev:s,filename:s,destination:s",
+        .params     = "dev filename destination",
+        .help       = "Get the file from the image throught low level disk forensics",
+        .mhandler.cmd = do_get_file,
+},{
+        .name = "search_registry_by_key",
+        .args_type  = "key:s",
+        .params     = "key",
+        .help       = "Print registry by key",
+        .mhandler.cmd = do_search_registry_by_key,
+},{
+        .name = "print_by_registry_path",
+        .args_type  = "path:s",
+        .params     = "path",
+        .help       = "Print registry by path",
+        .mhandler.cmd = do_print_by_registry_path,
+}, 

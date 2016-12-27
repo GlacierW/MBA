@@ -250,7 +250,15 @@ ext/tsk/sleuthkit/tsk/.libs/libtsk.a:  ext/tsk/sleuthkit/libqcow/libqcow/.libs/l
 	./bootstrap &&\
 	./configure --disable-java --with-libqcow=`pwd`/libqcow --enable-static &&\
 	$(MAKE)
-ext/tsk/tsk.o:ext/tsk/sleuthkit/tsk/.libs/libtsk.a
+ext/tsk/libregf/.libs/libregf.a: 
+	cd ext/tsk/libregf &&\
+	./autogen.sh &&\
+	./configure --enable-static CFLAGS="-fPIC" &&\
+	$(MAKE) &&\
+	mkdir .libs &&\
+	ar rcs .libs/libregf.a libbfio/*.o libcdata/*.o libcerror/*.o libcfile/*.o libclocale/*.o libcnotify/*.o libcpath/*.o libcsplit/*.o libcsystem/*.o libcthreads/*.o libfcache/*.o libfdata/*.o libfdata/*.o libfdatetime/*.o libfwnt/*.o libregf/*.o libuna/*.o regftools/*.o
+
+ext/tsk/tsk.o:ext/tsk/sleuthkit/tsk/.libs/libtsk.a ext/tsk/libregf/.libs/libregf.a
 endif
 ######################################################################
 
