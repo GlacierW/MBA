@@ -18,7 +18,6 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-
 #if !defined(CONFIG_MEMFRS_TEST)
 #include "qemu-common.h"
 #include "monitor/monitor.h"
@@ -44,11 +43,14 @@
 #define _MOCKABLE(x) x
 #endif
 
+#include <stdarg.h>
+
 /* Global Variable */
 uint64_t g_kpcr_ptr = 0;
 json_object *g_struct_info = NULL;
 json_object *g_globalvar_info = NULL;
 
+MEMFRS_ERRNO memfrs_errno;
 
 bool memfrs_check_struct_info(void)
 {
@@ -66,6 +68,7 @@ INPUT: json_object* struc       json object of structure we want to query
 
 OUTPUT: field_info*             return the field information in type if field_info
 *******************************************************************/
+
 field_info* memfrs_q_field( json_object* struc, const char* field_name )
 {
     json_object* target = NULL;
@@ -92,10 +95,9 @@ field_info* memfrs_q_field( json_object* struc, const char* field_name )
 
     //query and unpack field type
     tmp_jobject = json_object_array_get_idx(target, 0);
-    strncpy(f_info->type_name, json_object_get_string(tmp_jobject), STRLEN); 
+    strncpy(f_info->type_name, json_object_get_string(tmp_jobject), STRLEN);
 
-    //TODO: type size leave empty now 
-
+    //TODO: type size leave empty now
 
     // Put the json object of field type into fielf_info structure
     if(g_struct_info != NULL)
@@ -104,13 +106,14 @@ field_info* memfrs_q_field( json_object* struc, const char* field_name )
     return f_info;
 }
 
+
 /*******************************************************************
 int memfrs_close_field(field_info* field)
 
 free the memory of field_info.
 
-INPUT:     field_info* field,   pointer of field_info object to be freed 
-OUTPUT:    int,                 return 0 if sucess, and not 0 otherwise       
+INPUT:     field_info* field,   pointer of field_info object to be freed
+OUTPUT:    int,                 return 0 if sucess, and not 0 otherwise
 
 *******************************************************************/
 int memfrs_close_field(field_info* field)
@@ -131,9 +134,9 @@ OUTPUT:   json_object*,         json object representation of the target struct
 json_object* memfrs_q_struct(const char* ds_name)
 {
     json_object* target = NULL;
-    
+
     // Query global structure info with structure name ds_name
-    // Restore the query result into target json_object 
+    // Restore the query result into target json_object
     json_object_object_get_ex(g_struct_info, ds_name, &target);
     
     if(target==NULL)
@@ -157,12 +160,12 @@ int memfrs_load_structs( const char* type_filename)
 }
 
 /*******************************************************************
-bool memfrs_kpcr_self_check( uint64_t kpcr_ptr ) 
+bool memfrs_kpcr_self_check( uint64_t kpcr_ptr )
 
 Hueristic check if certain address contain the data structure _KPCR
 
 INPUT:     uint64_t kpcr_ptr,        the 64bit address of possible KPCR pointer
-OUTPUT:    bool,                     return true if kpcr found, else retuen false 
+OUTPUT:    bool,                     return true if kpcr found, else retuen false
 *******************************************************************/
 bool memfrs_kpcr_self_check( uint64_t kpcr_ptr ) {
 
@@ -190,15 +193,15 @@ bool memfrs_kpcr_self_check( uint64_t kpcr_ptr ) {
     {
         g_kpcr_ptr = 0;
         return false;
-    }  
+    }
 
-    // Check if the Self pointer point back to _KPCR structure, which is the hueristic check of _KPCR 
+    // Check if the Self pointer point back to _KPCR structure, which is the hueristic check of _KPCR
     if( kpcr_ptr == self_ptr ) {
         g_kpcr_ptr = kpcr_ptr;
         printf("KPCR found %lx\n", g_kpcr_ptr);
         return true;
     }
-  
+
     g_kpcr_ptr = 0;
     return false;
 }
@@ -340,133 +343,128 @@ void hexdump(Monitor *mon, uint8_t* buf, size_t length)
 
 }
 
-/*******************************************************************
-int memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu ) 
+
+
+static void process_list_dtor(void *_elt) {
+    process_list_st *elt = (process_list_st*)_elt;
+    if(elt->full_file_path) free(elt->full_file_path);
+}
+UT_icd proc_list_icd = {sizeof(process_list_st), NULL, NULL, process_list_dtor};
+/*****************************************************************n
+UT_array* memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
 
 Eumerate the running process
- 
-INPUT:     uint64_t kpcr_ptr,        the address of _KPCR struct 
+
+INPUT:     uint64_t kpcr_ptr,        the address of _KPCR struct
            CPUState *cpu,            the pointer to current cpu
 OUTPUT:    int,                      return 0 if sucess, and not 0 otherwise
 *******************************************************************/
-int memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu ) 
+UT_array* memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
 {
+    UT_array *list = NULL;
+    process_list_st proc_list;
+
+    int i;
     uint64_t kthread_ptr,
-             eprocess_ptr;
+             eprocess_ptr,
+             eprocess_ptr_init = 0,
+             buf_ptr
+                 ;
 
-    uint64_t cr3;
+    uint64_t cr3,
+             processid;
 
-    uint8_t buf[STRLEN];
+    // max length of file name is 15
+    uint8_t file_name_buf[32];
+    uint8_t file_path_buf[256];
+    uint16_t length;
 
-    uint64_t eprocess_ptr_init = 0;
-
-    json_object* jkpcr =NULL;
-    int offset_curthread_to_kpcr = 0;
-
-    json_object* jkthread =NULL;
-    int offset_process_to_kthread = 0;
-
-    json_object* jeprocess = NULL;
-    int offset_cr3_to_eprocess = 0;
-    int offset_blink_to_eprocess = 0;
     int offset_entry_list_to_eprocess = 0;
-    int offset_process_name_to_eprocess = 0;
     int count = 0;
-    field_info* f_info, *f_info2 = NULL;
 
     //Check if the data structure information is loaded
     if(g_struct_info ==NULL)
     {
-        printf("Data structure information is not loaded\n");
-        return -1;
+        memfrs_errno = MEMFRS_ERR_NOT_LOADED_GLOBAL_STRUCTURE;
+        return NULL;
     }
 
     //Check if kpcr is already found
     if(kpcr_ptr == 0)
     {
-        printf("Not yet find kpcr address\n");
-        return -1;
+        memfrs_errno = MEMFRS_ERR_NOT_FOUND_KPCR;
+        return NULL;
     }
 
     //Check the cpu pointer valid
     if(cpu == NULL)
     {
-        printf("CPU state is null\n");
-        return -1;
+        memfrs_errno = MEMFRS_ERR_INVALID_CPU;
+        return NULL;
     }
 
-    // Retrieve the _KPCR structure
-    jkpcr = memfrs_q_struct("_KPCR");
-
-    // Query Prcb field in _KPCR struct
-    f_info = memfrs_q_field(jkpcr, "Prcb");
-    // Query Prcb for the sub-field name CurrentThread 
-    f_info2 = memfrs_q_field(f_info->jobject_type, "CurrentThread");
-    // Calculating the offset of CurrentThread in _KPCR 
-    offset_curthread_to_kpcr = f_info->offset + f_info2->offset;
-    //Cleaning ...
-    memfrs_close_field(f_info2);
-    memfrs_close_field(f_info);
-
-    // Retrieve the _KTHREAD structure
-    jkthread = memfrs_q_struct("_KTHREAD");
-    // Query PROCESS field in  _KTHREAD struct
-    f_info = memfrs_q_field(jkthread, "Process");
-    offset_process_to_kthread = f_info->offset;
-    memfrs_close_field(f_info);
-    
     // Read the concrete memory value of kthread_ptr(CurrentThread) via _KPCR address
-    cpu_memory_rw_debug( cpu, kpcr_ptr + offset_curthread_to_kpcr, (uint8_t*)&kthread_ptr, sizeof(kthread_ptr), 0 );
-    // Read the concrete memory value of PROCESS via CurrentThread 
-    // Get the first PROCESS 
-    cpu_memory_rw_debug( cpu, kthread_ptr + offset_process_to_kthread, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), 0 );
+    memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&kthread_ptr, sizeof(kthread_ptr), kpcr_ptr, "_KPCR", 2, "#Prcb", "#CurrentThread");
 
-    // Retrieve the _EPROCESS structure 
-    jeprocess = memfrs_q_struct("_EPROCESS");
-    // Query Pcb field in _EPROCESS struct
-    f_info = memfrs_q_field(jeprocess, "Pcb");
-    // Query Pcb for the sub-field name DirectoryTableBase, which is CR3 value
-    f_info2 = memfrs_q_field(f_info->jobject_type, "DirectoryTableBase");
-    offset_cr3_to_eprocess = f_info->offset + f_info2->offset;
-    memfrs_close_field(f_info2);
-    memfrs_close_field(f_info);
+    // Read the concrete memory value of PROCESS via CurrentThread
+    // Get the first PROCESS
+    memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), kthread_ptr, "_KTHREAD", 1, "#Process");
 
-    // Query ActiveProcessLinks in _EPROCESS
-    f_info = memfrs_q_field(jeprocess, "ActiveProcessLinks");
-    // Query Blink in ActiveProcessLinks
-    f_info2 = memfrs_q_field(f_info->jobject_type, "Blink");
-    // Calculate Entry List offset from eprocess
-    offset_entry_list_to_eprocess = f_info->offset;
-    // Calculate Blink offset from eprocess
-    offset_blink_to_eprocess = f_info->offset + f_info2->offset;
-    memfrs_close_field(f_info2);
-    memfrs_close_field(f_info);
+    // Assign process_list be a 'process_list_st' structure UTarray
+    utarray_new( list, &proc_list_icd);
 
-    // Query and Cal offset of ImageFileName in _EPROCESS struct
-    f_info = memfrs_q_field(jeprocess, "ImageFileName");
-    offset_process_name_to_eprocess = f_info->offset;
-    memfrs_close_field(f_info);
 
     // Start iteration process list
     eprocess_ptr_init = eprocess_ptr;
 
     do {
-        //Read CR3 & Process name
-        cpu_memory_rw_debug( cpu, eprocess_ptr + offset_cr3_to_eprocess, (uint8_t*)&cr3, sizeof(cr3), 0 );
-        cpu_memory_rw_debug( cpu, eprocess_ptr + offset_process_name_to_eprocess, (uint8_t*)buf, sizeof(buf), 0 );
-        printf( "eprocess: %lx CR3: %lx, Process Name: %s\n", eprocess_ptr, cr3, buf );
 
-        // read next entry  
-        cpu_memory_rw_debug( cpu, eprocess_ptr + offset_blink_to_eprocess, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), 0 );
-        // Substract entry_list offset to find base address of eprocess
-        eprocess_ptr -= offset_entry_list_to_eprocess;
-       
+        //Read CR3 & Process name
+        memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&cr3, sizeof(cr3), eprocess_ptr, "_EPROCESS", 2, "#Pcb", "#DirectoryTableBase");
+        memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&processid, sizeof(processid), eprocess_ptr, "_EPROCESS", 1, "#UniqueProcessId");
+        memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)file_name_buf, sizeof(file_name_buf), eprocess_ptr, "_EPROCESS", 1, "#ImageFileName");
+        //printf( "0x%-20lx%-20lx%-5"PRId64" ", eprocess_ptr, cr3, processid );
+
+        if( cr3 !=0 ){
+            if ( memfrs_get_virmem_struct_content(cpu, cr3, (uint8_t*)&length, sizeof(length), eprocess_ptr, "_EPROCESS", 4, "*Peb", "*ProcessParameters", "#ImagePathName", "#Length") == -1 )
+                length =0;
+            if ( memfrs_get_virmem_struct_content(cpu, cr3, (uint8_t*)&buf_ptr, sizeof(buf_ptr), eprocess_ptr, "_EPROCESS", 4, "*Peb", "*ProcessParameters", "#ImagePathName", "*Buffer") == -1 )
+                buf_ptr =0;
+        }
+
+        if( memfrs_get_virmem_content( cpu, cr3, buf_ptr, sizeof(file_path_buf), (uint8_t*)file_path_buf ) != -1 ){
+            proc_list.full_file_path=(char*)malloc(length/2+1);
+            for(i=0;i<length;i=i+1){
+                if( i%2==0 )
+                    proc_list.full_file_path[i/2]=(char)(*(file_path_buf+i));
+            } 
+            proc_list.full_file_path[length/2]='\0';
+        }
+
+        // [TODO] Image file path sometimes will stored in unvalid address for unknow reason
+        else {
+            proc_list.full_file_path = (char*)malloc(32);
+            sprintf(proc_list.full_file_path, "[Process Name] %-15s", file_name_buf);
+        }
+
+        proc_list.eprocess = eprocess_ptr;
+        proc_list.CR3 = cr3;
+        proc_list.pid = processid;
+        utarray_push_back(list, &proc_list);
+
         count++;
         if(count > 1000)
             break;
-    } while( eprocess_ptr != eprocess_ptr_init );
 
-    return 0;
+        // Read next entry
+        memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), eprocess_ptr, "_EPROCESS", 2, "#ActiveProcessLinks", "*Blink");
+        // Substract entry_list offset to find base address of eprocess
+        memfrs_get_nested_field_offset(&offset_entry_list_to_eprocess, "_EPROCESS", 1, "ActiveProcessLinks");
+        eprocess_ptr = eprocess_ptr-offset_entry_list_to_eprocess;
+
+    }while( eprocess_ptr != eprocess_ptr_init );
+
+    return list;
 }
 
 char* parse_unicode_strptr(uint64_t ustr_ptr, CPUState *cpu)
@@ -502,8 +500,6 @@ char* parse_unicode_strptr(uint64_t ustr_ptr, CPUState *cpu)
     cpu_memory_rw_debug( cpu, ustr_ptr+offset, (uint8_t*)&buf_ptr, sizeof(buf_ptr), 0 );
     memfrs_close_field(f_info); 
 
-    //printf("Address: %" PRIx64 "\n", buf_ptr);
-
     buf = (uint8_t*)malloc(max_length+2);
     str = (char*)malloc(max_length+1);
     memset(str, 0, max_length+1);
@@ -513,7 +509,7 @@ char* parse_unicode_strptr(uint64_t ustr_ptr, CPUState *cpu)
     for(i=0; i<max_length;i+=2)
         str[i/2] = buf[i];   
     str[i] = 0x00;
-    //printf("Filename %ls\n", (wchar_t*p)buf);
+
     printf("Filename %s\n", str);
     free(buf);
     return str;
@@ -566,7 +562,7 @@ char* parse_unicode_str(uint8_t* ustr, CPUState *cpu)
     for(i=0; i<max_length;i+=2)
         str[i/2] = buf[i];
     str[i] = 0x00;
-    //printf("Filename %ls\n", (wchar_t*p)buf);
+
     free(buf);
     return str;
 }
@@ -733,3 +729,86 @@ int memfrs_display_type(CPUState *cpu, uint64_t addr, const char* struct_name)
     return 0;
 }
 
+int memfrs_get_virmem_struct_content(
+        CPUState   *cpu,
+        uint64_t    cr3,
+        uint8_t    *buffer,
+        int         len,
+        uint64_t    struct_addr,
+        const char *struct_type_name,
+        int         depth,
+        ...) {
+    // XXX: Now use extra char at beginning of field name to
+    // indicate that the field is a pointer or not.
+    // Should load and parse the structure file correctly instead.
+    // XXX: assuming pointer has size of 8
+    json_object *struct_type;
+    va_list vl;
+    field_info *info = NULL;
+    int errcode;
+    const char *field_name;
+
+    struct_type = memfrs_q_struct(struct_type_name);
+    if (struct_type == NULL)
+        return -1;
+
+    va_start(vl, depth);
+    // Process field query
+    while (depth--) {
+        if (info && info->is_pointer) {
+            errcode = memfrs_get_virmem_content(cpu, cr3, struct_addr, 8, (uint8_t*)&struct_addr);
+            if (errcode == -1)
+                goto FAIL;
+        }
+
+        free(info);
+        field_name = va_arg(vl, const char*);
+        info = memfrs_q_field(struct_type, field_name+1);
+        if (info == NULL)
+            goto FAIL;
+
+        if (field_name[0] == '*')
+            info->is_pointer = true;
+        else
+            info->is_pointer = false;
+
+        struct_addr += info->offset;
+        struct_type = info->jobject_type;
+    }
+    free(info);
+    va_end(vl);
+
+    return memfrs_get_virmem_content(cpu, cr3, struct_addr, len, buffer);
+FAIL:
+    va_end(vl);
+    return -1;
+}
+
+int memfrs_get_nested_field_offset(int *out, const char *struct_type_name, int depth, ...) {
+    json_object *struct_type;
+    va_list vl;
+    field_info *info = NULL;
+    const char *field_name;
+    int offset = 0;
+
+    struct_type = memfrs_q_struct(struct_type_name);
+    if (struct_type == NULL)
+        return -1;
+
+    va_start(vl, depth);
+    // Process field query
+    while (depth--) {
+        field_name = va_arg(vl, const char*);
+        info = memfrs_q_field(struct_type, field_name);
+        if (info == NULL)
+            return -1;
+
+        struct_type = info->jobject_type;
+        offset += info->offset;
+        free(info);
+    }
+    va_end(vl);
+
+    *out = offset;
+    return 0;
+}
