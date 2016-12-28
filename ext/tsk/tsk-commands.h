@@ -5,6 +5,7 @@
  *                  2016 Chiawei Wang
  *                  2016 Chongkuan Chen
  *                  2016 Hao Li
+ *                  2016 ChuanHua Cheng
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -21,9 +22,19 @@
  */
 #ifndef __TSK_COMMAND_H_
 #define __TSK_COMMAND_H_
+#define CHECK_REGISTRY_PATH 2
 
 struct Monitor;
 struct QDict;
 void do_get_filename_by_haddr(Monitor *mon, const QDict *qdict);
 void do_get_haddr_by_filename(Monitor *mon, const QDict *qdict);
+void do_get_file(Monitor *mon, const QDict *qdict);
+int get_hive_file(Monitor *mon,const char* sourcePath, const char* destination);
+void download_hive_to_tmp(Monitor *mon);
+void do_search_registry_by_key(Monitor *mon, const QDict *qdict);
+int search_registry_by_key(const char* key);
+void do_print_by_registry_path(Monitor *mon, const QDict *qdict);
+int print_by_registry_path(const char* path);
+void pathHandle(const char* path);
+
 #endif

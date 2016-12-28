@@ -198,7 +198,8 @@ endif
 
 ifdef CONFIG_TSK
 all-obj-y += ../ext/tsk/tsk-commands.o
-../ext/tsk/tsk-commands.o-cflags := -DHAVE_CONFIG_H -I$(SRC_PATH)/ext/tsk/sleuthkit 
+all-obj-y += ../ext/tsk/libregf/.libs/libregf.a
+../ext/tsk/tsk-commands.o-cflags := -DHAVE_CONFIG_H -I$(SRC_PATH)/ext/tsk/sleuthkit -I$(SRC_PATH)/ext/tsk/libregf/libregf -I$(SRC_PATH)/ext/tsk/libregf/common -I$(SRC_PATH)/ext/tsk/libregf/include -I$(SRC_PATH)/ext/tsk/libregf/libcerror -I$(SRC_PATH)/ext/tsk/libregf/libbfio -I$(SRC_PATH)/ext/tsk/libregf/libcfile -I$(SRC_PATH)/ext/tsk/libregf/libcdata -I$(SRC_PATH)/ext/tsk/libregf/regftools -I$(SRC_PATH)/ext/tsk/libregf/libclocale -I$(SRC_PATH)/ext/tsk/libregf/libcnotify -I$(SRC_PATH)/ext/tsk/libregf/libcsystem -I$(SRC_PATH)/ext/tsk/libregf/libfdata -I$(SRC_PATH)/ext/tsk/libregf/libfcache -I$(SRC_PATH)/ext/tsk/libregf/libfdatetime -I$(SRC_PATH)/ext/tsk/libregf/libfwnt -I$(SRC_PATH)/ext/tsk/libregf/libuna 
 endif
 
 ifdef CONFIG_OBHOOK

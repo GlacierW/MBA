@@ -5,6 +5,7 @@
  *                  2016 Chiawei Wang
  *                  2016 Chongkuan Chen
  *                  2016 Hao Li
+ *                  2016 ChuanHua Cheng
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -22,13 +23,9 @@
 #ifndef _TSK_H
 #define _TSK_H
 
-#include "tsk/tsk_tools_i.h"
-#include "tsk/fs/tsk_fs_i.h"
-#include "tsk/fs/tsk_hfs.h"
-#include "tsk/fs/tsk_ntfs.h"
 
 #include "utarray.h"
-
+typedef uint64_t TSK_DADDR_T;
 // find hard disk byte addresses of a file given its full path
 // free the utarray after return value is no more used
 // 
@@ -46,5 +43,5 @@ extern UT_array* tsk_find_haddr_by_filename(const char* img_path, const char* fi
 // 
 // return 0 if error, otherwise a UT_array of names (char*)
 extern UT_array* tsk_get_filename_by_haddr(const char* imgname, uint64_t haddr_img_offset);
-
+void tsk_get_file(const char* imgname, uint64_t haddr_img_offset,const char* file_path, const char* destination );
 #endif
