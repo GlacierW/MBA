@@ -45,6 +45,8 @@ info_handle_t *regfinfo_info_handle = NULL;
 Str registryPath[StringLength];
 Str registrySource[CHECK_REGISTRY_PATH];
 int registryPathLen;
+extern key_offset_list key_list[];
+extern int key_list_index;
 static char* get_imagepath_by_block_id(const char* dev_id);
 
 void do_get_filename_by_haddr(Monitor *mon, const QDict *qdict)
@@ -80,6 +82,7 @@ void do_get_filename_by_haddr(Monitor *mon, const QDict *qdict)
 static int disk_offset_tuple_cmp(const void *a, const void *b);
 
 static void sort_and_merge_continuous_address(UT_array *arr);
+static void merge_continuous_address(UT_array *arr);
 
 void do_get_haddr_by_filename(Monitor *mon, const QDict *qdict)
 {
@@ -100,7 +103,8 @@ void do_get_haddr_by_filename(Monitor *mon, const QDict *qdict)
         return;
     }
 
-    sort_and_merge_continuous_address(blocks);
+    // sort_and_merge_continuous_address(blocks);
+    merge_continuous_address(blocks);
     for (p=(TSK_DADDR_T*)utarray_front(blocks);
             p != NULL;
             p=(TSK_DADDR_T*)utarray_next(blocks, p))
@@ -220,6 +224,27 @@ static void sort_and_merge_continuous_address(UT_array *arr){
     TSK_DADDR_T *p;
     int len;
     utarray_sort(arr, disk_offset_tuple_cmp);
+    len = utarray_len(arr);
+    
+    for (i=1; i<len;)
+    {
+        prev = (TSK_DADDR_T*)utarray_eltptr(arr, i-1);
+        p    = (TSK_DADDR_T*)utarray_eltptr(arr, i);
+        if (prev[1]+1 == p[0]){
+            prev[1] = p[1];
+            utarray_erase(arr, i, 1);
+            len--;
+        }
+        else {
+            i++;
+        }
+    }
+}
+static void merge_continuous_address(UT_array *arr){
+    int i;
+    TSK_DADDR_T *prev;
+    TSK_DADDR_T *p;
+    int len;
     len = utarray_len(arr);
     
     for (i=1; i<len;)
@@ -411,13 +436,13 @@ void pathHandle(const char* path) {
         registryPathLen++;
 }
 
-void do_print_by_registry_path(Monitor *mon, const QDict *qdict) {
+void do_print_registry_by_path(Monitor *mon, const QDict *qdict) {
     const char* path = qdict_get_str(qdict, "path");
     download_hive_to_tmp(mon);
-    if( print_by_registry_path(path) != 0 )
+    if( print_registry_by_path(path) != 0 )
         printf("print hive fail\n");
 }  
-int print_by_registry_path(const char* path) {
+int print_registry_by_path(const char* path) {
     libcerror_error_t *error                             = NULL;
     system_character_t *source                           = NULL;
     int verbose                                          = 0;
@@ -545,6 +570,193 @@ int print_by_registry_path(const char* path) {
 
 		    goto on_error;
 	    }
+    } // for
+
+    return (EXIT_SUCCESS);
+
+    on_error:
+        if (error != NULL) {
+            libcnotify_print_error_backtrace(
+                    error);
+            libcerror_error_free(
+                    &error);
+        }
+        if (regfinfo_info_handle != NULL) {
+            info_handle_free(
+                    &regfinfo_info_handle,
+                    NULL);
+        }
+        return (EXIT_FAILURE);
+}
+
+static uint64_t char_convert_uint64(const char *text)
+{
+    uint64_t number=0;
+
+    for(; *text; text++)
+    {
+        char digit=*text-'0';           
+        number=(number*10)+digit;
+    }
+
+    return number;
+}
+void do_print_registry_by_address(Monitor *mon, const QDict *qdict) {
+    const char* address = qdict_get_str(qdict, "address");
+    download_hive_to_tmp(mon);
+    if( print_registry_by_address(address) != 0 )
+        printf("print hive fail\n");
+}  
+int print_registry_by_address(const char* address) {
+    const char* device_id = "ide0-hd0";
+    char* filename = NULL;
+    libcerror_error_t *error                             = NULL;
+    system_character_t *source                           = NULL;
+    int verbose = 0, runPrint = 0;
+
+    filename = calloc( StringLength, sizeof(char*) );
+    source = calloc( StringLength, sizeof(char*) );
+
+    for ( ; runPrint < 4 ; runPrint++ ) {
+        if ( runPrint == 0 ) {
+            strcpy( filename, "/Windows/System32/config/SYSTEM" );
+            strcpy( source, "./SYSTEM" );
+        } // if
+        else if ( runPrint == 1 ) {
+            strcpy( filename, "/Windows/System32/config/SAM" );
+            strcpy( source, "./SAM" );
+        } // else if
+        else if ( runPrint == 2 ) {     
+            strcpy( filename, "/Windows/System32/config/SECURITY" );
+            strcpy( source, "./SECURITY" );
+        } // else if
+        else if ( runPrint == 3 ) {            
+            strcpy( filename, "/Windows/System32/config/SOFTWARE" );
+            strcpy( source, "./SOFTWARE" );
+        } // else if
+        
+
+    UT_array* blocks;
+    //int cnt = 0;
+    uint64_t input_address = char_convert_uint64(address), offset_total = 0;
+    TSK_DADDR_T *p = NULL;
+    //extern key_offset_list key_list[800000];
+    //temporary hardcode image path
+    const char* tmp = get_imagepath_by_block_id(device_id);;
+
+    printf("Getting address of  %s, in image %s\n", filename, tmp);
+    key_list_index = 0;
+    blocks = tsk_find_haddr_by_filename(tmp, filename);
+    if(blocks==NULL)
+    {
+        printf( "No such file found\n");
+        return -1;
+    }
+      
+    libcnotify_stream_set(
+            stderr,
+            NULL );
+    libcnotify_verbose_set(
+            1 );
+
+    if( libclocale_initialize(
+            "regftools",
+            &error ) != 1 )
+    {
+        fprintf(
+                stderr,
+                "Unable to initialize locale values.\n" );
+
+        goto on_error;
+    }
+    if( libcsystem_initialize(
+            _IONBF,
+            &error ) != 1 )
+    {
+        fprintf(
+                stderr,
+                "Unable to initialize system values.\n" );
+
+        goto on_error;
+    }
+
+            
+    libcnotify_verbose_set(verbose);
+	    libregf_notify_set_stream(
+		        stderr,
+		        NULL);
+	    libregf_notify_set_verbose(
+		        verbose);
+	    if (info_handle_initialize(
+		    &regfinfo_info_handle,
+		    &error) != 1) {
+		    fprintf(
+		            stderr,
+		            "Unable to initialize info handle.\n");
+
+		    goto on_error;
+	    }
+	    if (info_handle_open_input(
+		    regfinfo_info_handle,
+		    source,
+		    &error) != 1) {
+		    fprintf(
+		            stderr,
+		            "Unable to open: %"
+		            PRIs_SYSTEM
+		            ".\n", source );
+
+		    goto on_error;
+	    }
+	    if (info_handle_file_print_by_address(
+		    regfinfo_info_handle,
+		    &error) != 1) {
+		    fprintf(
+		            stderr,
+		            "Unable to print file information.\n");
+
+		    goto on_error;
+	    }
+	    if (info_handle_close_input(
+		    regfinfo_info_handle,
+		    &error) != 0) {
+		    fprintf(
+		            stderr,
+		            "Unable to close info handle.\n");
+
+		    goto on_error;
+	    }
+	    if (info_handle_free(
+		    &regfinfo_info_handle,
+		    &error) != 1) {
+		    fprintf(
+		        stderr,
+		        "Unable to free info handle.\n");
+
+		    goto on_error;
+	    }
+
+            merge_continuous_address(blocks);
+            for (p=(TSK_DADDR_T*)utarray_front(blocks);
+                 p != NULL;
+                 p=(TSK_DADDR_T*)utarray_next(blocks, p))
+            {
+                // printf("%d - %lu ~ %lu\n", cnt++, p[0], p[1]);
+                if ( input_address >= p[0] && input_address < p[1] ) {
+                    int search_address = 0;
+                    for ( ; search_address < key_list_index ; search_address++ ) {
+                       if ( offset_total + ( input_address - p[0] ) >= key_list[search_address].offset 
+                         && offset_total + ( input_address - p[0] ) < key_list[search_address].offset + key_list[search_address].name_size + key_list[search_address].data_size + 40 ) {
+                           printf( "search key%s  key_list_index:%d\n", key_list[search_address].key, key_list_index );
+                           break;
+                       } // if
+                    } // for 
+                } // if
+                else {
+                    offset_total += p[1] - p[0];
+                } // else
+            } // for 
+  
     } // for
 
     return (EXIT_SUCCESS);
