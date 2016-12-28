@@ -30,10 +30,13 @@ void do_nettramon_start ( Monitor *mon, const QDict *qdict ) {
     retVal = nettramon_start( mon );
 
     switch( retVal ) {
-        case 1 :
+        case 0 :
             monitor_printf( mon, " NetTraMon Started Successfully\n");
             break;
-        case 0 :
+        case 1 :
+            monitor_printf( mon, " Written files are set, no printing out on monitor\n" );
+            break;
+        case 2 :
             monitor_printf( mon, " NetTraMon Started Failed \n");
             break;
         default :
@@ -49,34 +52,59 @@ void do_nettramon_stop ( Monitor *mon, const QDict *qdict ) {
     retVal = nettramon_stop( );
 
     switch( retVal ) {
-        case 1 :
-            monitor_printf( mon, " NetTraMon Stoped Successfully\n");
-            break;
         case 0 :
-            monitor_printf( mon, " NetTraMon Stoped Failed\n");
+            monitor_printf( mon, " NetTraMon Stopped Successfully\n");
+            break;
+        case 1 :
+            monitor_printf( mon, " NetTraMon Stopped Failed\n");
             break;
         default :
             return; 
     }
 
 }
-/*
-void do_parse_packet ( Monitor *mon, const QDict *qdict )  {
+
+void do_nettramon_set_file_path ( Monitor *mon, const QDict *qdict )  {
     
     int retVal;
+    char* all_file_path  = NULL;
+    char* tcp_file_path  = NULL;
+    char* udp_file_path  = NULL;
+    char* icmp_file_path = NULL;
 
-    retVal = nettramon_parse_buffer();
+    all_file_path  = (char *)qdict_get_str(qdict, "all_file");
+    tcp_file_path  = (char *)qdict_get_str(qdict, "tcp_file");
+    udp_file_path  = (char *)qdict_get_str(qdict, "udp_file");
+    icmp_file_path = (char *)qdict_get_str(qdict, "icmp_file");
+
+    retVal = nettramon_set_file_path( all_file_path, tcp_file_path, udp_file_path, icmp_file_path );
 
     switch( retVal ) {
         
         case 0 :
-            monitor_printf( mon, buf );
-            monitor_printf( mon, '\n' );
+            monitor_printf( mon, "Set written files successfully\n" );
             break;
-        case 2 :
-            monitor_printf( mon, "Not Found Network Device\n" );
+        case 1 :
+            monitor_printf( mon, "Failed to set written files\n" );
             break;
     }
 
 }
-*/
+
+void do_nettramon_reset_file_path ( Monitor *mon, const QDict *qdict )  {
+    
+    int retVal;
+
+    retVal = nettramon_reset_file_path( );
+
+    switch( retVal ) {
+        
+        case 0 :
+            monitor_printf( mon, "Reset written files successfully\n" );
+            break;
+        case 1 :
+            monitor_printf( mon, "Failed to reset written files\n" );
+            break;
+    }
+
+}

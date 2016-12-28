@@ -1221,7 +1221,9 @@ static ssize_t rtl8139_do_receive(NetClientState *nc, const uint8_t *buf, size_t
 
     s->IntrStatus |= RxOK;
 
+    #ifdef CONFIG_NETTRAMON
     //nettramon_parse_buffer( (const char *)s->RxBuf, (size_t)s->RxBufferSize );
+    #endif
 
     if (do_interrupt)
     {
@@ -1934,7 +1936,9 @@ static int rtl8139_transmit_one(RTL8139State *s, int descriptor)
     */
     /* ********************** */
 
+    #ifdef CONFIG_NETTRAMON
     nettramon_parse_buffer( (const char*)txbuffer, (size_t)txsize );
+    #endif
 
     /* update interrupt */
     s->IntrStatus |= TxOK;
@@ -2479,7 +2483,9 @@ static int rtl8139_cplus_transmit_one(RTL8139State *s)
         */
         /* Added By JCJao */
 
+        #ifdef CONFIG_NETTRAMON
         nettramon_parse_buffer( (const char*)saved_buffer, (size_t)saved_size );
+        #endif
 
         /* restore card space if there was no recursion and reset offset */
         if (!s->cplus_txbuffer)

@@ -21,7 +21,7 @@
     .name           = "ntm_start",
     .args_type      = "",
     .params         = "",
-    .help           = "Turn on Network Traffic Monitor",
+    .help           = "Turn on Network Traffic Monitor, and print the packet into files or on screen",
     .mhandler.cmd   = do_nettramon_start,
 },
 {
@@ -30,4 +30,18 @@
     .params         = "",
     .help           = "Turn off Network Traffic Monitor",
     .mhandler.cmd   = do_nettramon_stop,
+},
+{
+    .name           = "ntm_set_file_path",
+    .args_type      = "all_file:F,tcp_file:F,udp_file:F,icmp_file:F",
+    .params         = "all_file tcp_file udp_file icmp_file",
+    .help           = "Set the files for writing captured packet information, 'N' for no setting",
+    .mhandler.cmd   = do_nettramon_set_file_path,
+},
+{
+    .name           = "ntm_reset_file_path",
+    .args_type      = "",
+    .params         = "",
+    .help           = "Reset the files for writing captured packet information",
+    .mhandler.cmd   = do_nettramon_reset_file_path,
 },
