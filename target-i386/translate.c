@@ -42,6 +42,10 @@
 #include "ext/obhook/obhook.h"
 #endif
 
+#if defined(CONFIG_TRACER)
+#include "ext/tracer/tracer.h"
+#endif
+
 
 #define PREFIX_REPZ   0x01
 #define PREFIX_REPNZ  0x02
@@ -5220,6 +5224,12 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         gen_helper_obhook_dispatcher( cpu_env );
 #endif
 
+#if defined(CONFIG_TRACER)
+    // Add check for cr3
+    if( tracer_is_enable() )
+        gen_helper_tracer_dispatcher( cpu_env );
+#endif
+
     s->pc++;
     /* Collect prefixes.  */
     switch (b) {
@@ -9450,6 +9460,7 @@ static inline void gen_intermediate_code_internal(X86CPU *cpu,
 
         pc_ptr = disas_insn(env, dc, pc_ptr);
         num_insns++;
+
         /* stop translation if indicated */
         if (dc->is_jmp)
             break;
