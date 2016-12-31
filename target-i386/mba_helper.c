@@ -25,6 +25,11 @@
 #include "../ext/obhook/obhook.h"
 #endif
 
+#if defined(CONFIG_TRACER)
+#include "../ext/tracer/tracer.h"
+#endif
+
+
 #if defined(CONFIG_OBHOOK)
 void helper_obhook_dispatcher( CPUX86State* env ) {
 
@@ -50,3 +55,17 @@ void helper_obhook_dispatcher( CPUX86State* env ) {
     }
 }
 #endif
+
+#if defined(CONFIG_TRACER)
+void helper_tracer_dispatcher( CPUX86State* env, uint64_t pc ) {
+    tracer_cb_record *cb_rec = NULL;
+    
+    LL_FOREACH( g_process_tracer_head , cb_rec){
+        if( env->cr[3] == cb_rec->cr3 && !tracer_is_kern_addr(pc)){
+                cb_rec->cb_func( ENV_GET_CPU(env), pc );
+        }
+    }
+}
+#endif
+
+

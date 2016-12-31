@@ -5198,6 +5198,16 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
     s->rip_offset = 0; /* for relative ip address */
     s->vex_l = 0;
     s->vex_v = 0;
+
+#if defined(CONFIG_TRACER)
+    // Add check for cr3
+    if( !tracer_is_kern_addr(s->pc) && tracer_check_callback(s->pc, env->cr[3]) ){
+    TCGv_i64 tmp = tcg_const_i64( s->pc );
+    
+    gen_helper_tracer_dispatcher( cpu_env, tmp );
+    }
+#endif
+
  next_byte:
     b = cpu_ldub_code(env, s->pc);
 #if defined(CONFIG_DIFT)
@@ -5224,13 +5234,10 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
         gen_helper_obhook_dispatcher( cpu_env );
 #endif
 
-#if defined(CONFIG_TRACER)
-    // Add check for cr3
-    if( tracer_is_enable() )
-        gen_helper_tracer_dispatcher( cpu_env );
-#endif
+
 
     s->pc++;
+    // invoke instruction trace call back 
     /* Collect prefixes.  */
     switch (b) {
     case 0xf3:

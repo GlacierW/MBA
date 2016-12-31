@@ -334,6 +334,153 @@ void target_disas(FILE *out, CPUArchState *env, target_ulong code,
     }
 }
 
+/* Disassemble this for me please... (debugging). 'flags' has the following
+   values:
+    i386 - 1 means 16 bit code, 2 means 64 bit code
+    arm  - bit 0 = thumb, bit 1 = reverse endian, bit 2 = A64
+    ppc  - bits 0:15 specify (optionally) the machine instruction set;
+           bit 16 indicates little endian.
+    other targets - unused
+ */
+void target_disas_inst_count(FILE *out, CPUArchState *env, target_ulong code,
+                  target_ulong size, int num_inst, int flags)
+{
+    target_ulong pc;
+    int count;
+    CPUDebug s;
+    int (*print_insn)(bfd_vma pc, disassemble_info *info) = NULL;
+    int i;
+
+    INIT_DISASSEMBLE_INFO(s.info, out, fprintf);
+
+    s.env = env;
+    s.info.read_memory_func = target_read_memory;
+    s.info.buffer_vma = code;
+    s.info.buffer_length = size;
+    s.info.print_address_func = generic_print_target_address;
+
+#ifdef TARGET_WORDS_BIGENDIAN
+    s.info.endian = BFD_ENDIAN_BIG;
+#else
+    s.info.endian = BFD_ENDIAN_LITTLE;
+#endif
+#if defined(TARGET_I386)
+    if (flags == 2) {
+        s.info.mach = bfd_mach_x86_64_intel_syntax;
+    } else if (flags == 1) {
+        s.info.mach = bfd_mach_i386_i8086;
+    } else {
+        s.info.mach = bfd_mach_i386_i386;
+    }
+    print_insn = print_insn_i386;
+#elif defined(TARGET_ARM)
+    if (flags & 4) {
+        /* We might not be compiled with the A64 disassembler
+         * because it needs a C++ compiler; in that case we will
+         * fall through to the default print_insn_od case.
+         */
+#if defined(CONFIG_ARM_A64_DIS)
+        print_insn = print_insn_arm_a64;
+#endif
+    } else if (flags & 1) {
+        print_insn = print_insn_thumb1;
+    } else {
+        print_insn = print_insn_arm;
+    }
+    if (flags & 2) {
+#ifdef TARGET_WORDS_BIGENDIAN
+        s.info.endian = BFD_ENDIAN_LITTLE;
+#else
+        s.info.endian = BFD_ENDIAN_BIG;
+#endif
+    }
+#elif defined(TARGET_SPARC)
+    print_insn = print_insn_sparc;
+#ifdef TARGET_SPARC64
+    s.info.mach = bfd_mach_sparc_v9b;
+#endif
+#elif defined(TARGET_PPC)
+    if ((flags >> 16) & 1) {
+        s.info.endian = BFD_ENDIAN_LITTLE;
+    }
+    if (flags & 0xFFFF) {
+        /* If we have a precise definition of the instruction set, use it. */
+        s.info.mach = flags & 0xFFFF;
+    } else {
+#ifdef TARGET_PPC64
+        s.info.mach = bfd_mach_ppc64;
+#else
+        s.info.mach = bfd_mach_ppc;
+#endif
+    }
+    s.info.disassembler_options = (char *)"any";
+    print_insn = print_insn_ppc;
+#elif defined(TARGET_M68K)
+    print_insn = print_insn_m68k;
+#elif defined(TARGET_MIPS)
+#ifdef TARGET_WORDS_BIGENDIAN
+    print_insn = print_insn_big_mips;
+#else
+    print_insn = print_insn_little_mips;
+#endif
+#elif defined(TARGET_SH4)
+    s.info.mach = bfd_mach_sh4;
+    print_insn = print_insn_sh;
+#elif defined(TARGET_ALPHA)
+    s.info.mach = bfd_mach_alpha_ev6;
+    print_insn = print_insn_alpha;
+#elif defined(TARGET_CRIS)
+    if (flags != 32) {
+        s.info.mach = bfd_mach_cris_v0_v10;
+        print_insn = print_insn_crisv10;
+    } else {
+        s.info.mach = bfd_mach_cris_v32;
+        print_insn = print_insn_crisv32;
+    }
+#elif defined(TARGET_S390X)
+    s.info.mach = bfd_mach_s390_64;
+    print_insn = print_insn_s390;
+#elif defined(TARGET_MICROBLAZE)
+    s.info.mach = bfd_arch_microblaze;
+    print_insn = print_insn_microblaze;
+#elif defined(TARGET_MOXIE)
+    s.info.mach = bfd_arch_moxie;
+    print_insn = print_insn_moxie;
+#elif defined(TARGET_LM32)
+    s.info.mach = bfd_mach_lm32;
+    print_insn = print_insn_lm32;
+#endif
+    if (print_insn == NULL) {
+        print_insn = print_insn_od_target;
+    }
+
+    for (pc = code, i=0 ; size > 0 && i < num_inst ; pc += count, size -= count, i++) {
+	fprintf(out, "0x" TARGET_FMT_lx ":  ", pc);
+	count = print_insn(pc, &s.info);
+#if 0
+        {
+            int i;
+            uint8_t b;
+            fprintf(out, " {");
+            for(i = 0; i < count; i++) {
+                target_read_memory(pc + i, &b, 1, &s.info);
+                fprintf(out, " %02x", b);
+            }
+            fprintf(out, " }");
+        }
+#endif
+	fprintf(out, "\n");
+	if (count < 0)
+	    break;
+        if (size < count) {
+            fprintf(out,
+                    "Disassembler disagrees with translator over instruction "
+                    "decoding\n"
+                    "Please report this to qemu-devel@nongnu.org\n");
+            break;
+        }
+    }
+}
 /* Disassemble this for me please... (debugging). */
 void disas(FILE *out, void *code, unsigned long size)
 {
