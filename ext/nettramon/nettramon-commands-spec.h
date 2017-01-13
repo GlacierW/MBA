@@ -45,3 +45,17 @@
     .help           = "Reset the files for writing captured packet information",
     .mhandler.cmd   = do_nettramon_reset_file_path,
 },
+{
+    .name           = "ntm_set_filter",
+    .args_type      = "filter_string:s",
+    .params         = "filter_string",
+    .help           = "Set the pcap_compile_nopcap input buf",
+    .mhandler.cmd   = do_nettramon_set_filter,
+},
+{
+    .name           = "ntm_reset_filter",
+    .args_type      = "",
+    .params         = "",
+    .help           = "Reset the pcap_compile_nopcap input buf",
+    .mhandler.cmd   = do_nettramon_reset_filter,
+},

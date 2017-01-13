@@ -26,8 +26,9 @@
 #include "nettramon.h"
 #include "libpcap/pcap/pcap.h"
 
-MBA_NETTRAMON_PRO protocol_type  = NETTRAMON_PRO_UNKNOWN;
-Monitor*          local_mon      = NULL;
+MBA_NETTRAMON_PRO   protocol_type  = NETTRAMON_PRO_UNKNOWN;
+Monitor*            local_mon      = NULL;
+struct bpf_program* filter         = NULL;  /* Null if no filter */
 
 struct file_ptr {
     FILE* all_file;
@@ -50,6 +51,12 @@ file_ptr fp[1] = {};
 path_buffer pb[1] = {};
 
 /// Private Functions
+
+// Reset file pointer
+// Return None
+static void nettramon_clear_filter( void ) {
+    free( filter );
+}
 
 // Reset file pointer
 // Return None
@@ -409,6 +416,10 @@ int nettramon_parse_buffer( const char* buf, size_t len ) {
     if ( nettramon_is_active() == FALSE )
         return 0;
 
+    if ( filter != NULL ) 
+        if ( !bpf_filter( filter->bf_insns, (const u_char*)buf, len, len ) )
+            return 0;
+
     protocol_type = packet_type_parse( buf );
 
     /* determine protocol */    
@@ -434,7 +445,7 @@ unsigned int nettramon_start ( Monitor* mon ) {
         nettramon_file_path_resume();
         pb->status = NETTRAMON_STA_BEGIN;
     }
-        
+
     if ( fp->all_file == NULL && fp->tcp_file == NULL && fp->udp_file == NULL && fp->icmp_file == NULL ) {
         if ( mon != NULL ) {
             local_mon = mon;
@@ -445,7 +456,7 @@ unsigned int nettramon_start ( Monitor* mon ) {
     else {
         local_mon = NULL;
         return 1;
-   }
+    }
     
 }
 
@@ -520,3 +531,32 @@ unsigned int nettramon_reset_file_path ( void ) {
     nettramon_clear_file_path();
     return 0;
 }
+
+// Set the filter string for pcap_compile_nopcap
+// Return 0 for success, 1 for fail
+unsigned int nettramon_set_filter ( const char* filter_string ) {
+
+    filter = ( struct bpf_program *)malloc( sizeof( struct bpf_program ) );
+
+    pcap_compile_nopcap( 1500, DLT_EN10MB, filter, filter_string, 0, 0);
+    if ( filter == NULL )
+        return 1;
+    return 0;
+}
+
+// Set the filter string for pcap_compile_nopcap
+// Return 0 for success, 1 for fail
+unsigned int nettramon_reset_filter ( void ) {
+    nettramon_clear_filter();
+    return 0;
+}
+
+
+
+
+
+
+
+
+
+

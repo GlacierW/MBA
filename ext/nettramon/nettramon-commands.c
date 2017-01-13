@@ -108,3 +108,42 @@ void do_nettramon_reset_file_path ( Monitor *mon, const QDict *qdict )  {
     }
 
 }
+
+void do_nettramon_set_filter ( Monitor *mon, const QDict *qdict )  {
+    
+    int retVal;
+    char* filter_string = NULL;
+    
+    filter_string  = (char *)qdict_get_str(qdict, "filter_string");
+
+    retVal = nettramon_set_filter( filter_string );
+
+    switch( retVal ) {
+        
+        case 0 :
+            monitor_printf( mon, "Set packet filter successfully\n" );
+            break;
+        case 1 :
+            monitor_printf( mon, "Failed to set packet filter\n" );
+            break;
+    }
+
+}
+
+void do_nettramon_reset_filter ( Monitor *mon, const QDict *qdict )  {
+    
+    int retVal;
+    
+    retVal = nettramon_reset_filter(  );
+
+    switch( retVal ) {
+        
+        case 0 :
+            monitor_printf( mon, "Reset packet filter successfully\n" );
+            break;
+        case 1 :
+            monitor_printf( mon, "Failed to reset pcaket filter\n" );
+            break;
+    }
+
+}

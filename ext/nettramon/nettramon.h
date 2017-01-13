@@ -116,10 +116,12 @@ struct sniff_icmp {
 };
 
 bool nettramon_is_active               ( void );
-int nettramon_parse_buffer             ( const char* buf, size_t len );
+int nettramon_parse_buffer             ( const char* , size_t );
 unsigned int nettramon_start           ( Monitor* mon );
 unsigned int nettramon_stop            ( void );
-unsigned int nettramon_set_file_path   ( const char* all_file_path, const char* tcp_file_path, const char* udp_file_path, const char* icmp_file_path );
+unsigned int nettramon_set_file_path   ( const char*, const char*, const char*, const char* );
 unsigned int nettramon_reset_file_path ( void );
+unsigned int nettramon_set_filter      ( const char* );
+unsigned int nettramon_reset_filter    ( void );
 
 #endif
