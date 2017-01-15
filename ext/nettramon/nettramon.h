@@ -3,7 +3,7 @@
  *  Windows in-VM network traffic monitor implementation
  *  The used structs are referenced from http://www.tcpdump.org/sniffex.c
  *
- *  Copyright (c)    2016 JuiChien Jao
+ *  Copyright (c)    2017 JuiChien Jao
  *                   2016 ChiaWei Wang
  *
  * This library is free software you can redistribute it and/or
@@ -24,8 +24,8 @@
 
 /* Ethernet addresses are 6 bytes */
 #define ETHER_ADDR_LEN           6
-#define SZ_ETHERNET              14
 #define SZ_NETTRAMON_PATH_LENGTH 64
+#define SZ_ETHERNET              14
 
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -115,8 +115,9 @@ struct sniff_icmp {
     u_short ih_sum;                 /* checksum */
 };
 
+
 bool nettramon_is_active               ( void );
-int nettramon_parse_buffer             ( const char* , size_t );
+int nettramon_parse_buffer             ( const u_char* , size_t, void(*)(u_char*, size_t) );
 unsigned int nettramon_start           ( Monitor* mon );
 unsigned int nettramon_stop            ( void );
 unsigned int nettramon_set_file_path   ( const char*, const char*, const char*, const char* );

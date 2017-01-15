@@ -3,7 +3,7 @@
  *  Windows in-VM network traffic monitor implementation
  *  Some source codes are referenced from www.tcpdump.org/sniffex.c
  *
- *  Copyright (c)    2016 JuiChien Jao
+ *  Copyright (c)    2017 JuiChien Jao
  *
  * This library is free software you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -28,7 +28,7 @@
 
 MBA_NETTRAMON_PRO   protocol_type  = NETTRAMON_PRO_UNKNOWN;
 Monitor*            local_mon      = NULL;
-struct bpf_program* filter         = NULL;  /* Null if no filter */
+struct bpf_program* filter         = NULL;
 
 struct file_ptr {
     FILE* all_file;
@@ -156,7 +156,7 @@ static void print_hex_ascii_line(const u_char *payload, int len, int offset) {
     const u_char *ascii_head;
 
     /* offset */
-    nettramon_printf("%05d   ", offset);
+    nettramon_printf("0x%04x   ", offset);
     
     /* hex */
     hex_head = payload;
@@ -188,11 +188,11 @@ static void print_hex_ascii_line(const u_char *payload, int len, int offset) {
 // Return none
 static void print_payload( const u_char *payload, int len ) {
     
-    int len_rem = len;
+    int len_remain = len;
     int line_width = 16;            /* number of bytes per line */
     int line_len;
     int offset = 0;                 /* zero-based offset counter */
-    const u_char *ch = payload;
+    const u_char *pl_head = payload;
 
     if (len <= 0)
         return;
@@ -201,26 +201,26 @@ static void print_payload( const u_char *payload, int len ) {
 
     /* data fits on one line */
     if (len <= line_width) {
-        print_hex_ascii_line(ch, len, offset);
+        print_hex_ascii_line(pl_head, len, offset);
         return;
     }
 
     /* data spans multiple lines */
     for ( ;; ) {
         /* compute current line length */
-        line_len = line_width % len_rem;
+        line_len = line_width % len_remain;
         /* print line */
-        print_hex_ascii_line(ch, line_len, offset);
+        print_hex_ascii_line(pl_head, line_len, offset);
         /* compute total remaining */
-        len_rem = len_rem - line_len;
+        len_remain = len_remain - line_len;
         /* shift pointer to remaining bytes to print */
-        ch = ch + line_len;
+        pl_head = pl_head + line_len;
         /* add offset */
         offset = offset + line_width;
         /* check if we have line width chars or less */
-        if (len_rem <= line_width) {
+        if (len_remain <= line_width) {
             /* print last line and get out */
-            print_hex_ascii_line(ch, len_rem, offset);
+            print_hex_ascii_line(pl_head, len_remain, offset);
             break;
         }
     }
@@ -230,7 +230,7 @@ static void print_payload( const u_char *payload, int len ) {
 
 // Distinguish protocol
 // Return packet type
-static MBA_NETTRAMON_PRO packet_type_parse ( const char* buf ) {
+static MBA_NETTRAMON_PRO packet_type_parse ( const u_char* buf ) {
 
     struct sniff_ip* packet_ip;              /* The IP header */
 
@@ -251,11 +251,11 @@ static MBA_NETTRAMON_PRO packet_type_parse ( const char* buf ) {
 
 // Parse tcp packet
 // return 0 for success, 1 for fail
-static int tcp_parse( const char* buf ) {
+static int tcp_parse( const u_char* buf ) {
 
-    struct sniff_ip *packet_ip;              /* The IP header */
+    struct sniff_ip *packet_ip;       /* The IP header */
     struct sniff_tcp *tcp;            /* The TCP header */
-    char *payload;                    /* Packet payload */
+    u_char *payload;                    /* Packet payload */
 
     int size_ip,
         size_tcp,
@@ -275,21 +275,21 @@ static int tcp_parse( const char* buf ) {
     tcp = (struct sniff_tcp*)(buf + SZ_ETHERNET + size_ip);
     size_tcp = TH_OFF(tcp)*4;
     if (size_tcp < 20) {
-        nettramon_printf(" Invalid TCP header length: %u bytes\n", size_tcp);
+        nettramon_printf("Invalid TCP header length: %u bytes\n", size_tcp);
         return 1;
     }
     
     /* print source and destination IP addresses */
-    nettramon_printf(" From: %s\t%d\n", inet_ntoa(packet_ip->ip_src), tcp->th_sport);
-    nettramon_printf(" To:   %s\t%d\n", inet_ntoa(packet_ip->ip_dst), tcp->th_dport);
+    nettramon_printf("From: %s\t%d\n", inet_ntoa(packet_ip->ip_src), tcp->th_sport);
+    nettramon_printf("To:   %s\t%d\n", inet_ntoa(packet_ip->ip_dst), tcp->th_dport);
 
     /* define/compute tcp payload (segment) offset */
-    payload = (char *)(buf + SZ_ETHERNET + size_ip + size_tcp);
+    payload = (u_char *)(buf + SZ_ETHERNET + size_ip + size_tcp);
     
     /* compute tcp payload (segment) size */
     size_payload = ntohs(packet_ip->ip_len) - (size_ip + size_tcp);
     if (size_payload <= 0) 
-        nettramon_printf(" No TCP packet payload\n");
+        nettramon_printf("No TCP packet payload\n");
     else
         print_payload( (const u_char *)payload, size_payload );
 
@@ -300,11 +300,11 @@ static int tcp_parse( const char* buf ) {
 
 // Parse udp packet
 // return 0 for success, 1 for fail
-static int udp_parse( const char* buf ) {
+static int udp_parse( const u_char* buf ) {
 
     struct sniff_ip *packet_ip;       /* The IP header */
     struct sniff_udp *udp;            /* The UDP header */
-    char *payload;                    /* Packet payload */
+    u_char *payload;                    /* Packet payload */
 
     int size_ip,
         size_udp,
@@ -324,21 +324,21 @@ static int udp_parse( const char* buf ) {
     udp = (struct sniff_udp*)(buf + SZ_ETHERNET + size_ip);
     size_udp = sizeof(udp);
     if (size_udp < (sizeof(u_int))*2) {
-        nettramon_printf(" Invalid UDP header length: %u bytes\n", size_udp);
+        nettramon_printf("Invalid UDP header length: %u bytes\n", size_udp);
         return 1;
     }
     
     /* print source and destination IP addresses */
-    nettramon_printf(" From: %s\t%d\n", inet_ntoa(packet_ip->ip_src), udp->uh_sport);
-    nettramon_printf(" To:   %s\t%d\n", inet_ntoa(packet_ip->ip_dst), udp->uh_dport);
+    nettramon_printf("From: %s\t%d\n", inet_ntoa(packet_ip->ip_src), udp->uh_sport);
+    nettramon_printf("To:   %s\t%d\n", inet_ntoa(packet_ip->ip_dst), udp->uh_dport);
 
     /* define/compute tcp payload (segment) offset */
-    payload = (char *)(buf + SZ_ETHERNET + size_ip + size_udp);
+    payload = (u_char *)(buf + SZ_ETHERNET + size_ip + size_udp);
     
     /* compute tcp payload (segment) size */
     size_payload = ntohs(packet_ip->ip_len) - (size_ip + size_udp);
     if (size_payload <= 0) 
-        nettramon_printf(" No UDP packet payload\n");
+        nettramon_printf("No UDP packet payload\n");
     else
         print_payload( (const u_char *)payload, size_payload );
 
@@ -349,11 +349,11 @@ static int udp_parse( const char* buf ) {
 
 // Parse icmp packet
 // return 0 for success, 1 for fail
-static int icmp_parse( const char* buf ) {
+static int icmp_parse( const u_char* buf ) {
 
     struct sniff_ip *packet_ip;       /* The IP header */
     struct sniff_icmp *icmp;            /* The UDP header */
-    char *payload;                    /* Packet payload */
+    u_char *payload;                    /* Packet payload */
 
     int size_ip,
         size_icmp,
@@ -370,24 +370,26 @@ static int icmp_parse( const char* buf ) {
     }
 
     /* print source and destination IP addresses */
-    nettramon_printf(" From: %s\n", inet_ntoa(packet_ip->ip_src));
-    nettramon_printf(" To:   %s\n", inet_ntoa(packet_ip->ip_dst));
+    nettramon_printf("From: %s\n", inet_ntoa(packet_ip->ip_src));
+    nettramon_printf("To:   %s\n", inet_ntoa(packet_ip->ip_dst));
 
     /* define/compute tcp header offset */
     icmp = (struct sniff_icmp*)(buf + SZ_ETHERNET + size_ip);
     size_icmp = sizeof(icmp);
     if (size_icmp < 8) {
-        nettramon_printf(" Invalid ICMP header length: %u bytes\n", size_icmp);
+        nettramon_printf("Invalid ICMP header length: %u bytes\n", size_icmp);
         return 1;
     }
+
+    /* parse ICMP packet header */
     
     /* define/compute tcp payload (segment) offset */
-    payload = (char *)(buf + SZ_ETHERNET + size_ip + size_icmp);
+    payload = (u_char *)(buf + SZ_ETHERNET + size_ip + size_icmp);
     
     /* compute tcp payload (segment) size */
     size_payload = ntohs(packet_ip->ip_len) - (size_ip + size_icmp);
     if (size_payload <= 0) 
-        nettramon_printf(" No ICMP packet payload\n");
+        nettramon_printf("No ICMP packet payload\n");
     else
         print_payload( (const u_char *)payload, size_payload );
 
@@ -411,27 +413,35 @@ bool nettramon_is_active( void ) {
 }
 
 // Parser
-int nettramon_parse_buffer( const char* buf, size_t len ) {
+int nettramon_parse_buffer( const u_char* buf, size_t len, void(*user_cb)(u_char*, size_t) ) {
     
     if ( nettramon_is_active() == FALSE )
         return 0;
 
-    if ( filter != NULL ) 
+    if ( filter != NULL )
         if ( !bpf_filter( filter->bf_insns, (const u_char*)buf, len, len ) )
             return 0;
+    
+    if ( user_cb != NULL ) {
+        u_char* buf_cb = (u_char *)malloc( len * sizeof(u_char) );
+        memcpy( buf_cb, buf, len );
+        user_cb( buf_cb, len );
+    }
+    else {
+        
+        protocol_type = packet_type_parse( buf );
 
-    protocol_type = packet_type_parse( buf );
-
-    /* determine protocol */    
-    switch( protocol_type ) {
-        case NETTRAMON_PRO_TCP:
-            return tcp_parse( buf ); 
-        case NETTRAMON_PRO_UDP:
-            return udp_parse( buf );
-        case NETTRAMON_PRO_ICMP:
-            return icmp_parse( buf );
-        default:
-            break;
+        /* determine protocol */    
+        switch( protocol_type ) {
+            case NETTRAMON_PRO_TCP:
+                return tcp_parse( buf ); 
+            case NETTRAMON_PRO_UDP:
+                return udp_parse( buf );
+            case NETTRAMON_PRO_ICMP:
+                return icmp_parse( buf );
+            default:
+                break;
+        }
     }
 
     return 0;    

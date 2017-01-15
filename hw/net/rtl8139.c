@@ -1937,7 +1937,7 @@ static int rtl8139_transmit_one(RTL8139State *s, int descriptor)
     /* ********************** */
 
     #ifdef CONFIG_NETTRAMON
-    nettramon_parse_buffer( (const char*)txbuffer, (size_t)txsize );
+    nettramon_parse_buffer( (const u_char*)txbuffer, (size_t)txsize, NULL );
     #endif
 
     /* update interrupt */
@@ -2484,7 +2484,7 @@ static int rtl8139_cplus_transmit_one(RTL8139State *s)
         /* Added By JCJao */
 
         #ifdef CONFIG_NETTRAMON
-        nettramon_parse_buffer( (const char*)saved_buffer, (size_t)saved_size );
+        nettramon_parse_buffer( (const u_char*)saved_buffer, (size_t)saved_size, NULL );
         #endif
 
         /* restore card space if there was no recursion and reset offset */
