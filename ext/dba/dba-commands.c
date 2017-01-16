@@ -3,10 +3,10 @@
 #include "ext/dba/dba.h"
 #include "ext/dba/dba-commands.h"
 
-#define PROMPT_DBA_Q1 "DBA - Enable taint analysis? [Y/N]: "
+#define PROMPT_DBA_Q1 "DBA - Enable taint analysis? [y/n]: "
 #define PROMPT_DBA_Q2 "DBA - Taint tag [1~127]: "
-#define PROMPT_DBA_Q3 "DBA - Enable syscall tracer? [Y/N]: "
-#define PROMPT_DBA_Q4 "DBA - Start analysis? [Y/N]: "
+#define PROMPT_DBA_Q3 "DBA - Enable syscall tracer? [y/n]: "
+#define PROMPT_DBA_Q4 "DBA - Start analysis? [y/n]: "
 
 static void cb_dba_confirm( void* mon, const char* yn, void* opaque );
 static void cb_dba_set_syscall( void* mon, const char* yn, void* opaque );
@@ -36,12 +36,43 @@ static void cb_dba_confirm( void* mon, const char* yn, void* opaque ) {
 
     // confirmed, start analysis
     if( strcasecmp( "y", yn ) == 0 || strcasecmp( "yes", yn ) == 0 ) {
-        dba_start_analysis( (DBA_TID)opaque );
+
+        // initiate DBA analysis
+        if( dba_start_analysis((DBA_TID)opaque) != 0 ) {
+            
+            switch( dba_errno ) {
+                case DBA_ERR_INVALID_TID:
+                    monitor_printf( mon, "Invalid DBA task ID\n" );
+                    break;
+
+                case DBA_ERR_INVALID_TSTATE:
+                    monitor_printf( mon, "Invalid DBA task state: Not a IDLE task\n" );
+                    break;
+                
+                case DBA_ERR_INVALID_SAMPLE:
+                    monitor_printf( mon, "Invalid sample for DBA analysis\n" );
+                    break;
+
+                case DBA_ERR_AGENT_NOTREADY:
+                    monitor_printf( mon, "Agent is not ready\n" );
+                    break;
+
+                case DBA_ERR_DIFT_NOTREADY:
+                    monitor_printf( mon, "DIFT is not ready\n" );
+                    break;
+
+                case DBA_ERR_FAIL:
+                default:
+                    monitor_printf( mon, "Failed to start the DBA task\n" );
+                    break;
+            }
+            dba_delete_task( (DBA_TID)opaque );
+        }
         monitor_read_command( mon, 1 );
         return;
     }
 
-    // goto taint
+    // abort & delete the DBA task
     if( strcasecmp( "n", yn ) == 0 || strcasecmp( "no", yn ) == 0 ) {
         dba_delete_task( (DBA_TID)opaque );
         monitor_read_command( mon, 1 );
