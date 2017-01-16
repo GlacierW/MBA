@@ -85,20 +85,90 @@ typedef struct dba_context dba_context;
 
 extern DBA_ERRNO    dba_errno;
 
+/// Allocate a context for a new DBA task
+///
+/// Return the ID of the newly allocated DBA task on success, 
+/// otherwise -1 is returned and the dba_errno is set
 extern DBA_TID dba_new_task( void );
-extern int     dba_delete_task( DBA_TID tid );
 
+
+/// Delete a DBA task by ID. Note that the task to be deleted
+/// must be IDLE or DONE.
+///
+///     \param  tid     DBA task ID
+///
+/// Return 0 on success, otherwise -1 is return and dba_errno is set
+extern int dba_delete_task( DBA_TID tid );
+
+/// Retrieve the DBA context with the corresponding task ID
+/// This API is designated to assist developer to READ the 
+/// configuration of a DBA task. It is NOT recommended to 
+/// modify or free the content returned
+///
+///     \param  tid     DBA task ID
+///
+/// Return a pointer to a constant DBA context object on success,
+/// otherwise NULL is returned
 extern const dba_context* dba_get_task_context( DBA_TID tid );
 
+
+/// Set the timer for the sample execution for the DBA task by ID
+/// Note that the task must be IDLE to be configurable
+///
+///     \param  tid         DBA task ID
+///     \param  seconds     time to wait(sec) for the sample execution
+///
+/// Return 0 on success, otherwise -1 is returned and the dba_errno is set
 extern int dba_set_timer( DBA_TID tid, size_t seconds );
+
+/// Set the sample to perform DBA analysis for the DBA task by ID
+/// Note that the task must be IDLE to be configurable
+///
+///     \param  tid     DBA task ID
+///     \param  path    the host-side sample path for DBA analysis
+///
+/// Return 0 on success, otherwise -1 is returned and the dba_errno is set
 extern int dba_set_sample( DBA_TID tid, const char* path );
 
+/// Enable system call tracer for the DBA task speicified by ID
+/// Note that the task must be IDLE to be configurable
+///
+///     \param  tid     DBA task ID
+///
+/// Return 0 on success, otherwise -1 is returned and the dba_errno is set
 extern int dba_enable_syscall_trace( DBA_TID tid );
+
+/// Disable system call tracer for the DBA task speicified by ID
+///
+/// Note that the task must be IDLE to be configurable
+///     \param  tid     DBA task ID
+///
+/// Return 0 on success, otherwise -1 is returned and the dba_errno is set
 extern int dba_disable_syscall_trace( DBA_TID tid );
 
+/// Enable taint analysis for the DBA task speicified by ID
+/// Note that the task must be IDLE to be configurable
+///
+///     \param  tid     DBA task ID
+///     \param  tag     taint tag for the taint analysis
+///
+/// Return 0 on success, otherwise -1 is returned and the dba_errno is set
 extern int dba_enable_taint_analysis( DBA_TID tid, CONTAMINATION_RECORD tag );
+
+/// Disable taint analysis for the DBA task speicified by ID
+/// Note that the task must be IDLE to be configurable
+///
+///     \param  tid     DBA task ID
+///
+/// Return 0 on success, otherwise -1 is returned and the dba_errno is set
 extern int dba_disable_taint_analysis( DBA_TID tid );
 
+/// Start a DBA task specified by the given task ID
+/// Note that the task must be IDLE to be ready for the DBA analysis
+///
+///     \param  tid     DBA task ID
+///
+/// Return 0 on success, otherwise -1 is returned and the dba_errno is set
 extern int dba_start_analysis( DBA_TID tid );
 
 #endif
