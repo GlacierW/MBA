@@ -5200,12 +5200,30 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
     s->vex_v = 0;
 
 #if defined(CONFIG_TRACER)
-    // Add check for cr3
-    if( !tracer_is_kern_addr(s->pc) && tracer_check_callback(s->pc, env->cr[3]) ){
-    TCGv_i64 tmp = tcg_const_i64( s->pc );
-    
-    gen_helper_tracer_dispatcher( cpu_env, tmp );
+    // Check user process
+    if( !tracer_is_kern_addr(s->pc) && tracer_check_process_tracer(s->pc, env->cr[3]) ){
+        TCGv_i64 tmp = tcg_const_i64( s->pc );
+        gen_helper_tracer_dispatcher( cpu_env, tmp );
     }
+
+    // check universal kernel tracer
+    //if( tracer_is_kern_addr(s->pc) && tracer_check_universal_kernel_tracer((uint64_t)(s->pc)) ){
+    if( tracer_is_kern_addr(s->pc) && tracer_check_universal_kernel_tracer((uint64_t)(s->pc)) ){
+    //if( tracer_is_kern_addr(s->pc) ){
+        //printf("testtesttest\n");
+        //printf("cpu %p", cpu_env);
+        TCGv_i64 tmp = tcg_const_i64( s->pc );
+        //gen_helper_tracer_dispatcher( cpu_env, tmp );
+        gen_helper_universal_kernel_tracer_dispatcher( cpu_env, tmp );
+        //printf("haha\n");
+    }
+
+    // check universal tracer
+    if( !tracer_is_kern_addr(s->pc) && tracer_check_universal_tracer((uint64_t)(s->pc))){
+        TCGv_i64 tmp = tcg_const_i64( s->pc );
+        gen_helper_universal_tracer_dispatcher( cpu_env, tmp );
+    }
+
 #endif
 
  next_byte:

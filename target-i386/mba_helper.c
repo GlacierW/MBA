@@ -60,12 +60,40 @@ void helper_obhook_dispatcher( CPUX86State* env ) {
 void helper_tracer_dispatcher( CPUX86State* env, uint64_t pc ) {
     tracer_cb_record *cb_rec = NULL;
     
+    //if(!tracer_is_enable()) return;
+    
     LL_FOREACH( g_process_tracer_head , cb_rec){
-        if( env->cr[3] == cb_rec->cr3 && !tracer_is_kern_addr(pc)){
+        //if( env->cr[3] == cb_rec->cr3 && !tracer_is_kern_addr(pc)){
+        if( env->cr[3] == cb_rec->cr3 && cb_rec->enabled == 1){
                 cb_rec->cb_func( ENV_GET_CPU(env), pc );
         }
     }
 }
+
+void helper_universal_kernel_tracer_dispatcher( CPUX86State* env, uint64_t pc ) {
+    tracer_cb_record *cb_rec = NULL;
+
+    //if(!tracer_is_enable()) return;
+
+    //printf("kernel callback traversal %p\n", env);
+    LL_FOREACH( g_universal_kernel_tracer_head , cb_rec){
+        //printf("kernel callback\n");
+        if(cb_rec->enabled == 1)
+            cb_rec->cb_func( ENV_GET_CPU(env), pc );
+        //printf("kernel callback end\n");
+    }
+    //printf("kernel callback traversal end\n");
+}
+
+void helper_universal_tracer_dispatcher( CPUX86State* env, uint64_t pc ) {
+    tracer_cb_record *cb_rec = NULL;
+
+    LL_FOREACH( g_universal_tracer_head , cb_rec){
+        if(cb_rec->enabled == 1)
+            cb_rec->cb_func( ENV_GET_CPU(env), pc );
+    }
+}
+
 #endif
 
 

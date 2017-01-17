@@ -24,7 +24,7 @@
 #include <inttypes.h> 
 #include "utlist.h"
 
-#define MAX_SZ_TRACER_LABEL 256
+#define MAX_SZ_TRACER_LABEL 16
 
 
 enum TRACER_ERRNO {
@@ -46,7 +46,7 @@ struct tracer_cb_record {
     // unique identifier for each hook
     uint16_t uid;
 
-    bool enabled;
+    int enabled;
     uint64_t cr3;
     bool is_universal;
     //TODO: Add support for kernel trace 
@@ -69,12 +69,18 @@ extern tracer_cb_record *g_universal_tracer_head;
 
 extern tracer_cb_record *g_block_head;
 
-void tracer_enable_tracer(void);
+//extern int g_tracer_enable;
+
+void* default_callback(void* env_state, uint64_t pc);
+
+void tracer_enable_tracer(int);
 void tracer_disable_tracer(void);
 void tracer_list_callback(void);
-int tracer_add_process( uint64_t cr3, const char* label, void*(*cb) (void*, uint64_t) );
-int tracer_add_universal( const char* label, void*(*cb) (void*, uint64_t) );
-extern int tracer_is_enable(void);
-extern bool tracer_check_callback( uint64_t pc, uint64_t cr3);
+int tracer_add_process( uint64_t cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t) );
+int tracer_add_universal( const char* label, bool is_kernel, void*(*cb) (void*, uint64_t) );
+extern bool tracer_is_enable(void);
+extern bool tracer_check_process_tracer( uint64_t pc, uint64_t cr3);
+extern bool tracer_check_universal_kernel_tracer( uint64_t pc );
+extern bool tracer_check_universal_tracer(uint64_t pc);
 extern bool tracer_is_kern_addr( uint64_t addr );
 #endif

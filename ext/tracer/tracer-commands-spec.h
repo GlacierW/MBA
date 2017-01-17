@@ -19,16 +19,16 @@
 
 {
         .name = "enable_tracer",
-        .args_type  = "",
-        .params     = "",
-        .help       = "enalbing instruction trace",
+        .args_type  = "tracer_uid:i",
+        .params     = "tracer_uid",
+        .help       = "enalbing instruction trace with given uid number",
         .mhandler.cmd = do_enable_tracer,
 },
 {
         .name = "inst_tracer",
-        .args_type  = "label:s,cr3:l",
-        .params     = "label cr3",
-        .help       = "create tracer for instruction trace for process with given cr3",
+        .args_type  = "label:s,cr3:l,is_kernel:b",
+        .params     = "label cr3 is_kernel",
+        .help       = "create tracer for instruction trace, specify cr3 for pre-process trace, 0 for universal trace. is_kernel denotes kernel trace or not",
         .mhandler.cmd = do_inst_tracer,
 },
 {

@@ -30,14 +30,20 @@
 
 void do_enable_tracer(Monitor *mon, const QDict *qdict)
 {
-    tracer_enable_tracer();
+    int uid = qdict_get_int(qdict, "tracer_uid");
+    tracer_enable_tracer(uid);
 }
+
+// if cr3 != 0 => process tracer
+// if cr3 == 0 && isKernel is true => kernel tracer
+// if cr3 == 0 && isKernel is false => universal tracer
 
 void do_inst_tracer(Monitor *mon, const QDict *qdict)
 {
     const char* label = qdict_get_str(qdict, "label");
     uint64_t cr3 = qdict_get_int(qdict, "cr3");
-    tracer_add_process(cr3, label, NULL); 
+    bool is_kernel = qdict_get_bool(qdict, "is_kernel");
+    tracer_add_process(cr3, label, is_kernel, NULL); 
 }
 
 void do_list_tracer(Monitor *mon, const QDict *qdict)
