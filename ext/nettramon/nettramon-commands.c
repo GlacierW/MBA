@@ -80,7 +80,6 @@ void do_nettramon_set_file_path ( Monitor *mon, const QDict *qdict )  {
     retVal = nettramon_set_file_path( all_file_path, tcp_file_path, udp_file_path, icmp_file_path );
 
     switch( retVal ) {
-        
         case 0 :
             monitor_printf( mon, "Set written files successfully\n" );
             break;
@@ -98,7 +97,6 @@ void do_nettramon_reset_file_path ( Monitor *mon, const QDict *qdict )  {
     retVal = nettramon_reset_file_path( );
 
     switch( retVal ) {
-        
         case 0 :
             monitor_printf( mon, "Reset written files successfully\n" );
             break;
@@ -119,7 +117,6 @@ void do_nettramon_set_filter ( Monitor *mon, const QDict *qdict )  {
     retVal = nettramon_set_filter( filter_string );
 
     switch( retVal ) {
-        
         case 0 :
             monitor_printf( mon, "Set packet filter successfully\n" );
             break;
@@ -134,10 +131,9 @@ void do_nettramon_reset_filter ( Monitor *mon, const QDict *qdict )  {
     
     int retVal;
     
-    retVal = nettramon_reset_filter(  );
+    retVal = nettramon_reset_filter( );
 
     switch( retVal ) {
-        
         case 0 :
             monitor_printf( mon, "Reset packet filter successfully\n" );
             break;

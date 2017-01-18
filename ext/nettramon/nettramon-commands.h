@@ -20,8 +20,6 @@
 #ifndef __NETTRAMON_COMMANDS_H__
 #define __NETTRAMON_COMMANDS_H__
 
-#define NET_DEVICE_NAME_LENGTH 64
-
 void do_nettramon_start            (struct Monitor *mon, const struct QDict *qdict);
 void do_nettramon_stop             (struct Monitor *mon, const struct QDict *qdict);
 void do_nettramon_set_file_path    (struct Monitor *mon, const struct QDict *qdict);

@@ -18,21 +18,21 @@
  */
 
 {
-    .name           = "ntm_start",
+    .name           = "mba_ntm_start",
     .args_type      = "",
     .params         = "",
-    .help           = "Turn on Network Traffic Monitor, and print packet's content on screen or into file if the filepaths have been set",
+    .help           = "Turn on Network Traffic Monitor, and print packet's contents on screen or into file(s) if the filepaths have been set",
     .mhandler.cmd   = do_nettramon_start,
 },
 {
-    .name           = "ntm_stop",
+    .name           = "mba_ntm_stop",
     .args_type      = "",
     .params         = "",
-    .help           = "Turn off Network Traffic Monitor, but not clean the settings of filepaths and the filter",
+    .help           = "Turn off Network Traffic Monitor, but remain the settings of filepaths and the filter",
     .mhandler.cmd   = do_nettramon_stop,
 },
 {
-    .name           = "ntm_set_file_path",
+    .name           = "mba_ntm_set_file",
     .args_type      = "all_file:F,tcp_file:F,udp_file:F,icmp_file:F",
     .params         = "all_file tcp_file udp_file icmp_file",
     .help           = "Set the files for writing captured packets' information according to their types " 
@@ -40,21 +40,21 @@
     .mhandler.cmd   = do_nettramon_set_file_path,
 },
 {
-    .name           = "ntm_reset_file_path",
+    .name           = "mba_ntm_reset_file",
     .args_type      = "",
     .params         = "",
     .help           = "Reset the filepaths for writing captured packet information",
     .mhandler.cmd   = do_nettramon_reset_file_path,
 },
 {
-    .name           = "ntm_set_filter",
+    .name           = "mba_ntm_set_filter",
     .args_type      = "filter_string:s",
     .params         = "filter_string",
     .help           = "Set the filter string",
     .mhandler.cmd   = do_nettramon_set_filter,
 },
 {
-    .name           = "ntm_reset_filter",
+    .name           = "mba_ntm_reset_filter",
     .args_type      = "",
     .params         = "",
     .help           = "Reset the filter string",
