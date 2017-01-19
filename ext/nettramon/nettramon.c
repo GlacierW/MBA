@@ -25,10 +25,10 @@
 #include "nettramon.h"
 #include "libpcap/pcap/pcap.h"
 
-MBA_NETTRAMON_PRO   protocol_type  = NETTRAMON_PRO_UNKNOWN;
-Monitor*            local_mon      = NULL;
-struct bpf_program* filter         = NULL;
-bool                status         = 0;
+static MBA_NETTRAMON_PRO   protocol_type  = NETTRAMON_PRO_UNKNOWN;
+static Monitor*            local_mon      = NULL;
+static struct bpf_program* filter  = NULL;
+static bool                status  = 0;
 
 struct file_ptr {
     FILE* all_file;
@@ -57,6 +57,7 @@ path_buffer pb[1] = {};
 // Return None
 static void nettramon_clear_filter( void ) {
     free( filter );
+    filter = NULL;
 }
 
 // Reset file pointer
