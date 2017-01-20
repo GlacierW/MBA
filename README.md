@@ -49,6 +49,11 @@ The following features are supported:
        the hypervisor (QEMU). Thereby, not a code snippets is required to be
        inserted to the guest, and thus prevent the interference of malware.
 
+    6. Network Traffic Monitor (NetTraMon)
+       The nettramon extension performs monitoring the network traffic of the guest OS.
+       This extension provides sniffing, parsing, and filtering packets, and supports protrocols of TCP, UDP and ICMP.
+       User can also set files for storing parsed packets according to protocols.
+
 More features are under development.
 
 # Quick Start

@@ -260,6 +260,15 @@ ext/tsk/libregf/.libs/libregf.a:
 
 ext/tsk/tsk.o:ext/tsk/sleuthkit/tsk/.libs/libtsk.a ext/tsk/libregf/.libs/libregf.a
 endif
+
+ifdef  CONFIG_NETTRAMON
+ext/nettramon/libpcap/libpcap.a:
+	cd ext/nettramon/libpcap &&\
+	./configure &&\
+	$(MAKE) 
+ext/nettramon/nettramon.o: ext/nettramon/libpcap/libpcap.a
+ext/nettramon/nettramon.o-cflags = -I'$(SRC_PATH)/ext/nettramon/libpcap'
+endif
 ######################################################################
 
 

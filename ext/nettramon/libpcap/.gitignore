@@ -1,0 +1,16 @@
+!gen_version_header.sh
+!gen_version_c.sh
+
+# files automatically generated via configure and make
+Makefile
+config.status
+*.so
+grammar.c
+grammar.h
+libpcap.so.1.8.1
+pcap-config
+pcap_version.h
+scanner.c
+scanner.h
+version.c
+bpf_filter.c

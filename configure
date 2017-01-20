@@ -344,6 +344,7 @@ agent="no"
 memfrs="no"
 tsk="no"
 obhook="no"
+nettramon="no"
 dba="no"
 #########################
 
@@ -1161,6 +1162,8 @@ for opt do
   ;;
   --enable-obhook) obhook="yes"
   ;;
+  --enable-nettramon) nettramon="yes"
+  ;;
   --enable-dba) 
     echo "NOTE: DBA relies on almost every MBA extension!!"
     dba="yes"
@@ -1171,6 +1174,7 @@ for opt do
     memfrs="yes"
     tsk="yes"
     obhook="yes"
+    nettramon="yes"
     dba="yes"
   ;;
   #########################
@@ -1455,6 +1459,7 @@ Advanced options (experts only):
   --enable-tsk             enable sleuth kit disk forensics sopport
   --enable-memfrs          enable Virtual Machine Memory Introspection for Windows
   --enable-obhook          enable Out-of-Box hooking for Windows 10 x64
+  --enable-nettramon       enable Network Traffic Monitor
   --enable-dba             enable Dynamic Behavior Analyzer
   --enable-mba-all         enable all of the MBA features
 
@@ -4526,6 +4531,7 @@ echo "Windows in-VM agent support       $agent"
 echo "Memory forensics support          $memfrs"
 echo "Disk forensics(tsk) support       $tsk"
 echo "Out-of-Box hook support           $obhook"
+echo "Network Traffic Monitor           $nettramon"
 echo "Dynamic behavior analysis support $dba"
 #########################
 
@@ -5430,6 +5436,11 @@ fi
 if test "$obhook" = "yes"; then
   echo "CONFIG_OBHOOK=y" >> $config_host_mak
   echo "CONFIG_OBHOOK=y" >> $config_target_mak
+fi
+
+if test "$nettramon" = "yes"; then
+  echo "CONFIG_NETTRAMON=y" >> $config_host_mak
+  echo "CONFIG_NETTRAMON=y" >> $config_target_mak
 fi
 
 if test "$dba" = "yes"; then

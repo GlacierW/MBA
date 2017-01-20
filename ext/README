@@ -1,9 +1,10 @@
 In this directory placed the QEMU extension created by MBA Team
 Note that each directory must containt the source and the test/ directory for the unit testing
 
-    1. DIFT     De-coupled Information Flow Tracking system (DIFT) (a.k.a Taint analysis)
-    2. TSK      The disk forensics based on customized The Sleuth Kit
-    3. MEMFRS   The memory forensics for Windows 10 x64 guest OS
-    4. AGENT    The in-VM agent for Windows 10 x64 guest OS
-    5. OBHOOK   The Out-of-Box Hooking, a VM-based whole-system hook against guest OS
-    6. DBA      Dynamic Behavior Analyzer (DBA) for Windows executable
+    1. DIFT        De-coupled Information Flow Tracking system (DIFT) (a.k.a Taint analysis)
+    2. TSK         The disk forensics based on customized The Sleuth Kit
+    3. MEMFRS      The memory forensics for Windows 10 x64 guest OS
+    4. AGENT       The in-VM agent for Windows 10 x64 guest OS
+    5. OBHOOK      The Out-of-Box Hooking, a VM-based whole-system hook against guest OS
+    6. DBA         Dynamic Behavior Analyzer (DBA) for Windows executable
+    7. NETTRAMON   Network Traffic Monitor for guest OS

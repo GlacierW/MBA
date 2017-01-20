@@ -98,6 +98,7 @@ stamp-h[1-9]
 /po/en@quot.header
 /po/insert-header.sin
 /po/Makefile.in.in
+/po/Makefile.in
 /po/Makevars
 /po/Makevars.template
 /po/Rules-quot

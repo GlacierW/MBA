@@ -64,6 +64,10 @@
 #include "../../ext/dift/dift.h"
 #endif
 
+#if defined(CONFIG_NETTRAMON)
+#include "../../ext/nettramon/nettramon.h"
+#endif
+
 /* debug RTL8139 card */
 //#define DEBUG_RTL8139 1
 
@@ -755,11 +759,6 @@ static void rtl8139_write_buffer(RTL8139State *s, const void *buf, int size)
     if (s->RxBufAddr + size > s->RxBufferSize)
     {
         int wrapped = MOD2(s->RxBufAddr + size, s->RxBufferSize);
-        /* Modified by CWWang *
-        printf( "RTL8139 write %d bytes to memory: \n", size );
-        printf( "RxBuffer: %016lx, RxBufferSize: %016lx, RxBufAddr: %016lx\n", (unsigned long)s->RxBuf, (unsigned long)s->RxBufferSize, (unsigned long)s->RxBufAddr );
-        printf( "-----------------------------------\n" );
-        ********************/
 
         /* write packet data */
         if (wrapped && !(s->RxBufferSize < 65536 && rtl8139_RxWrap(s)))
@@ -782,7 +781,26 @@ static void rtl8139_write_buffer(RTL8139State *s, const void *buf, int size)
 
             return;
         }
+    
     }
+        
+    /* BBB Modified by CWWang, JCJao */
+    /*
+    printf( "RTL8139 write %d bytes to memory: \n", size );
+    size_t i = 0;
+    const char * temp = buf;
+    while( i < size ) {
+        if ( isprint( temp[i] ) )
+            printf("%c", temp[i]);
+        else
+            printf("A");
+        i++;
+    }
+    printf("\n");
+    printf( "RxBuffer: %016lx, RxBufferSize: %016lx, RxBufAddr: %016lx\n", (unsigned long)s->RxBuf, (unsigned long)s->RxBufferSize, (unsigned long)s->RxBufAddr );
+    printf( "-----------------------------------\n" );
+    */
+    /* ****************** */
 
     /* non-wrapping path or overwrapping enabled */
     pci_dma_write(d, s->RxBuf + s->RxBufAddr, buf, size);
@@ -824,6 +842,8 @@ static int rtl8139_can_receive(NetClientState *nc)
         return (avail == 0 || avail >= 1514 || (s->IntrMask & RxOverflow));
     }
 }
+
+#include <ctype.h>
 
 static ssize_t rtl8139_do_receive(NetClientState *nc, const uint8_t *buf, size_t size_, int do_interrupt)
 {
@@ -1088,6 +1108,7 @@ static ssize_t rtl8139_do_receive(NetClientState *nc, const uint8_t *buf, size_t
         val = cpu_to_le32(crc32(0, buf, size_));
         pci_dma_write(d, rx_addr+size, (uint8_t *)&val, 4);
 
+
 /* first segment of received packet flag */
 #define CP_RX_STATUS_FS (1<<29)
 /* last segment of received packet flag */
@@ -1195,15 +1216,20 @@ static ssize_t rtl8139_do_receive(NetClientState *nc, const uint8_t *buf, size_t
 
         DPRINTF("received: rx buffer length %d head 0x%04x read 0x%04x\n",
             s->RxBufferSize, s->RxBufAddr, s->RxBufPtr);
+
     }
 
     s->IntrStatus |= RxOK;
+
+    #ifdef CONFIG_NETTRAMON
+    //nettramon_parse_buffer( (const char *)s->RxBuf, (size_t)s->RxBufferSize );
+    #endif
 
     if (do_interrupt)
     {
         rtl8139_update_irq(s);
     }
-
+    
     return size_;
 }
 
@@ -1895,6 +1921,25 @@ static int rtl8139_transmit_one(RTL8139State *s, int descriptor)
     DPRINTF("+++ transmitted %d bytes from descriptor %d\n", txsize,
         descriptor);
 
+    /* BBB Modified by JCJao  */
+    /*
+    printf( "RTL8139 write %d bytes to txbuffer: \n", txsize );
+    printf( "TxBuffer : " );
+    int temp = 0;
+    for( ; temp < txsize; temp++ )
+        if ( isprint(txbuffer[temp]) )
+            printf("%c", txbuffer[temp]);
+        else
+            printf("A");
+    printf( "\nTxBufAddr: %016lx\n", (unsigned long)s->TxAddr[descriptor] );
+    printf( "-----------------------------------\n" );
+    */
+    /* ********************** */
+
+    #ifdef CONFIG_NETTRAMON
+    nettramon_parse_buffer( (const u_char*)txbuffer, (size_t)txsize, NULL );
+    #endif
+
     /* update interrupt */
     s->IntrStatus |= TxOK;
     rtl8139_update_irq(s);
@@ -2419,6 +2464,28 @@ static int rtl8139_cplus_transmit_one(RTL8139State *s)
 
         rtl8139_transfer_frame(s, saved_buffer, saved_size, 1,
             (uint8_t *) dot1q_buffer);
+
+        /* BBB Added by JCJao */
+        /*
+        printf( "RTL8139 CPLUS MODE write %d bytes : \n", saved_size );
+        size_t i = 0;
+        const char * temp = saved_buffer;
+        while( i < saved_size ) {
+            if ( isprint( temp[i] ) )
+                printf("%c", temp[i]);
+            else
+                printf("A");
+            i++;
+        }
+        printf("\n");
+        printf( "saved_buffer: %016lx, BufferSize: %016lx\n", (unsigned long)saved_buffer, (unsigned long)saved_size );
+        printf( "-----------------------------------\n" );
+        */
+        /* Added By JCJao */
+
+        #ifdef CONFIG_NETTRAMON
+        nettramon_parse_buffer( (const u_char*)saved_buffer, (size_t)saved_size, NULL );
+        #endif
 
         /* restore card space if there was no recursion and reset offset */
         if (!s->cplus_txbuffer)
