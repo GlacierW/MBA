@@ -43,7 +43,15 @@ void do_inst_tracer(Monitor *mon, const QDict *qdict)
     const char* label = qdict_get_str(qdict, "label");
     uint64_t cr3 = qdict_get_int(qdict, "cr3");
     bool is_kernel = qdict_get_bool(qdict, "is_kernel");
-    tracer_add_process(cr3, label, is_kernel, NULL); 
+    tracer_add_inst_tracer(cr3, label, is_kernel, NULL); 
+}
+
+void do_block_tracer(Monitor *mon, const QDict *qdict)
+{
+    const char* label = qdict_get_str(qdict, "label");
+    uint64_t cr3 = qdict_get_int(qdict, "cr3");
+    bool is_kernel = qdict_get_bool(qdict, "is_kernel");
+    tracer_add_block_tracer(cr3, label, is_kernel, NULL);
 }
 
 void do_list_tracer(Monitor *mon, const QDict *qdict)

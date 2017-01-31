@@ -29,6 +29,8 @@
 
 enum TRACER_ERRNO {
     TRACER_ERR_FAIL,
+    TRACER_INVALID_GRANULARITY,
+    TRACER_INVALID_ID
 };
 
 
@@ -56,7 +58,7 @@ struct tracer_cb_record {
     // user-friendly label string
     char label[MAX_SZ_TRACER_LABEL];
 
-    void* (*cb_func) (void*,uint64_t);
+    void* (*cb_func) (void*,uint64_t, uint64_t);
 
     struct tracer_cb_record* next;
 };
@@ -67,20 +69,31 @@ extern tracer_cb_record *g_process_tracer_head;
 extern tracer_cb_record *g_universal_kernel_tracer_head;
 extern tracer_cb_record *g_universal_tracer_head;
 
-extern tracer_cb_record *g_block_head;
-
+extern tracer_cb_record *g_process_btracer_head;
+extern tracer_cb_record *g_universal_kernel_btracer_head;
+extern tracer_cb_record *g_universal_btracer_head;
 //extern int g_tracer_enable;
 
-void* default_callback(void* env_state, uint64_t pc);
+void* default_callback(void* env_state, uint64_t pc_start, uint64_t pc_end );
 
-void tracer_enable_tracer(int);
-void tracer_disable_tracer(void);
+int enable_tracer_in_list(tracer_cb_record* head, int uid);
+int disable_tracer_in_list(tracer_cb_record* head, int uid);
+
+
+extern int tracer_enable_tracer(int);
+extern int tracer_disable_tracer(int);
 void tracer_list_callback(void);
-int tracer_add_process( uint64_t cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t) );
-int tracer_add_universal( const char* label, bool is_kernel, void*(*cb) (void*, uint64_t) );
-extern bool tracer_is_enable(void);
+extern int tracer_add_inst_tracer( uint64_t cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) );
+extern int tracer_add_block_tracer( uint64_t cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) );
+//extern int tracer_add_universal( const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) );
+//extern bool tracer_is_enable(void);
+
 extern bool tracer_check_process_tracer( uint64_t pc, uint64_t cr3);
 extern bool tracer_check_universal_kernel_tracer( uint64_t pc );
 extern bool tracer_check_universal_tracer(uint64_t pc);
+
+extern bool tracer_check_process_btracer( uint64_t pc, uint64_t cr3);
+extern bool tracer_check_universal_kernel_btracer( uint64_t pc );
+extern bool tracer_check_universal_btracer(uint64_t pc);
 extern bool tracer_is_kern_addr( uint64_t addr );
 #endif

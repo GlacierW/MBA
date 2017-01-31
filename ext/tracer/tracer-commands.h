@@ -27,6 +27,7 @@ struct QDict;
 
 void do_enable_tracer(Monitor *mon, const QDict *qdict);
 void do_inst_tracer(Monitor *mon, const QDict *qdict);
+void do_block_tracer(Monitor *mon, const QDict *qdict);
 void do_list_tracer(Monitor *mon, const QDict *qdict);
 
 #endif

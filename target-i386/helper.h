@@ -22,8 +22,9 @@ DEF_HELPER_1(obhook_dispatcher, void, env)
 
 #if defined(CONFIG_TRACER)
 DEF_HELPER_2(tracer_dispatcher, void, env, i64)
-DEF_HELPER_2(universal_kernel_tracer_dispatcher, void, env, i64)
-DEF_HELPER_2(universal_tracer_dispatcher, void, env, i64)
+//DEF_HELPER_2(universal_kernel_tracer_dispatcher, void, env, i64)
+//DEF_HELPER_2(universal_tracer_dispatcher, void, env, i64)
+DEF_HELPER_3(btracer_dispatcher, void, env, i64, i64)
 #endif
 
 DEF_HELPER_2(aam, void, env, int)

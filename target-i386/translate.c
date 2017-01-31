@@ -44,6 +44,9 @@
 
 #if defined(CONFIG_TRACER)
 #include "ext/tracer/tracer.h"
+
+target_ulong bstart;
+target_ulong bend;
 #endif
 
 
@@ -3103,6 +3106,12 @@ static void gen_debug(DisasContext *s, target_ulong cur_eip)
 static void gen_eob(DisasContext *s)
 {
     gen_update_cc_op(s);
+
+#if defined(CONFIG_TRACER)
+    TCGv_i64 tcg_bstart = tcg_const_i64(bstart);
+    TCGv_i64 tcg_bend = tcg_const_i64(bend);
+    gen_helper_btracer_dispatcher( cpu_env, tcg_bstart, tcg_bend);
+#endif
     if (s->tb->flags & HF_INHIBIT_IRQ_MASK) {
         gen_helper_reset_inhibit_irq(cpu_env);
     }
@@ -5201,28 +5210,29 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
 
 #if defined(CONFIG_TRACER)
     // Check user process
-    if( !tracer_is_kern_addr(s->pc) && tracer_check_process_tracer(s->pc, env->cr[3]) ){
-        TCGv_i64 tmp = tcg_const_i64( s->pc );
-        gen_helper_tracer_dispatcher( cpu_env, tmp );
-    }
+    //if( !tracer_is_kern_addr(s->pc) && tracer_check_process_tracer(s->pc, env->cr[3]) ){
+    TCGv_i64 tmp = tcg_const_i64( s->pc );
+    gen_helper_tracer_dispatcher( cpu_env, tmp );
+    //}
+    
 
     // check universal kernel tracer
     //if( tracer_is_kern_addr(s->pc) && tracer_check_universal_kernel_tracer((uint64_t)(s->pc)) ){
-    if( tracer_is_kern_addr(s->pc) && tracer_check_universal_kernel_tracer((uint64_t)(s->pc)) ){
+    //if( g_tracer_enable == 1 && tracer_is_kern_addr(s->pc) && tracer_check_universal_kernel_tracer((uint64_t)(s->pc)) ){
     //if( tracer_is_kern_addr(s->pc) ){
         //printf("testtesttest\n");
         //printf("cpu %p", cpu_env);
-        TCGv_i64 tmp = tcg_const_i64( s->pc );
+        //TCGv_i64 tmp = tcg_const_i64( s->pc );
         //gen_helper_tracer_dispatcher( cpu_env, tmp );
-        gen_helper_universal_kernel_tracer_dispatcher( cpu_env, tmp );
+        //gen_helper_universal_kernel_tracer_dispatcher( cpu_env, tmp );
         //printf("haha\n");
-    }
+    //}
 
     // check universal tracer
-    if( !tracer_is_kern_addr(s->pc) && tracer_check_universal_tracer((uint64_t)(s->pc))){
-        TCGv_i64 tmp = tcg_const_i64( s->pc );
-        gen_helper_universal_tracer_dispatcher( cpu_env, tmp );
-    }
+    //if( !tracer_is_kern_addr(s->pc) && tracer_check_universal_tracer((uint64_t)(s->pc))){
+        //TCGv_i64 tmp = tcg_const_i64( s->pc );
+        //gen_helper_universal_tracer_dispatcher( cpu_env, tmp );
+    //}
 
 #endif
 
@@ -9458,6 +9468,11 @@ static inline void gen_intermediate_code_internal(X86CPU *cpu,
     }
     label_or_helper_appeared = 0;
 #endif
+
+#if defined(CONFIG_TRACER)
+    bstart = pc_start;
+#endif
+
     for(;;) {
         if (unlikely(!QTAILQ_EMPTY(&cs->breakpoints))) {
             QTAILQ_FOREACH(bp, &cs->breakpoints, entry) {
@@ -9483,6 +9498,9 @@ static inline void gen_intermediate_code_internal(X86CPU *cpu,
         if (num_insns + 1 == max_insns && (tb->cflags & CF_LAST_IO))
             gen_io_start();
 
+#if defined(CONFIG_TRACER)
+        bend = pc_ptr;
+#endif
         pc_ptr = disas_insn(env, dc, pc_ptr);
         num_insns++;
 
