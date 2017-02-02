@@ -1,3 +1,23 @@
+/*
+ *  HMP command implementation of the MBA DIFT
+ *
+ *  Copyright (c)   2016 Chiawei Wang
+ *                  2016 Chongkuan Chen
+ *                  2016 Hao Li
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, see <http://www.gnu.org/licenses/>.
+ */
 #include "qemu-common.h"
 #include "monitor/monitor.h"
 #include "include/exec/cpu-common.h"
@@ -6,7 +26,7 @@
 #include "ext/dift/dift-commands.h"
 #include "ext/dift/dift.h"
 
-void do_memory_contaminate(Monitor *mon, const QDict *qdict)
+void do_set_memory_taint(Monitor *mon, const QDict *qdict)
 {
     uint64_t target_addr = qdict_get_int(qdict, "addr");
     uint64_t target_range = qdict_get_int(qdict, "range");
@@ -39,7 +59,7 @@ void do_show_memory_taint_map(struct Monitor *mon, const struct QDict *qdict)
     }
 }
 
-void do_disk_contaminate(Monitor *mon, const QDict *qdict)
+void do_set_disk_taint(Monitor *mon, const QDict *qdict)
 {
     uint64_t target_addr = qdict_get_int(qdict, "addr");
     uint64_t target_range = qdict_get_int(qdict, "range");

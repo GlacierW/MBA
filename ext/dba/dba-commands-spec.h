@@ -17,28 +17,28 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 {
-        .name         = "start_dba_task",
+        .name         = "mba_start_dba",
         .args_type    = "sample:F,timer:i",
         .params       = "sample timer",
         .help         = "Start dynamic behavior analysis(DBA) on the given sample",
         .mhandler.cmd = do_start_dba_task,
 },
 {
-        .name         = "list_dba_task",
+        .name         = "mba_list_dba_task",
         .args_type    = "tid:i?",
         .params       = "[task_id]",
         .help         = "List DBA tasks",
         .mhandler.cmd = do_list_dba_task,
 },
 {
-        .name         = "delete_dba_task",
+        .name         = "mba_delete_dba_task",
         .args_type    = "tid:i",
         .params       = "task_id",
         .help         = "Delete a DBA task by ID",
         .mhandler.cmd = do_delete_dba_task,
 },
 {
-        .name         = "show_dba_result",
+        .name         = "mba_show_dba_result",
         .args_type    = "tid:i",
         .params       = "task_id",
         .help         = "Show the analysis result of the DBA task specified by ID",

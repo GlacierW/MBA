@@ -17,28 +17,28 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 {
-        .name      = "list_obhook",
+        .name      = "mba_list_obhook",
         .args_type = "",
         .params    = "",
         .help      = "list all registered out-of-box hooks",
         .mhandler.cmd = do_list_obhook,
 },
 {
-        .name      = "delete_obhook",
+        .name      = "mba_delete_obhook",
         .args_type = "obhook_d:i",
         .params    = "obhook_descriptor",
         .help      = "delete an out-of-box hook specified by the descriptor number",
         .mhandler.cmd = do_delete_obhook,
 },
 {
-        .name      = "enable_obhook",
+        .name      = "mba_enable_obhook",
         .args_type = "obhook_d:i",
         .params    = "obhook_descriptor",
         .help      = "enable an out-of-box hook specified by the descriptor number",
         .mhandler.cmd = do_enable_obhook,
 },
 {
-        .name      = "disable_obhook",
+        .name      = "mba_disable_obhook",
         .args_type = "obhook_d:i",
         .params    = "obhook_descriptor",
         .help      = "disable an out-of-box hook specified by the descriptor number",
