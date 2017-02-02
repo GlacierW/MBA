@@ -22,8 +22,6 @@ before_install:
   - if [ "$NEED_IMAGE" == "Y" ]; then
     perl gdown.pl/gdown.pl "https://docs.google.com/uc?id=0B3tO_KfVdaBJV1Q5TG5PZjY0RDg&export=download" win10.qcow2;
     fi
-  - wget -O - http://people.linaro.org/~alex.bennee/qemu-submodule-git-seed.tar.xz | tar -xvJ
-  - git submodule update --init --recursive
   - sudo apt-get update -qq
   - sudo apt-get install -qq ${CORE_PKGS} ${NET_PKGS} ${GUI_PKGS} ${EXTRA_PKGS}
   - sudo ldconfig -v
@@ -41,13 +39,13 @@ script:
   - make -j4 && sh -c "${TEST_CMD}"
 matrix: # define more builds here
   include:
-    # enable & run agent unit test
-    - env: EXTRA_CONFIG="--enable-agent"
-      compiler: gcc
-           TEST_CMD=""
     # enable all MBA extensions
     - env: EXTRA_CONFIG="--enable-mba-all"
            TEST_CMD="make mba-test"
+      compiler: gcc
+    # enable & run agent unit test
+    - env: EXTRA_CONFIG="--enable-agent"
+           TEST_CMD="make agent -C ext/ -f Makefile.test && ext/agent/test/bin/test_agent"
       compiler: gcc
     # enable & run dift unit test
     - env: EXTRA_CONFIG="--enable-dift"
@@ -57,6 +55,7 @@ matrix: # define more builds here
     - env: EXTRA_CONFIG="--enable-obhook"
            TEST_CMD="make obhook -C ext -f Makefile.test && ext/obhook/test/bin/test_obhook"
       compiler: gcc
+    # enable & run memfrs unit test
     - env: EXTRA_CONFIG="--enable-memfrs"
            TEST_CMD="make memfrs -C ext -f Makefile.test && ext/memfrs/test/bin/test_memfrs"
       compiler: gcc
