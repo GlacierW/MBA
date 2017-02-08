@@ -45,6 +45,13 @@
         .mhandler.cmd = do_show_phymem_content,
 },
 {
+        .name = "get_physic_address",
+        .args_type  = "cr3:l,addr:l",
+        .params     = "cr3 addr",
+        .help       = "get the physic address of a given virtual address in memory space(cr3)",
+        .mhandler.cmd = do_get_physic_address,
+},
+{
         .name = "scan_virmem_pattern",
         .args_type  = "start:l,end:l,pattern:s",
         .params     = "start end pattern",

@@ -86,28 +86,6 @@ void do_show_disk_taint_map(struct Monitor *mon, const struct QDict *qdict)
     }
 }
 
-void do_get_physic_address(struct Monitor *mon, const struct QDict *qdict)
-{
-    uint64_t target_cr3		= qdict_get_int(qdict, "cr3");
-    uint64_t target_addr    = qdict_get_int(qdict, "addr");
-    X86CPU *cpu				= X86_CPU(ENV_GET_CPU((CPUArchState*)mba_mon_get_cpu()));
-    hwaddr page             = target_addr & TARGET_PAGE_MASK;
-	
-    //XXX(misterlihao@gmail.com):Only one phase copied. Should be fully copied to resist changes.
-    X86CPU copied_cpu;
-    memcpy(&copied_cpu, cpu, sizeof(copied_cpu));
-    copied_cpu.env.cr[3] = target_cr3;
-    
-    hwaddr phys_page = cpu_get_phys_page_debug((CPUState*)&copied_cpu, page);
-    if (phys_page == -1) {
-        monitor_printf(mon, "Cannot find physic page\n");
-		return;
-    }
-
-    hwaddr phys_addr = phys_page + (target_addr & ~TARGET_PAGE_MASK);
-    monitor_printf(mon, "physic address = %p\n", (void*)phys_addr);
-}
-
 void do_enable_dift(struct Monitor *mon, const struct QDict *qdict )
 {
     if( dift_is_enabled() )
