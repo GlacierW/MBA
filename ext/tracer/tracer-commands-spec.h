@@ -18,28 +18,28 @@
  */
 
 {
-        .name = "enable_tracer",
+        .name = "mba_enable_tracer",
         .args_type  = "tracer_uid:i",
         .params     = "tracer_uid",
         .help       = "enalbing instruction trace with given uid number",
         .mhandler.cmd = do_enable_tracer,
 },
 {
-        .name = "inst_tracer",
+        .name = "mba_gen_inst_tracer",
         .args_type  = "label:s,cr3:l,is_kernel:b",
         .params     = "label cr3 is_kernel",
         .help       = "create tracer for instruction trace, specify cr3 for pre-process trace, 0 for universal trace. is_kernel denotes kernel trace or not",
         .mhandler.cmd = do_inst_tracer,
 },
 {
-        .name = "block_tracer",
+        .name = "mba_gen_block_tracer",
         .args_type  = "label:s,cr3:l,is_kernel:b",
         .params     = "label cr3 is_kernel",
         .help       = "create tracer for block trace, specify cr3 for pre-process trace, 0 for universal trace. is_kernel denotes kernel trace or not",
         .mhandler.cmd = do_block_tracer,
 },
 {
-        .name = "list_tracer",
+        .name = "mba_list_tracer",
         .args_type  = "",
         .params     = "",
         .help       = "list all tracer",
