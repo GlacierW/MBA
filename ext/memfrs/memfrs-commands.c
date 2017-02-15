@@ -30,6 +30,7 @@
 #include "ext/memfrs/vad.h"
 #include "ext/memfrs/kmod.h"
 #include "ext/memfrs/handles.h"
+#include "ext/memfrs/netscan.h"
 
 #include "qmp-commands.h"
 
@@ -238,6 +239,43 @@ void do_module_list(Monitor *mon, const QDict *qdict)
 
     memfrs_scan_module(cpu); 
 }
+
+
+/******************************************************************
+* PURPOSE : List the running network
+******************************************************************/
+void do_network_list(Monitor *mon, const QDict *qdict)
+{
+    CPUState *cpu=NULL;
+    UT_array *network_list;
+    network_state *print_network_list;
+    cpu = ENV_GET_CPU((CPUArchState*)mba_mon_get_cpu());
+
+    network_list = memfrs_scan_network(cpu);
+
+    if( network_list != NULL ){
+        print_network_list = NULL;
+        monitor_printf(mon, "  Offset   Proto Phymemory       Eprocess         File name     Pid      State                      Local address                      Foreign address          Time\n");
+        monitor_printf(mon, "---------- ----- ---------- ------------------ --------------- ----- ------------- ------------------------------------------------ ---------------------- ------------------------\n");
+        while( (print_network_list=(network_state*)utarray_next(network_list,print_network_list)) ){
+            monitor_printf(mon, "0x%-8"PRIx64" %s 0x%-8"PRIx64" 0x%"PRIx64" %-16s %-5"PRIu64" %-12s %-48s %-22s %s",
+                    print_network_list->offset, 
+                    print_network_list->protocol, 
+                    print_network_list->pmem, 
+                    print_network_list->eprocess, 
+                    print_network_list->file_name, 
+                    print_network_list->pid, 
+                    print_network_list->state, 
+                    print_network_list->local_addr, 
+                    print_network_list->foreign_addr, 
+                    print_network_list->time);
+        }
+        free(network_list);
+    }
+    else
+        monitor_printf(mon, "Something is wrong, please check error number\n");
+}
+
 
 /******************************************************************
 * PURPOSE : Load the global variable's(symbols) information into 

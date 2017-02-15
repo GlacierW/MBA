@@ -17,7 +17,6 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#if !defined(CONFIG_MEMFRS_TEST)
 #include "qemu-common.h"
 #include "monitor/monitor.h"
 #include "include/exec/cpu-common.h"
@@ -25,7 +24,6 @@
 #include "include/utarray.h"
 #include "include/uthash.h"
 #include "json-c/json.h"
-#endif
 
 #include "memfrs.h"
 #include "memfrs-priv.h"

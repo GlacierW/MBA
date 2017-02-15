@@ -95,6 +95,22 @@ typedef struct UT_handles{
 
 
 
+// network data structure
+typedef struct network_state{
+    uint64_t offset;
+    const char* protocol;
+    uint64_t pmem;
+    uint64_t eprocess;
+    char* file_name;
+    uint64_t pid;
+    const char* state;
+    char* local_addr;
+    char* foreign_addr;
+    char* time;
+}network_state;
+
+
+
 //public API 
 extern bool memfrs_check_struct_info(void);
 extern int memfrs_load_structs( const char* type_filename);
@@ -193,6 +209,8 @@ INPUT:     uint64_t kpcr_ptr,        the address of _KPCR struct
 OUTPUT:    UT_array*                 return a UT_array with handles types
 *******************************************************************/
 extern UT_array* memfrs_enum_handles_types( uint64_t kpcr_ptr, CPUState *cpu );
+
+extern UT_array* memfrs_scan_network(CPUState *cpu);
 
 /*
 extern void parse_unicode_strptr(uint64_t ustr_ptr, CPUState *cpu);
