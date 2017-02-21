@@ -33,8 +33,6 @@
 #include "netscan.h"
 
 #define SIZE_OF_POOL_HEADER 0x10
-#define AF_INET 2
-#define AF_INET6 23
 
 
 
@@ -49,18 +47,18 @@ OUTPUT: char*                   pointer to state string
 static const char* map_state_to_str(uint32_t state)
 {
     switch(state){
-        case 0:  return "CLOSED"; break;
-        case 1:  return "LISTENING"; break;
-        case 2:  return "SYN_SENT"; break;
-        case 3:  return "SYN_RCVD"; break;
-        case 4:  return "ESTABLISHED"; break;
-        case 5:  return "FIN_WAIT1";  break;
-        case 6:  return "FIN_WAIT2";  break;
-        case 7:  return "CLOSE_WAIT"; break;
-        case 8:  return "CLOSING";  break;
-        case 9:  return "LAST_ACK";  break;
-        case 12: return "TIME_WAIT";  break;
-        case 13: return "DELETE_TCP";  break;
+        case TCP_CLOSED:  return "CLOSED"; break;
+        case TCP_LISTENING:  return "LISTENING"; break;
+        case TCP_SYN_SENT:  return "SYN_SENT"; break;
+        case TCP_SYN_RCVD:  return "SYN_RCVD"; break;
+        case TCP_ESTABLISHED:  return "ESTABLISHED"; break;
+        case TCP_FIN_WAIT1:  return "FIN_WAIT1";  break;
+        case TCP_FIN_WAIT2:  return "FIN_WAIT2";  break;
+        case TCP_CLOSE_WAIT:  return "CLOSE_WAIT"; break;
+        case TCP_CLOSING:  return "CLOSING";  break;
+        case TCP_LAST_ACK:  return "LAST_ACK";  break;
+        case TCP_TIME_WAIT: return "TIME_WAIT";  break;
+        case TCP_DELETE_TCP: return "DELETE_TCP";  break;
         default:
                  return "UNKOWN"; break;
     }
@@ -158,7 +156,11 @@ OUTPUT: char*                   pointer to char array, stored timestamp
 **********************************************************************************/
 static char* windows_timestamp_convert(uint64_t time)
 {
-    float second=0;
+    char *return_time;
+
+    char *time_tmp;
+    int i;
+    double second=0;
     time_t windows_time=0;
 
     // convert time to seconds
@@ -172,7 +174,13 @@ static char* windows_timestamp_convert(uint64_t time)
     windows_time = second-11644473600;
 
     // convert seconds to timestamp
-    return ctime(&windows_time);
+    time_tmp = ctime(&windows_time);
+    return_time = (char*)malloc(26);
+    for(i=0;i<25;i=i+1)
+        return_time[i] = time_tmp[i];
+    return_time[25]='\0';
+
+    return return_time;
 }
 
 
@@ -333,8 +341,8 @@ static void parse_TcpL(int offset_tag, uint64_t pmem, UT_array *network_list, CP
     else if(AF==AF_INET6){
         cpu_physical_memory_read( pmem-offset_tag+SIZE_OF_POOL_HEADER + 0x60 , &addr1, 8);
         if(addr1==0x0000000000000000){
-            addr = (char*)malloc(18);
-            sprintf(addr, "0.0.0.0.0.0.0.0:0");
+            addr = (char*)malloc(22);
+            sprintf(addr, "0.0.0.0.0.0.0.0:%s", port_convert(port_local));
         }
         else if(cpu_memory_rw_debug(cpu, addr1+0x10, (uint8_t*)&addr2, 8, 0)!=0){
             return;
@@ -526,8 +534,8 @@ static void parse_UdpA(int offset_tag, uint64_t pmem, UT_array *network_list, CP
     else if(AF==AF_INET6){
         cpu_physical_memory_read( pmem-offset_tag+SIZE_OF_POOL_HEADER + 0x80 , &addr1, 8);
         if(addr1==0x0000000000000000){
-            addr = (char*)malloc(18);
-            sprintf(addr, "0.0.0.0.0.0.0.0:0");
+            addr = (char*)malloc(22);
+            sprintf(addr, "0.0.0.0.0.0.0.0:%s", port_convert(port_local));
         }
         else if(cpu_memory_rw_debug(cpu, addr1, (uint8_t*)&addr2, 8, 0)!=0){
             return;
@@ -592,7 +600,8 @@ extern UT_array* memfrs_scan_network(CPUState *cpu)
 
     utarray_new( network_list, &network_icd);
     //Scan whole physical memory
-    for(pmem = 0; pmem < MAXMEM-strlen(POOL_TAG_UDP_ENDPOINT); pmem++)
+//    for(pmem = 0; pmem < MAXMEM-strlen(POOL_TAG_UDP_ENDPOINT); pmem++)
+    for(pmem = 0; pmem < 0x10000000; pmem++)
     {
         if(pmem%0x10000000==0x0)
             printf("Scan physical address: 0x%"PRIx64"\n", pmem);

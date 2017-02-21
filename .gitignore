@@ -1,3 +1,4 @@
+/.gdbinit
 /config-devices.*
 /config-all-devices.*
 /config-all-disas.*

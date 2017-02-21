@@ -210,6 +210,14 @@ OUTPUT:    UT_array*                 return a UT_array with handles types
 *******************************************************************/
 extern UT_array* memfrs_enum_handles_types( uint64_t kpcr_ptr, CPUState *cpu );
 
+/*********************************************************************************
+UT_array memfrs_scan_network(CPUState *cpu)
+
+Scan the whole physical memory for network pool tag, and list all the network state.
+
+INPUT:  CPUState *cpu            pointer to current cpu
+OUTPUT: UT_array*                return a UT_array with handles types
+**********************************************************************************/
 extern UT_array* memfrs_scan_network(CPUState *cpu);
 
 /*
