@@ -113,7 +113,9 @@ typedef struct network_state{
 
 //public API 
 extern bool memfrs_check_struct_info(void);
+extern bool memfrs_check_network_struct_info(void);
 extern int memfrs_load_structs( const char* type_filename);
+extern int memfrs_load_network_structs( const char* type_filename);
 extern bool memfrs_kpcr_self_check( uint64_t seg_gs_cpl0 );
 extern UT_array* memfrs_enum_proc_list( uint64_t seg_gs_cpl0, CPUState *cp );
 extern json_object* memfrs_q_struct(const char* ds_name);
@@ -168,6 +170,17 @@ extern int memfrs_get_virmem_struct_content(
         uint8_t    *buffer,
         int         len,
         uint64_t    struct_addr,
+        const char *struct_type_name,
+        int         depth,
+        ...);
+extern int memfrs_get_phy_virmem_struct_content(
+        CPUState   *cpu,
+        uint64_t    cr3,
+        uint8_t    *buffer,
+        int         len,
+        uint64_t    struct_addr,
+        const char *phy_struct_type_name,
+        const char *phy_field_name,
         const char *struct_type_name,
         int         depth,
         ...);

@@ -24,6 +24,13 @@
         .mhandler.cmd = do_load_structures,
 },
 {
+        .name = "load_network_structures",
+        .args_type  = "sdb:s",
+        .params     = "sdb",
+        .help       = "loading network structures information",
+        .mhandler.cmd = do_load_network_structures,
+},
+{
         .name = "list_processes",
         .args_type  = "",
         .params     = "",

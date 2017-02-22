@@ -26,6 +26,7 @@ struct Monitor;
 struct QDict;
 void do_process_list(Monitor *mon, const QDict *qdict);
 void do_load_structures(Monitor *mon, const QDict *qdict);
+void do_load_network_structures(Monitor *mon, const QDict *qdict);
 void do_show_virmem_content(Monitor *mon, const QDict *qdict);
 void do_show_phymem_content(Monitor *mon, const QDict *qdict);
 void do_get_physic_address(struct Monitor *mon, const struct QDict *qdict);

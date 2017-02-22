@@ -49,12 +49,18 @@
 uint64_t g_kpcr_ptr = 0;
 json_object *g_struct_info = NULL;
 json_object *g_globalvar_info = NULL;
+json_object *g_network_struct_info = NULL;
 
 MEMFRS_ERRNO memfrs_errno;
 
 bool memfrs_check_struct_info(void)
 {
     return (g_struct_info!=NULL)? 1 : 0;
+}
+
+bool memfrs_check_network_struct_info(void)
+{
+    return (g_network_struct_info!=NULL)? 1 : 0;
 }
 
 /*******************************************************************
@@ -139,8 +145,11 @@ json_object* memfrs_q_struct(const char* ds_name)
     // Restore the query result into target json_object
     json_object_object_get_ex(g_struct_info, ds_name, &target);
     
-    if(target==NULL)
-        printf("%s not found\n", ds_name);
+    if(target==NULL){
+        json_object_object_get_ex(g_network_struct_info, ds_name, &target);
+        if(target==NULL)
+            printf("%s not found\n", ds_name);
+    }
     return target;
 }
 
@@ -156,6 +165,21 @@ OUTPUT:    int,                        return 0 if sucess, and not 0 otherwise
 int memfrs_load_structs( const char* type_filename)
 {
     g_struct_info = json_object_from_file(type_filename);
+    return 0;
+}
+
+/*******************************************************************
+int memfrs_load_network_structs( const char* type_filename)
+
+Load the network data structure information into g_network_struct_info.
+
+INPUT:     const char* type_filename,  the filename of json data structure database
+OUTPUT:    int,                        return 0 if sucess, and not 0 otherwise
+
+*******************************************************************/
+int memfrs_load_network_structs( const char* type_filename)
+{
+    g_network_struct_info = json_object_from_file(type_filename);
     return 0;
 }
 
@@ -729,7 +753,7 @@ int memfrs_display_type(CPUState *cpu, uint64_t addr, const char* struct_name)
     return 0;
 }
 
-int memfrs_get_virmem_struct_content(
+static int memfrs_get_mem_struct_content(
         CPUState   *cpu,
         uint64_t    cr3,
         uint8_t    *buffer,
@@ -737,13 +761,12 @@ int memfrs_get_virmem_struct_content(
         uint64_t    struct_addr,
         const char *struct_type_name,
         int         depth,
-        ...) {
+        va_list vl) {
     // XXX: Now use extra char at beginning of field name to
     // indicate that the field is a pointer or not.
     // Should load and parse the structure file correctly instead.
     // XXX: assuming pointer has size of 8
     json_object *struct_type;
-    va_list vl;
     field_info *info = NULL;
     int errcode;
     const char *field_name;
@@ -752,20 +775,19 @@ int memfrs_get_virmem_struct_content(
     if (struct_type == NULL)
         return -1;
 
-    va_start(vl, depth);
     // Process field query
     while (depth--) {
         if (info && info->is_pointer) {
             errcode = memfrs_get_virmem_content(cpu, cr3, struct_addr, 8, (uint8_t*)&struct_addr);
             if (errcode == -1)
-                goto FAIL;
+                return -1;
         }
 
         free(info);
         field_name = va_arg(vl, const char*);
         info = memfrs_q_field(struct_type, field_name+1);
         if (info == NULL)
-            goto FAIL;
+            return -1;
 
         if (field_name[0] == '*')
             info->is_pointer = true;
@@ -776,12 +798,70 @@ int memfrs_get_virmem_struct_content(
         struct_type = info->jobject_type;
     }
     free(info);
-    va_end(vl);
 
     return memfrs_get_virmem_content(cpu, cr3, struct_addr, len, buffer);
-FAIL:
+}
+
+int memfrs_get_virmem_struct_content(
+        CPUState   *cpu,
+        uint64_t    cr3,
+        uint8_t    *buffer,
+        int         len,
+        uint64_t    struct_addr,
+        const char *struct_type_name,
+        int         depth,
+        ...) {
+
+    int errcode = 0;
+    va_list vl;
+
+    va_start(vl, depth);
+    errcode = memfrs_get_mem_struct_content( cpu, cr3, (uint8_t*)buffer, len, struct_addr, struct_type_name, depth, vl);
     va_end(vl);
-    return -1;
+
+    return errcode;
+}
+
+int memfrs_get_phy_virmem_struct_content(
+        CPUState   *cpu,
+        uint64_t    cr3,
+        uint8_t    *buffer,
+        int         len,
+        uint64_t    struct_addr,
+        const char *phy_struct_type_name,
+        const char *phy_field_name,
+        const char *struct_type_name,
+        int         depth,
+        ...) {
+
+    int errcode = 0;
+    va_list vl;
+    json_object *struct_type;
+    field_info *info = NULL;
+
+    struct_type = memfrs_q_struct(phy_struct_type_name);
+    if (struct_type == NULL)
+        return -1;
+
+    info = memfrs_q_field(struct_type, phy_field_name);
+
+    if(depth==1){
+        cpu_physical_memory_read(struct_addr + info->offset , buffer, len);
+        free(info);
+        return 0;
+    }
+    else if(depth>1){
+        cpu_physical_memory_read( struct_addr + info->offset , &struct_addr, 8);
+        free(info);
+
+        va_start(vl, depth);
+        errcode = memfrs_get_mem_struct_content( cpu, cr3, (uint8_t*)buffer, len, struct_addr, struct_type_name, depth-1, vl);
+        va_end(vl);
+
+        return errcode;
+    }
+    else
+        return -1;
 }
 
 int memfrs_get_nested_field_offset(int *out, const char *struct_type_name, int depth, ...) {

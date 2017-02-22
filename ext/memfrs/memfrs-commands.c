@@ -45,6 +45,16 @@ void do_load_structures(Monitor *mon, const QDict *qdict)
 }
 
 /******************************************************************
+* PURPOSE : Load the data structure's information into 
+            g_struct_info from json file of sdb_path
+******************************************************************/
+void do_load_network_structures(Monitor *mon, const QDict *qdict)
+{
+    const char* sdb_path = qdict_get_str(qdict, "sdb");
+    memfrs_load_network_structs(sdb_path);
+}
+
+/******************************************************************
 * PURPOSE : List the running process
 ******************************************************************/
 void do_process_list(Monitor *mon, const QDict *qdict)
