@@ -49,18 +49,12 @@
 uint64_t g_kpcr_ptr = 0;
 json_object *g_struct_info = NULL;
 json_object *g_globalvar_info = NULL;
-json_object *g_network_struct_info = NULL;
 
 MEMFRS_ERRNO memfrs_errno;
 
 bool memfrs_check_struct_info(void)
 {
     return (g_struct_info!=NULL)? 1 : 0;
-}
-
-bool memfrs_check_network_struct_info(void)
-{
-    return (g_network_struct_info!=NULL)? 1 : 0;
 }
 
 /*******************************************************************
@@ -145,14 +139,13 @@ json_object* memfrs_q_struct(const char* ds_name)
     // Restore the query result into target json_object
     json_object_object_get_ex(g_struct_info, ds_name, &target);
     
-    if(target==NULL){
-        json_object_object_get_ex(g_network_struct_info, ds_name, &target);
-        if(target==NULL)
-            printf("%s not found\n", ds_name);
-    }
+    if(target==NULL)
+        printf("%s not found\n", ds_name);
+
     return target;
 }
 
+int A=0;
 /*******************************************************************
 int memfrs_load_structs( const char* type_filename)
 
@@ -164,22 +157,20 @@ OUTPUT:    int,                        return 0 if sucess, and not 0 otherwise
 *******************************************************************/
 int memfrs_load_structs( const char* type_filename)
 {
-    g_struct_info = json_object_from_file(type_filename);
-    return 0;
-}
+    json_object *struct_info = NULL, *test_obj = NULL;
+    if(g_struct_info==NULL){
+        g_struct_info = json_object_from_file(type_filename);
+    }
+    else{
+        struct_info = json_object_from_file(type_filename);
+        json_object_object_foreach(struct_info, key, val){
+            json_object_object_get_ex(g_struct_info, key, &test_obj);
+            if(test_obj!=NULL)
+                printf("The json object with key %s has been overwride.\n", key);
+            json_object_object_add(g_struct_info, key, val);
+        }
+    }
 
-/*******************************************************************
-int memfrs_load_network_structs( const char* type_filename)
-
-Load the network data structure information into g_network_struct_info.
-
-INPUT:     const char* type_filename,  the filename of json data structure database
-OUTPUT:    int,                        return 0 if sucess, and not 0 otherwise
-
-*******************************************************************/
-int memfrs_load_network_structs( const char* type_filename)
-{
-    g_network_struct_info = json_object_from_file(type_filename);
     return 0;
 }
 

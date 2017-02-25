@@ -617,6 +617,7 @@ extern UT_array* memfrs_scan_network(CPUState *cpu)
     uint64_t pmem, pool_body_ptr;
     int offset_tag;
     uint8_t* pool_tag;
+    json_object *test_obj;
     printf("Scan for network patterns.\n" );
 
 
@@ -625,13 +626,25 @@ extern UT_array* memfrs_scan_network(CPUState *cpu)
     //pooltag = (uint8_t*)malloc(strlen(POOL_TAG_TCP_ENDPOINT));
     //pooltag = (uint8_t*)malloc(strlen(POOL_TAG_TCP_LISTENER));
 
-    // Check if ds metadata and network ds metadata are already loaded
-    if( memfrs_check_struct_info() == 0){
-        printf("Data structure information is not loaded\n");
+    // Check if network ds metadata is already loaded
+    json_object_object_get_ex(g_struct_info, "_TCP_LISTENER", &test_obj);
+    if(test_obj==NULL){
+        printf("Network data structure information is not loaded\n");
         return NULL;
     }
-    else if( memfrs_check_network_struct_info() == 0){
+    json_object_object_get_ex(g_struct_info, "_TCP_ENDPOINT", &test_obj);
+    if(test_obj==NULL){
         printf("Network data structure information is not loaded\n");
+        return NULL;
+    }
+    json_object_object_get_ex(g_struct_info, "_UDP_ENDPOINT", &test_obj);
+    if(test_obj==NULL){
+        printf("Network data structure information is not loaded\n");
+        return NULL;
+    }
+    // Check if ds metadata is already loaded
+    if( memfrs_check_struct_info() == 0){
+        printf("Data structure information is not loaded\n");
         return NULL;
     }
     else{
