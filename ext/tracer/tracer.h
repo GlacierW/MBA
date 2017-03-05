@@ -33,10 +33,6 @@ enum TRACER_ERRNO {
     TRACER_INVALID_ID
 };
 
-
-    
-//};
-
 enum TRACER_GRANULARITY {
     TRACER_GRANULARITY_INSTR,
     TRACER_GRANULARITY_CODEBLOCK
@@ -72,28 +68,61 @@ extern tracer_cb_record *g_universal_tracer_head;
 extern tracer_cb_record *g_process_btracer_head;
 extern tracer_cb_record *g_universal_kernel_btracer_head;
 extern tracer_cb_record *g_universal_btracer_head;
-//extern int g_tracer_enable;
 
-void* default_callback(void* env_state, uint64_t pc_start, uint64_t pc_end );
-
-int enable_tracer_in_list(tracer_cb_record* head, int uid);
-int disable_tracer_in_list(tracer_cb_record* head, int uid);
-
-
+//Public API
+/// int tracer_enable_tracer(int uid)
+/// Enable the tracer by id 
+///
+/// \param uid              	id of the target tracer
+/// 
+/// return -1 on error, 0 on success
 extern int tracer_enable_tracer(int);
+
+/// int tracer_disable_tracer(int);
+/// Disable the tracer by id 
+///
+/// \param uid           	id of the target tracer
+/// 
+/// return -1 on error, 0 on success
 extern int tracer_disable_tracer(int);
-void tracer_list_callback(void);
+
+/// int tracer_add_inst_tracer( uint64_t cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) );
+/// Add a new instruction level tracer
+///
+/// \param cr3			the target process which want to monitor	
+///				if the cr3 is 0, then the tracer monitor all the process
+/// \param label		the name label for identifying the tracer, user can provide their own name
+/// \param is_kernel		denote if we want to trace kernel instructions, 
+///				1 for kernel, 0 for user-level 
+/// \param cb			the callback function after the instrction executed.
+///				cb must receive 3 argument, 1st is CPUX86State(user must convert it from void* to CPUX86State*) 
+///				2nd is start address of instruction, 3rd is useless in 
+///                             the default call back is used when cb == NULL
+///				instruction tracer(always be 0), and the cb must return void*
+/// 
+/// return -1 on error, 0 on success
 extern int tracer_add_inst_tracer( uint64_t cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) );
+
+/// int tracer_add_block_tracer( uint64_t cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) );
+/// Add a new block level tracer
+///
+/// \param cr3                  the target process which want to monitor        
+///                             if the cr3 is 0, then the tracer monitor all the process
+/// \param label                the name label for identifying the tracer, user can provide their own name
+/// \param is_kernel            denote if we want to trace kernel instructions, 
+///                             1 for kernel, 0 for user-level 
+/// \param cb                   the callback function after the instrction executed.
+///                             cb must receive 3 argument, 1st is CPUX86State(user must convert it from void* to CPUX86State*) 
+///                             2nd is start address of block, 3rd is address of last ins of block 
+///                              and the cb must return void*
+///				the default call back is used when cb == NULL
+/// 
+/// return -1 on error, 0 on success
 extern int tracer_add_block_tracer( uint64_t cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) );
-//extern int tracer_add_universal( const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) );
-//extern bool tracer_is_enable(void);
 
-extern bool tracer_check_process_tracer( uint64_t pc, uint64_t cr3);
-extern bool tracer_check_universal_kernel_tracer( uint64_t pc );
-extern bool tracer_check_universal_tracer(uint64_t pc);
-
-extern bool tracer_check_process_btracer( uint64_t pc, uint64_t cr3);
-extern bool tracer_check_universal_kernel_btracer( uint64_t pc );
-extern bool tracer_check_universal_btracer(uint64_t pc);
-extern bool tracer_is_kern_addr( uint64_t addr );
+/// int get_error_no(void);
+/// get the error number 
+/// return the int of enum TRACER_ERRNO
+extern int get_error_no(void);
 #endif
+

@@ -27,6 +27,7 @@
 
 #if defined(CONFIG_TRACER)
 #include "../ext/tracer/tracer.h"
+#include "../ext/tracer/tracer-priv.h"
 #endif
 
 
@@ -83,37 +84,9 @@ void helper_tracer_dispatcher( CPUX86State* env, uint64_t pc ) {
     }    
 }
 
-/*
-void helper_universal_kernel_tracer_dispatcher( CPUX86State* env, uint64_t pc ) {
-    tracer_cb_record *cb_rec = NULL;
-
-    //if(!tracer_is_enable()) return;
-
-    //printf("kernel callback traversal %p\n", env);
-    LL_FOREACH( g_universal_kernel_tracer_head , cb_rec){
-        //printf("kernel callback\n");
-        if(cb_rec->enabled == 1)
-            cb_rec->cb_func( ENV_GET_CPU(env), pc, 0 );
-        //printf("kernel callback end\n");
-    }
-    //printf("kernel callback traversal end\n");
-}
-
-void helper_universal_tracer_dispatcher( CPUX86State* env, uint64_t pc ) {
-    tracer_cb_record *cb_rec = NULL;
-
-    LL_FOREACH( g_universal_tracer_head , cb_rec){
-        if(cb_rec->enabled == 1)
-            cb_rec->cb_func( ENV_GET_CPU(env), pc, 0 );
-    }
-}*/
-
 void helper_btracer_dispatcher( CPUX86State* env, uint64_t bstart, uint64_t bend ) {
     tracer_cb_record *cb_rec = NULL;
           
-    //if( g_process_btracer_head == NULL && g_universal_kernel_btracer_head == NULL && g_universal_btracer_head == NULL)
-    //    return;
-    //printf("testtest\n");
     if( g_process_btracer_head!=NULL && !tracer_is_kern_addr(bstart) ){
             LL_FOREACH( g_process_btracer_head , cb_rec){
             if(env->cr[3] == cb_rec->cr3  && cb_rec->enabled == 1)
@@ -134,7 +107,6 @@ void helper_btracer_dispatcher( CPUX86State* env, uint64_t bstart, uint64_t bend
                 cb_rec->cb_func( ENV_GET_CPU(env), bstart, bend );
         }
     }
-    //printf("[helper_universal_btracer_dispatcher] end\n");
 }
 
 #endif
