@@ -86,13 +86,13 @@ typedef struct obhk_cb_record obhk_cb_record;
 
 struct obhook_context {
 
-    // 2-layers lookup hash table for out-of-box hook
-    //   The 1-layer is indexed by process CR3
-    //   The 2-layer is indexed by address where the hook implanted at
-    //
-    // Note that the hash record with CR3=0 indicates 
-    // the universal hooks, which are trigger regardless 
-    // of processes and the address is in kernel space.
+    /// 2-layers lookup hash table for out-of-box hook
+    ///   The 1-layer is indexed by process CR3
+    ///   The 2-layer is indexed by address where the hook implanted at
+    ///
+    /// Note that the hash record with CR3=0 indicates 
+    /// the universal hooks, which are trigger regardless 
+    /// of processes and the address is in kernel space.
     obhk_ht_record* hook_tbl;
 
     // the fast lookup table indexed by obhook descriptors
@@ -101,8 +101,8 @@ struct obhook_context {
     // record the top obhook descriptor number (for performance optimization)
     int top_d;
 
-    // a thread context to make the hash table thread-safe
-    pthread_mutex_t mtx;
+    // read-write lock to protect the internal data of OBHook (UTHASH not fully thread-safe)
+    pthread_rwlock_t rwlock;
 };
 typedef struct obhook_context obhook_context;
 

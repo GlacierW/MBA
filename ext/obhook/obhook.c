@@ -27,7 +27,7 @@
 obhook_context obhk_ctx[1];
 #else
 #define _MOCKABLE(x) x
-obhook_context obhk_ctx[1] = { { .hook_tbl = NULL, .top_d = -1, .mtx = PTHREAD_MUTEX_INITIALIZER } };
+obhook_context obhk_ctx[1] = { { .hook_tbl = NULL, .top_d = -1, .rwlock = PTHREAD_RWLOCK_INITIALIZER} };
 #endif
 
 OBHOOK_ERRNO obhook_errno;
@@ -105,6 +105,7 @@ static int add_obhk_internal( target_ulong cr3, target_ulong addr, const char* l
         obhook_errno = OBHOOK_ERR_INVALID_CALLBACK;
         goto obhk_add_fail;
     }
+
 
     // check if any hook has been implanted at the process
     // if not, add the 1-layer hash table record
@@ -201,15 +202,29 @@ get_obhk_cb_not_found:
 /// Each API function should be named with the prefix 'obhook_'
 int obhook_add_process( target_ulong cr3, target_ulong addr, const char* label, void*(*cb) (void*) ) {
 
+    int ret;
+
     if( cr3 == 0 ) {
         obhook_errno = OBHOOK_ERR_INVALID_CR3;
         return -1;
     }
-    return add_obhk_internal( cr3, addr, label, cb );
+
+    pthread_rwlock_wrlock( &obhk_ctx->rwlock );
+    ret = add_obhk_internal( cr3, addr, label, cb );
+    pthread_rwlock_unlock( &obhk_ctx->rwlock );
+
+    return ret;
 }
 
 int obhook_add_universal( target_ulong kern_addr, const char* label, void*(*cb) (void*) ) {
-    return add_obhk_internal( 0, kern_addr, label, cb );
+
+    int ret;
+
+    pthread_rwlock_wrlock( &obhk_ctx->rwlock );
+    ret = add_obhk_internal( 0, kern_addr, label, cb );
+    pthread_rwlock_unlock( &obhk_ctx->rwlock );
+
+    return ret;
 }
 
 int obhook_delete( int obhook_d ) {
@@ -273,18 +288,32 @@ int obhook_disable( int obhook_d ) {
 
 obhk_cb_record* obhook_getcbs_univ( target_ulong kern_addr ) {
 
+    obhk_cb_record* rec;
+
     if( !is_kern_addr(kern_addr) ) {
         obhook_errno = OBHOOK_ERR_INVALID_ADDR;
         return NULL;
     }
-    return get_obhk_cb_internal( 0, kern_addr );
+
+    pthread_rwlock_rdlock( &obhk_ctx->rwlock );
+    rec = get_obhk_cb_internal( 0, kern_addr );
+    pthread_rwlock_unlock( &obhk_ctx->rwlock );
+
+    return rec;
 }
 
 obhk_cb_record* obhook_getcbs_proc( target_ulong cr3, target_ulong addr ) {
+
+    obhk_cb_record* rec;
 
     if( cr3 == 0 ) {
         obhook_errno = OBHOOK_ERR_INVALID_CR3;
         return NULL;
     }
-    return get_obhk_cb_internal( cr3, addr );
+
+    pthread_rwlock_rdlock( &obhk_ctx->rwlock );
+    rec = get_obhk_cb_internal( cr3, addr );
+    pthread_rwlock_unlock( &obhk_ctx->rwlock );
+
+    return rec;
 }
