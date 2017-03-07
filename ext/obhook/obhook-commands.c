@@ -50,7 +50,7 @@ void do_list_obhook( Monitor* mon, const QDict* qdict ) {
             monitor_printf( mon, "    %016lx: \n", ht_proc_rec->addr );
             LL_FOREACH( ht_proc_rec->cb_list, cb_rec ) {
                 monitor_printf( mon, "\t%5d, %10s, %16s\n", 
-                            cb_rec->uid,
+                            cb_rec->uniq_d,
                             (cb_rec->enabled)? "enabled" : "disabled",
                             cb_rec->label );
             }

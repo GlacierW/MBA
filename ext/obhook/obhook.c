@@ -19,16 +19,17 @@
 
 #include "obhook.h"
 
-#if defined(CONFIG_OBHOOK_TEST)
-#define _MOCKABLE(x) _##x
-#else
-#define _MOCKABLE(x) x
-#endif
-
 #define MASK_KERN_ADDR 0xffff000000000000
 
-// global variables 
+// global variables
+#if defined(CONFIG_OBHOOK_TEST)
+#define _MOCKABLE(x) _##x
 obhook_context obhk_ctx[1];
+#else
+#define _MOCKABLE(x) x
+obhook_context obhk_ctx[1] = { { .hook_tbl = NULL, .top_d = -1, .mtx = PTHREAD_MUTEX_INITIALIZER } };
+#endif
+
 OBHOOK_ERRNO obhook_errno;
 bool obhook_pending_hooks;
 
@@ -36,8 +37,8 @@ bool obhook_pending_hooks;
 /// These function should be invoked only in the scope of this file
 
 /// Search available slot in the index table
-/// Return index number as the uid for a new obhook, -1 if no more obhook space
-static int _MOCKABLE(get_obhook_uid)( void ) {
+/// Return index number as the unique descriptor for a new obhook, -1 if no more obhook space
+static int _MOCKABLE(get_obhook_descriptor)( void ) {
 
     int i;
     for( i = 0; i < MAX_NM_OBHOOK; ++i )
@@ -76,12 +77,12 @@ static int add_obhk_internal( target_ulong cr3, target_ulong addr, const char* l
     obhk_ht_record* ht_proc_rec;
     obhk_cb_record* cb_rec;
  
-    int new_uid;
+    int new_d;
 
     // check if there are avaible space for the new hook
-    // if yes, take the uid first
-    new_uid = get_obhook_uid();
-    if( new_uid == -1 ) {
+    // if yes, take the returned descriptor
+    new_d = get_obhook_descriptor();
+    if( new_d == -1 ) {
         obhook_errno = OBHOOK_ERR_FULL_HOOK;
         goto obhk_add_fail;
     }
@@ -140,7 +141,6 @@ static int add_obhk_internal( target_ulong cr3, target_ulong addr, const char* l
         HASH_ADD( hh, ht_rec->proc_obhk_tbl, addr, sizeof(target_ulong), ht_proc_rec );
     }
 
-
     // allocate callback 
     cb_rec = (obhk_cb_record*)calloc( 1, sizeof(obhk_cb_record) );
     if( cb_rec == NULL ) {
@@ -150,7 +150,7 @@ static int add_obhk_internal( target_ulong cr3, target_ulong addr, const char* l
 
     // initialize the callback record
     cb_rec->ht_rec    = ht_proc_rec;
-    cb_rec->uid       = new_uid;
+    cb_rec->uniq_d    = new_d;
     cb_rec->enabled   = true;
     cb_rec->universal = (cb_rec->ht_rec->cr3 == 0)? true : false;
     cb_rec->cb_func   = cb;
@@ -158,13 +158,17 @@ static int add_obhk_internal( target_ulong cr3, target_ulong addr, const char* l
 
     // add the callback record to the linked list & index table
     LL_APPEND( cb_rec->ht_rec->cb_list, cb_rec );
-    obhk_ctx->index_tbl[cb_rec->uid] = cb_rec;
+    obhk_ctx->index_tbl[cb_rec->uniq_d] = cb_rec;
 
     // setup the flag indicating there are pending hooks
     // to make codeblock re-translated
     obhook_pending_hooks = true;
 
-    return cb_rec->uid;
+    // obhook add completed. update the top descriptor number if needed
+    if( new_d > obhk_ctx->top_d )
+        obhk_ctx->top_d = new_d;
+
+    return cb_rec->uniq_d;
 
 obhk_add_fail:
     return -1;

@@ -69,8 +69,8 @@ struct obhk_cb_record {
     // a reverse-pointer to the hash table record
     struct obhk_ht_record* ht_rec;
 
-    // unique identifier for each hook
-    uint16_t uid;
+    // unique descriptor as the identifier of an obhook
+    uint16_t uniq_d;
 
     bool enabled;
     bool universal;
@@ -95,8 +95,14 @@ struct obhook_context {
     // of processes and the address is in kernel space.
     obhk_ht_record* hook_tbl;
 
-    // the fast index table for queries to registered hook
+    // the fast lookup table indexed by obhook descriptors
     obhk_cb_record* index_tbl[MAX_NM_OBHOOK];
+
+    // record the top obhook descriptor number (for performance optimization)
+    int top_d;
+
+    // a thread context to make the hash table thread-safe
+    pthread_mutex_t mtx;
 };
 typedef struct obhook_context obhook_context;
 
