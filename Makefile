@@ -213,12 +213,6 @@ $(BUILD_DIR)/version.lo: $(SRC_PATH)/version.rc config-host.h
 Makefile: $(version-obj-y) $(version-lobj-y)
 
 ######################################################################
-# Build libraries
-
-libqemustub.a: $(stub-obj-y)
-libqemuutil.a: $(util-obj-y)
-
-######################################################################
 ## MBA extensions
 
 # DIFT 
@@ -243,7 +237,7 @@ ifdef  CONFIG_TSK
 ext/tsk/sleuthkit/libqcow/libqcow/.libs/libqcow.a:
 	cd ext/tsk/sleuthkit/libqcow &&\
 	./autogen.sh &&\
-	./configure --enable-static CFLAGS="-fPIC" &&\
+	./configure --enable-static CFLAGS="-fPIC" --with-openssl=no &&\
 	$(MAKE)
 ext/tsk/sleuthkit/tsk/.libs/libtsk.a:  ext/tsk/sleuthkit/libqcow/libqcow/.libs/libqcow.a
 	cd ext/tsk/sleuthkit &&\
@@ -271,6 +265,12 @@ ext/nettramon/nettramon.o-cflags = -I'$(SRC_PATH)/ext/nettramon/libpcap'
 endif
 ######################################################################
 
+
+######################################################################
+# Build libraries
+
+libqemustub.a: $(stub-obj-y)
+libqemuutil.a: $(util-obj-y)
 
 block-modules = $(foreach o,$(block-obj-m),"$(basename $(subst /,-,$o))",) NULL
 util/module.o-cflags = -D'CONFIG_BLOCK_MODULES=$(block-modules)'
