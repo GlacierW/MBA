@@ -69,8 +69,8 @@ struct obhk_cb_record {
     // a reverse-pointer to the hash table record
     struct obhk_ht_record* ht_rec;
 
-    // unique identifier for each hook
-    uint16_t uid;
+    // unique descriptor as the identifier of an obhook
+    uint16_t uniq_d;
 
     bool enabled;
     bool universal;
@@ -86,17 +86,23 @@ typedef struct obhk_cb_record obhk_cb_record;
 
 struct obhook_context {
 
-    // 2-layers lookup hash table for out-of-box hook
-    //   The 1-layer is indexed by process CR3
-    //   The 2-layer is indexed by address where the hook implanted at
-    //
-    // Note that the hash record with CR3=0 indicates 
-    // the universal hooks, which are trigger regardless 
-    // of processes and the address is in kernel space.
+    /// 2-layers lookup hash table for out-of-box hook
+    ///   The 1-layer is indexed by process CR3
+    ///   The 2-layer is indexed by address where the hook implanted at
+    ///
+    /// Note that the hash record with CR3=0 indicates 
+    /// the universal hooks, which are trigger regardless 
+    /// of processes and the address is in kernel space.
     obhk_ht_record* hook_tbl;
 
-    // the fast index table for queries to registered hook
+    // the fast lookup table indexed by obhook descriptors
     obhk_cb_record* index_tbl[MAX_NM_OBHOOK];
+
+    // record the top obhook descriptor number (for performance optimization)
+    int top_d;
+
+    // read-write lock to protect the internal data of OBHook (UTHASH not fully thread-safe)
+    pthread_rwlock_t rwlock;
 };
 typedef struct obhook_context obhook_context;
 

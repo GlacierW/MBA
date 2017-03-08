@@ -5191,6 +5191,20 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
     target_ulong next_eip, tval;
     int rex_w, rex_r;
 
+#if defined(CONFIG_OBHOOK)
+    uint32_t i;
+
+    hwaddr paddr_pc,
+           paddr_hk;
+
+    target_ulong page,
+                 current_cr3 = env->cr[3];
+
+    CPUState* cpu = ENV_GET_CPU(env);
+
+    obhk_ht_record* ht_rec;
+#endif
+
     if (unlikely(qemu_loglevel_mask(CPU_LOG_TB_OP | CPU_LOG_TB_OP_OPT))) {
         tcg_gen_debug_insn_start(pc_start);
     }
@@ -5208,13 +5222,12 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
     s->vex_l = 0;
     s->vex_v = 0;
 
+
 #if defined(CONFIG_TRACER)
     TCGv_i64 tmp = tcg_const_i64( s->pc );
     gen_helper_tracer_dispatcher( cpu_env, tmp );
 #endif
 
- next_byte:
-    b = cpu_ldub_code(env, s->pc);
 #if defined(CONFIG_DIFT)
 #if defined(CONFIG_INDIRECT_TAINT)
     s->reg_base = R_NONE;
@@ -5234,12 +5247,38 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
 #if defined(CONFIG_OBHOOK)
     /// if any out-of-box hook is desired to be implanted
     /// generate the helper function as the runtime dispatcher
-    if( obhook_getcbs_univ(s->pc) != NULL 
-     || obhook_getcbs_proc(env->cr[3], s->pc) != NULL )
-        gen_helper_obhook_dispatcher( cpu_env );
+    ///
+    /// NOTE: we must use physical address to do the check.
+    ///       otherwise a proces-hook on shared code (library, syscall)
+    ///       will not be activated if the translation is conducted in
+    ///       aother process' context.
+
+    // iterate each obhook to compare its physical address with that of the current PC
+    page     = s->pc & TARGET_PAGE_MASK;
+    paddr_pc = cpu_get_phys_page_debug( cpu, page ) + (s->pc & ~TARGET_PAGE_MASK);
+    for( i = 0; i < MAX_NM_OBHOOK && i <= obhk_ctx->top_d; ++i ) {
+
+        if( obhk_ctx->index_tbl[i] == NULL )
+            continue;
+
+        ht_rec = obhk_ctx->index_tbl[i]->ht_rec;
+
+        env->cr[3] = ( ht_rec->cr3 == 0 )? current_cr3 : ht_rec->cr3;
+        page       = ht_rec->addr & TARGET_PAGE_MASK;
+        paddr_hk   = cpu_get_phys_page_debug( cpu, page ) + (ht_rec->addr & ~TARGET_PAGE_MASK);
+
+        if( paddr_pc == paddr_hk ) {
+            gen_helper_obhook_dispatcher( cpu_env );
+            break;
+        }
+    }
+
+    // restore the CPU context
+    env->cr[3] = current_cr3;
 #endif
 
-
+ next_byte:
+    b = cpu_ldub_code(env, s->pc);
 
     s->pc++;
     // invoke instruction trace call back 

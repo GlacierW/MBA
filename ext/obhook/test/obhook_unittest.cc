@@ -32,28 +32,28 @@ struct hook_func {
     virtual void* calloc( size_t, size_t ) = 0;
 
     // obhook functions/API
-    virtual int  get_obhook_uid( void ) = 0;
+    virtual int  get_obhook_descriptor( void ) = 0;
 };
 
 struct mock_func : hook_func {
     public:
         MOCK_METHOD2( calloc, void*(size_t, size_t) );
-        MOCK_METHOD0( get_obhook_uid, int() );
+        MOCK_METHOD0( get_obhook_descriptor, int() );
 
 } *mock_ptr;
 
 #define GEN_MOCK_OBJECT(x)  mock_func x; mock_ptr = &x;
 
 // mock the functions in the original code
-#define calloc(x, y)      mock_ptr->calloc(x, y)
-#define get_obhook_uid(x) mock_ptr->get_obhook_uid(x)
+#define calloc(x, y)             mock_ptr->calloc(x, y)
+#define get_obhook_descriptor(x) mock_ptr->get_obhook_descriptor(x)
 
 extern "C" {
 #include "../obhook.c"
 }
 
 #undef calloc
-#undef get_obhook_uid
+#undef get_obhook_descriptor
 
 // dummy callback for the obhook registration test
 void* dummy_cb( void* arg ) {
@@ -63,7 +63,7 @@ void* dummy_cb( void* arg ) {
 using namespace ::testing;
 
 TEST( GetUidTest, NormalCondition ) {
-    ASSERT_NE( -1, _get_obhook_uid() );
+    ASSERT_NE( -1, _get_obhook_descriptor() );
 }
 TEST( GetUidTest, FullCondition ) {
 
@@ -73,7 +73,7 @@ TEST( GetUidTest, FullCondition ) {
     for( int i = 0; i < MAX_NM_OBHOOK; ++i ) 
         obhk_ctx->index_tbl[i] = (obhk_cb_record*)dummy;
     // hook space should be (simulated) full now
-    ASSERT_EQ( -1, _get_obhook_uid() );
+    ASSERT_EQ( -1, _get_obhook_descriptor() );
 
     // restore shared resource
     for( int i = 0; i < MAX_NM_OBHOOK; ++i ) 
@@ -92,43 +92,43 @@ TEST( KernelAddrCheckTest, InvalidKernelAddress ) {
 
 TEST( AddUnivHookTest, FullHookErrorHandle ) {
     GEN_MOCK_OBJECT( mock );
-    EXPECT_CALL( mock, get_obhook_uid() ).WillOnce( Return(-1) );
+    EXPECT_CALL( mock, get_obhook_descriptor() ).WillOnce( Return(-1) );
     ASSERT_EQ( -1, obhook_add_universal(0xffffffffffffffff, "label", dummy_cb) );
     ASSERT_EQ( OBHOOK_ERR_FULL_HOOK, obhook_errno );
 }
 TEST( AddUnivHookTest, InvalidAddressErrorHandle ) {
     GEN_MOCK_OBJECT( mock );
-    EXPECT_CALL( mock, get_obhook_uid() ).WillOnce( Invoke(_get_obhook_uid) );
+    EXPECT_CALL( mock, get_obhook_descriptor() ).WillOnce( Invoke(_get_obhook_descriptor) );
     ASSERT_EQ( -1, obhook_add_universal(0x0000000000000000, "label", dummy_cb) );
     ASSERT_EQ( OBHOOK_ERR_INVALID_ADDR, obhook_errno );
 }
 TEST( AddUnivHookTest, LongLabelErrorHandle ) {
     GEN_MOCK_OBJECT( mock );
-    EXPECT_CALL( mock, get_obhook_uid() ).WillOnce( Invoke(_get_obhook_uid) );
+    EXPECT_CALL( mock, get_obhook_descriptor() ).WillOnce( Invoke(_get_obhook_descriptor) );
     ASSERT_EQ( -1, obhook_add_universal(0xffffffffffffffff, "toooooooooooooo_long_label", dummy_cb) );
     ASSERT_EQ( OBHOOK_ERR_INVALID_LABEL, obhook_errno );
 }
 TEST( AddUnivHookTest, InvalidCallbackErrorHandle ) {
     GEN_MOCK_OBJECT( mock );
-    EXPECT_CALL( mock, get_obhook_uid() ).WillOnce( Invoke(_get_obhook_uid) );
+    EXPECT_CALL( mock, get_obhook_descriptor() ).WillOnce( Invoke(_get_obhook_descriptor) );
     ASSERT_EQ( -1, obhook_add_universal(0xffffffffffffffff, "label", NULL) );
     ASSERT_EQ( OBHOOK_ERR_INVALID_CALLBACK, obhook_errno );
 }
 TEST( AddUnivHookTest, MemoryErrorHandle ) {
     GEN_MOCK_OBJECT( mock );
-    EXPECT_CALL( mock, get_obhook_uid() ).WillOnce( Invoke(_get_obhook_uid) );
+    EXPECT_CALL( mock, get_obhook_descriptor() ).WillOnce( Invoke(_get_obhook_descriptor) );
     EXPECT_CALL( mock, calloc(_,_) ).WillOnce( ReturnNull() );
     ASSERT_EQ( -1, obhook_add_universal(0xffffffffffffffff, "label", dummy_cb) );
     ASSERT_EQ( OBHOOK_ERR_FAIL, obhook_errno );
 
-    EXPECT_CALL( mock, get_obhook_uid() ).WillOnce( Invoke(_get_obhook_uid) );
+    EXPECT_CALL( mock, get_obhook_descriptor() ).WillOnce( Invoke(_get_obhook_descriptor) );
     EXPECT_CALL( mock, calloc(_,_) ).Times(2).WillOnce( Invoke(calloc) ).WillOnce( ReturnNull() );
     ASSERT_EQ( -1, obhook_add_universal(0xffffffffffffffff, "label", dummy_cb) );
     ASSERT_EQ( OBHOOK_ERR_FAIL, obhook_errno );
 }
 TEST( AddUnivHookTest, NormalCondition ) {
     GEN_MOCK_OBJECT( mock );
-    EXPECT_CALL( mock, get_obhook_uid() ).WillOnce( Invoke(_get_obhook_uid) );
+    EXPECT_CALL( mock, get_obhook_descriptor() ).WillOnce( Invoke(_get_obhook_descriptor) );
     EXPECT_CALL( mock, calloc(_,_) ).WillRepeatedly( Invoke(calloc) );
     ASSERT_EQ( 0, obhook_add_universal(0xffffffffffffffff, "label", dummy_cb) );
 }
@@ -140,43 +140,43 @@ TEST( AddProcHookTest, InvalidCR3ErrorHandle ) {
 }
 TEST( AddProcHookTest, FullHookErrorHandle ) {
     GEN_MOCK_OBJECT( mock );
-    EXPECT_CALL( mock, get_obhook_uid() ).WillOnce( Return(-1) );
+    EXPECT_CALL( mock, get_obhook_descriptor() ).WillOnce( Return(-1) );
     ASSERT_EQ( -1, obhook_add_process(0x1234567812345678, 0xffffffffffffffff, "label", dummy_cb) );
     ASSERT_EQ( OBHOOK_ERR_FULL_HOOK, obhook_errno );
 }
 TEST( AddProcHookTest, LongLabelErrorHandle ) {
     GEN_MOCK_OBJECT( mock );
-    EXPECT_CALL( mock, get_obhook_uid() ).WillOnce( Invoke(_get_obhook_uid) );
+    EXPECT_CALL( mock, get_obhook_descriptor() ).WillOnce( Invoke(_get_obhook_descriptor) );
     ASSERT_EQ( -1, obhook_add_process(0x1234567812345678, 0xffffffffffffffff, "toooooooooooooo_long_label", dummy_cb) );
     ASSERT_EQ( OBHOOK_ERR_INVALID_LABEL, obhook_errno );
 }
 TEST( AddProcHookTest, InvalidCallbackErrorHandle ) {
     GEN_MOCK_OBJECT( mock );
-    EXPECT_CALL( mock, get_obhook_uid() ).WillOnce( Invoke(_get_obhook_uid) );
+    EXPECT_CALL( mock, get_obhook_descriptor() ).WillOnce( Invoke(_get_obhook_descriptor) );
     ASSERT_EQ( -1, obhook_add_process(0x1234567812345678, 0xffffffffffffffff, "label", NULL) );
     ASSERT_EQ( OBHOOK_ERR_INVALID_CALLBACK, obhook_errno );
 }
 TEST( AddProcHookTest, MemoryErrorHandle ) {
     GEN_MOCK_OBJECT( mock );
-    EXPECT_CALL( mock, get_obhook_uid() ).WillOnce( Invoke(_get_obhook_uid) );
+    EXPECT_CALL( mock, get_obhook_descriptor() ).WillOnce( Invoke(_get_obhook_descriptor) );
     EXPECT_CALL( mock, calloc(_,_) ).WillOnce( ReturnNull() );
     ASSERT_EQ( -1, obhook_add_process(0x1234567812345678, 0xffffffffffffffff, "label", dummy_cb) );
     ASSERT_EQ( OBHOOK_ERR_FAIL, obhook_errno );
 
-    EXPECT_CALL( mock, get_obhook_uid() ).WillOnce( Invoke(_get_obhook_uid) );
+    EXPECT_CALL( mock, get_obhook_descriptor() ).WillOnce( Invoke(_get_obhook_descriptor) );
     EXPECT_CALL( mock, calloc(_,_) ).Times(2).WillOnce( Invoke(calloc) ).WillOnce( ReturnNull() );
     ASSERT_EQ( -1, obhook_add_process(0x1234567812345678, 0xffffffffffffffff, "label", dummy_cb) );
     ASSERT_EQ( OBHOOK_ERR_FAIL, obhook_errno );
 }
 TEST( AddProcHookTest, NormalConditionWithUserAddr ) {
     GEN_MOCK_OBJECT( mock );
-    EXPECT_CALL( mock, get_obhook_uid() ).WillOnce( Invoke(_get_obhook_uid) );
+    EXPECT_CALL( mock, get_obhook_descriptor() ).WillOnce( Invoke(_get_obhook_descriptor) );
     EXPECT_CALL( mock, calloc(_,_) ).WillRepeatedly( Invoke(calloc) );
     ASSERT_NE( -1, obhook_add_process(0x1234567812345678, 0x0000ffffffffffff, "label", dummy_cb) );
 }
 TEST( AddProcHookTest, NormalConditionWithKernAddr ) {
     GEN_MOCK_OBJECT( mock );
-    EXPECT_CALL( mock, get_obhook_uid() ).WillOnce( Invoke(_get_obhook_uid) );
+    EXPECT_CALL( mock, get_obhook_descriptor() ).WillOnce( Invoke(_get_obhook_descriptor) );
     EXPECT_CALL( mock, calloc(_,_) ).WillRepeatedly( Invoke(calloc) );
     ASSERT_NE( -1, obhook_add_process(0x1234567812345678, 0xffffffffffffffff, "label", dummy_cb) );
 }
@@ -192,7 +192,7 @@ TEST( GetUnivHookTest, HookFound ) {
     obhk_cb_record* rec;
 
     // register a new universal hook
-    EXPECT_CALL( mock, get_obhook_uid() ).WillOnce( Invoke(_get_obhook_uid) );
+    EXPECT_CALL( mock, get_obhook_descriptor() ).WillOnce( Invoke(_get_obhook_descriptor) );
     EXPECT_CALL( mock, calloc(_,_) ).WillRepeatedly( Invoke(calloc) );
     hook_d = obhook_add_universal( addr, label, dummy_cb );
     ASSERT_NE( -1, hook_d );
@@ -200,7 +200,7 @@ TEST( GetUnivHookTest, HookFound ) {
     // get the hook & check record
     rec = obhook_getcbs_univ( addr );
     ASSERT_TRUE( rec != NULL );
-    ASSERT_EQ( hook_d,  rec->uid );
+    ASSERT_EQ( hook_d,  rec->uniq_d );
     ASSERT_TRUE( rec->universal );
     ASSERT_TRUE( rec->enabled );
     ASSERT_STREQ( label, rec->label );
@@ -222,7 +222,7 @@ TEST( GetProcHookTest, HookFound ) {
     obhk_cb_record* rec;
 
     // register a new process hook
-    EXPECT_CALL( mock, get_obhook_uid() ).WillOnce( Invoke(_get_obhook_uid) );
+    EXPECT_CALL( mock, get_obhook_descriptor() ).WillOnce( Invoke(_get_obhook_descriptor) );
     EXPECT_CALL( mock, calloc(_,_) ).WillRepeatedly( Invoke(calloc) );
     hook_d = obhook_add_process( cr3, addr, label, dummy_cb );
     ASSERT_NE( -1, hook_d );
@@ -230,7 +230,7 @@ TEST( GetProcHookTest, HookFound ) {
     // get the hook & check record
     rec = obhook_getcbs_proc( cr3, addr );
     ASSERT_TRUE( rec != NULL );
-    ASSERT_EQ( hook_d,  rec->uid );
+    ASSERT_EQ( hook_d,  rec->uniq_d );
     ASSERT_FALSE( rec->universal );
     ASSERT_TRUE( rec->enabled );
     ASSERT_STREQ( label, rec->label );
@@ -245,7 +245,7 @@ TEST( GetProcHookTest, HookNotFound ) {
     const char*  label = "proc_label";
 
     // register a new process hook
-    EXPECT_CALL( mock, get_obhook_uid() ).WillOnce( Invoke(_get_obhook_uid) );
+    EXPECT_CALL( mock, get_obhook_descriptor() ).WillOnce( Invoke(_get_obhook_descriptor) );
     EXPECT_CALL( mock, calloc(_,_) ).WillRepeatedly( Invoke(calloc) );
     ASSERT_NE( -1, obhook_add_process(cr3, addr, label, dummy_cb) );
 
@@ -268,7 +268,7 @@ TEST( ToggleHookTest, HookDisableAndEnable ) {
     obhk_cb_record* rec;
 
     // register a new universal hook
-    EXPECT_CALL( mock, get_obhook_uid() ).WillOnce( Invoke(_get_obhook_uid) );
+    EXPECT_CALL( mock, get_obhook_descriptor() ).WillOnce( Invoke(_get_obhook_descriptor) );
     EXPECT_CALL( mock, calloc(_,_) ).WillRepeatedly( Invoke(calloc) );
     hook_d = obhook_add_universal( addr, label, dummy_cb );
     ASSERT_NE( -1, hook_d );
@@ -323,7 +323,7 @@ TEST( DeleteHookTest, NormalCondition ) {
     target_ulong addr = 0xffffffffffffffff;
 
     GEN_MOCK_OBJECT( mock );
-    EXPECT_CALL( mock, get_obhook_uid() ).WillOnce( Invoke(_get_obhook_uid) );
+    EXPECT_CALL( mock, get_obhook_descriptor() ).WillOnce( Invoke(_get_obhook_descriptor) );
     EXPECT_CALL( mock, calloc(_,_) ).WillRepeatedly( Invoke(calloc) );
     
     hook_d = obhook_add_process( cr3, addr, "to_be_deleted", dummy_cb );
