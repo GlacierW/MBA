@@ -102,6 +102,10 @@
 #include "ext/obhook/obhook-commands.h"
 #endif
 
+#if defined(CONFIG_TRACER)
+#include "ext/tracer/tracer-commands.h"
+#endif
+
 #if defined(CONFIG_NETTRAMON)
 #include "ext/nettramon/nettramon-commands.h"
 #endif
@@ -2992,6 +2996,10 @@ static mon_cmd_t mon_cmds[] = {
 
 #if defined(CONFIG_OBHOOK)
 #include "ext/obhook/obhook-commands-spec.h"
+#endif
+
+#if defined(CONFIG_TRACER)
+#include "ext/tracer/tracer-commands-spec.h"
 #endif
 
 #if defined(CONFIG_NETTRAMON)
