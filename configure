@@ -346,6 +346,7 @@ tsk="no"
 obhook="no"
 nettramon="no"
 dba="no"
+tracer="no"
 #########################
 
 # parse CC options first
@@ -1162,6 +1163,8 @@ for opt do
   ;;
   --enable-obhook) obhook="yes"
   ;;
+  --enable-tracer) tracer="yes"
+  ;;
   --enable-nettramon) nettramon="yes"
   ;;
   --enable-dba) 
@@ -1459,6 +1462,7 @@ Advanced options (experts only):
   --enable-tsk             enable sleuth kit disk forensics sopport
   --enable-memfrs          enable Virtual Machine Memory Introspection for Windows
   --enable-obhook          enable Out-of-Box hooking for Windows 10 x64
+  --enable-tracer          enable tracer
   --enable-nettramon       enable Network Traffic Monitor
   --enable-dba             enable Dynamic Behavior Analyzer
   --enable-mba-all         enable all of the MBA features
@@ -4531,6 +4535,7 @@ echo "Windows in-VM agent support       $agent"
 echo "Memory forensics support          $memfrs"
 echo "Disk forensics(tsk) support       $tsk"
 echo "Out-of-Box hook support           $obhook"
+echo "Tracer                            $tracer"
 echo "Network Traffic Monitor           $nettramon"
 echo "Dynamic behavior analysis support $dba"
 #########################
@@ -5447,6 +5452,12 @@ if test "$dba" = "yes"; then
   echo "CONFIG_DBA=y" >> $config_host_mak
   echo "CONFIG_DBA=y" >> $config_target_mak
 fi
+
+if test "$tracer" = "yes"; then
+  echo "CONFIG_TRACER=y" >> $config_host_mak
+  echo "CONFIG_TRACER=y" >> $config_target_mak
+fi
+
 #########################
 
 # generate QEMU_CFLAGS/LDFLAGS for targets

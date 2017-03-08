@@ -47,13 +47,6 @@
         .mhandler.cmd = do_show_disk_taint_map,
 },
 {
-        .name = "mba_get_physic_address",
-        .args_type  = "cr3:l,addr:l",
-        .params     = "cr3 addr",
-        .help       = "get the physic address of a given virtual address in memory space(cr3)",
-        .mhandler.cmd = do_get_physic_address,
-},
-{
         .name = "mba_enable_dift",
         .args_type  = "",
         .params     = "",

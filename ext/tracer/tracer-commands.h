@@ -1,7 +1,8 @@
 /*
- *  HMP command header of the MBA DIFT
+ *  MBA Tracer extension of qemu command header
  *
- *  Copyright (c)   2016 Chiawei Wang
+ *  Copyright (c)   2012 Chiwei Wang
+ *                  2016 Chiawei Wang
  *                  2016 Chongkuan Chen
  *                  2016 Hao Li
  *
@@ -18,16 +19,15 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef __DIFT_COMMANDS_H__
-#define __DIFT_COMMANDS_H__
+#ifndef __TRACER_COMMAND_H_
+#define __TRACER_COMMAND_H_
 
 struct Monitor;
 struct QDict;
-void do_set_memory_taint(struct Monitor *mon, const struct QDict *qdict);
-void do_show_memory_taint_map(struct Monitor *mon, const struct QDict *qdict);
-void do_set_disk_taint(struct Monitor *mon, const struct QDict *qdict);
-void do_show_disk_taint_map(struct Monitor *mon, const struct QDict *qdict);
-void do_enable_dift(struct Monitor *mon, const struct QDict *qdict);
-void do_disable_dift(struct Monitor *mon, const struct QDict *qdict);
-void do_dift_status(struct Monitor *mon, const struct QDict *qdict);
+
+void do_enable_tracer(Monitor *mon, const QDict *qdict);
+void do_inst_tracer(Monitor *mon, const QDict *qdict);
+void do_block_tracer(Monitor *mon, const QDict *qdict);
+void do_list_tracer(Monitor *mon, const QDict *qdict);
+
 #endif

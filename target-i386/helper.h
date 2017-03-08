@@ -20,6 +20,11 @@ DEF_HELPER_2(idivq_EAX, void, env, tl)
 DEF_HELPER_1(obhook_dispatcher, void, env)
 #endif
 
+#if defined(CONFIG_TRACER)
+DEF_HELPER_2(tracer_dispatcher, void, env, i64)
+DEF_HELPER_3(btracer_dispatcher, void, env, i64, i64)
+#endif
+
 DEF_HELPER_2(aam, void, env, int)
 DEF_HELPER_2(aad, void, env, int)
 DEF_HELPER_1(aaa, void, env)

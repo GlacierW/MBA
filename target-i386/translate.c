@@ -42,6 +42,13 @@
 #include "ext/obhook/obhook.h"
 #endif
 
+#if defined(CONFIG_TRACER)
+#include "ext/tracer/tracer.h"
+
+target_ulong bstart;
+target_ulong bend;
+#endif
+
 
 #define PREFIX_REPZ   0x01
 #define PREFIX_REPNZ  0x02
@@ -3099,6 +3106,12 @@ static void gen_debug(DisasContext *s, target_ulong cur_eip)
 static void gen_eob(DisasContext *s)
 {
     gen_update_cc_op(s);
+
+#if defined(CONFIG_TRACER)
+    TCGv_i64 tcg_bstart = tcg_const_i64(bstart);
+    TCGv_i64 tcg_bend = tcg_const_i64(bend);
+    gen_helper_btracer_dispatcher( cpu_env, tcg_bstart, tcg_bend);
+#endif
     if (s->tb->flags & HF_INHIBIT_IRQ_MASK) {
         gen_helper_reset_inhibit_irq(cpu_env);
     }
@@ -5209,6 +5222,12 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
     s->vex_l = 0;
     s->vex_v = 0;
 
+
+#if defined(CONFIG_TRACER)
+    TCGv_i64 tmp = tcg_const_i64( s->pc );
+    gen_helper_tracer_dispatcher( cpu_env, tmp );
+#endif
+
 #if defined(CONFIG_DIFT)
 #if defined(CONFIG_INDIRECT_TAINT)
     s->reg_base = R_NONE;
@@ -5260,7 +5279,9 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
 
  next_byte:
     b = cpu_ldub_code(env, s->pc);
+
     s->pc++;
+    // invoke instruction trace call back 
     /* Collect prefixes.  */
     switch (b) {
     case 0xf3:
@@ -9463,6 +9484,11 @@ static inline void gen_intermediate_code_internal(X86CPU *cpu,
     }
     label_or_helper_appeared = 0;
 #endif
+
+#if defined(CONFIG_TRACER)
+    bstart = pc_start;
+#endif
+
     for(;;) {
         if (unlikely(!QTAILQ_EMPTY(&cs->breakpoints))) {
             QTAILQ_FOREACH(bp, &cs->breakpoints, entry) {
@@ -9488,8 +9514,12 @@ static inline void gen_intermediate_code_internal(X86CPU *cpu,
         if (num_insns + 1 == max_insns && (tb->cflags & CF_LAST_IO))
             gen_io_start();
 
+#if defined(CONFIG_TRACER)
+        bend = pc_ptr;
+#endif
         pc_ptr = disas_insn(env, dc, pc_ptr);
         num_insns++;
+
         /* stop translation if indicated */
         if (dc->is_jmp)
             break;

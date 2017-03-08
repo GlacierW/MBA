@@ -222,6 +222,10 @@ all-obj-y += ../ext/dba/dba-commands.o
 ../ext/dba/dba-commands.o-cflags := -DHAVE_CONFIG_H -I$(SRC_PATH)/ext/tsk/sleuthkit
 endif
 
+ifdef CONFIG_TRACER
+all-obj-y += ../ext/tracer/tracer-commands.o
+all-obj-y += ../ext/tracer/tracer.o
+endif
 
 $(QEMU_PROG_BUILD): config-devices.mak
 
