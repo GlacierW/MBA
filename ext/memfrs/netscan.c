@@ -453,11 +453,9 @@ static void parse_TcpE(uint64_t pool_body_ptr, uint64_t pmem, UT_array *network_
     if(AF==AF_INET){
 
         // Local address
-        if(memfrs_get_phy_virmem_struct_content( cpu, 0, (uint8_t*)&addr1, sizeof(addr1), pool_body_ptr, "_TCP_ENDPOINT", "AddrInfo", "_ADDRINFO", 2, "*Local")!=0)
+        if(memfrs_get_phy_virmem_struct_content( cpu, 0, (uint8_t*)&addr1, sizeof(addr1), pool_body_ptr, "_TCP_ENDPOINT", "AddrInfo", "_ADDRINFO", 2, "*Local", "*pData")!=0)
             return;
-        if(memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&addr2, sizeof(addr2), addr1, "_LOCAL_ADDRESS", 1, "*pData")!=0)
-            return;
-        addr = IPv4_to_str(addr2+offset_local_addr4_to_INADDR, port_local, cpu);
+        addr = IPv4_to_str(addr1+offset_local_addr4_to_INADDR, port_local, cpu);
         if(addr==NULL)
             return;
 
@@ -654,7 +652,8 @@ extern UT_array* memfrs_scan_network(CPUState *cpu)
 
     utarray_new( network_list, &network_icd);
     //Scan whole physical memory
-    for(pmem = 0; pmem < MAXMEM-strlen(POOL_TAG_UDP_ENDPOINT); pmem++)
+    //for(pmem = 0; pmem < MAXMEM-strlen(POOL_TAG_UDP_ENDPOINT); pmem++)
+    for(pmem = 0; pmem < 0x10000000; pmem++)
     {
         if(pmem%0x10000000==0x0)
             printf("Scan physical address: 0x%"PRIx64"\n", pmem);
@@ -666,13 +665,13 @@ extern UT_array* memfrs_scan_network(CPUState *cpu)
 
         // UdpA
         if(memcmp( pool_tag, POOL_TAG_UDP_ENDPOINT, strlen(POOL_TAG_UDP_ENDPOINT))==0)
-            parse_UdpA(pool_body_ptr, pmem, network_list, cpu);
+            parse_UdpA(pool_body_ptr, pmem-offset_tag, network_list, cpu);
         // TCP EndPoint
         else if(memcmp( pool_tag, POOL_TAG_TCP_ENDPOINT, strlen(POOL_TAG_TCP_ENDPOINT))==0)
-            parse_TcpE(pool_body_ptr, pmem, network_list, cpu);
+            parse_TcpE(pool_body_ptr, pmem-offset_tag, network_list, cpu);
         // TCP Listening
         else if(memcmp( pool_tag, POOL_TAG_TCP_LISTENER, strlen(POOL_TAG_TCP_LISTENER))==0)
-            parse_TcpL(pool_body_ptr, pmem, network_list, cpu);
+            parse_TcpL(pool_body_ptr, pmem-offset_tag, network_list, cpu);
         else
             continue;
 

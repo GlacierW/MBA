@@ -239,7 +239,9 @@ TEST_F( MEMFRS_PROCLIST, KPCR_SELF_CHECK) {
     ASSERT_EQ(true, kpcr_check);
     ASSERT_EQ( g_kpcr_ptr, kpcr_ptr );
     json_object_put(g_struct_info);
+    g_struct_info = NULL;
     json_object_put(g_globalvar_info);
+    g_globalvar_info = NULL;
 }
 
 TEST_F( MEMFRS_PROCLIST, KPCR_SELF_CHECK_FAIL) {
@@ -251,7 +253,9 @@ TEST_F( MEMFRS_PROCLIST, KPCR_SELF_CHECK_FAIL) {
     ASSERT_EQ(false, kpcr_check);
     ASSERT_EQ( g_kpcr_ptr, 0 );
     json_object_put(g_struct_info);
+    g_struct_info = NULL;
     json_object_put(g_globalvar_info);
+    g_globalvar_info = NULL;
 }
 
 TEST_F( MEMFRS_PROCLIST, ProcessList) {
@@ -267,7 +271,9 @@ TEST_F( MEMFRS_PROCLIST, ProcessList) {
                   WillOnce( DoAll( MEMREADKPCR(0x2f0), Return(0)));
     ret = memfrs_enum_proc_list( kpcr_ptr, &cpu);
     json_object_put(g_struct_info);
+    g_struct_info = NULL;
     json_object_put(g_globalvar_info);
+    g_globalvar_info = NULL;
     ASSERT_EQ(ret, 0);
 }
 
@@ -289,7 +295,9 @@ TEST_F( MEMFRS_PROCLIST, ProcessList_NoKPCR) {
     GEN_MOCK_OBJECT( mock );
     ret = memfrs_enum_proc_list( kpcr_ptr, &cpu);
     json_object_put(g_struct_info);
+    g_struct_info = NULL;
     json_object_put(g_globalvar_info);
+    g_globalvar_info = NULL;
     ASSERT_EQ(ret, -1);
 }
 
@@ -299,7 +307,9 @@ TEST_F( MEMFRS_PROCLIST, ProcessList_NoCPU) {
     GEN_MOCK_OBJECT( mock );
     ret = memfrs_enum_proc_list( kpcr_ptr, NULL);
     json_object_put(g_struct_info);
+    g_struct_info = NULL;
     json_object_put(g_globalvar_info);
+    g_globalvar_info = NULL;
     ASSERT_EQ(ret, -1);
 }
 */
@@ -312,6 +322,7 @@ TEST_F( MEMFRS_GLOBALVAR, Not_Load_DB) {
     gvar = memfrs_q_globalvar("NtCreateFile");
     ASSERT_TRUE(gvar == NULL);
     json_object_put(g_struct_info);
+    g_struct_info = NULL;
 } 
 
 TEST_F( MEMFRS_GLOBALVAR, Sym_Not_Found) {
@@ -320,7 +331,9 @@ TEST_F( MEMFRS_GLOBALVAR, Sym_Not_Found) {
     gvar = memfrs_q_globalvar("QQQQQQQQ");
     ASSERT_TRUE(gvar == NULL);
     json_object_put(g_struct_info);
+    g_struct_info = NULL;
     json_object_put(g_globalvar_info);
+    g_globalvar_info = NULL;
 }
 
 
@@ -329,9 +342,10 @@ TEST_F( MEMFRS_GLOBALVAR, Q_Offset_No_Arg) {
     int64_t adr = 10;    
 
     adr = memfrs_gvar_offset(gvar);
-    
     json_object_put(g_struct_info);
+    g_struct_info = NULL;
     json_object_put(g_globalvar_info);
+    g_globalvar_info = NULL;
 
     ASSERT_EQ(adr, -1);
 }
@@ -346,7 +360,27 @@ TEST_F( MEMFRS_GLOBALVAR, Q_Offset) {
     adr = memfrs_gvar_offset(gvar);
 
     json_object_put(g_struct_info);
+    g_struct_info = NULL;
     json_object_put(g_globalvar_info);
+    g_globalvar_info = NULL;
+    ASSERT_NE(adr, -1);
+}
+
+TEST_F( MEMFRS_GLOBALVAR, Double_Load_DB) {
+    json_object* gvar =NULL;
+    uint64_t adr = 10;
+
+    memfrs_load_structs("type_definition.json");
+
+    gvar = memfrs_q_globalvar("NtCreateFile");
+    ASSERT_TRUE(gvar != NULL);
+
+    adr = memfrs_gvar_offset(gvar);
+
+    json_object_put(g_struct_info);
+    g_struct_info = NULL;
+    json_object_put(g_globalvar_info);
+    g_globalvar_info = NULL;
     ASSERT_NE(adr, -1);
 }
 

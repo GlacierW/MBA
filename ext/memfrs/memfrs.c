@@ -165,8 +165,9 @@ int memfrs_load_structs( const char* type_filename)
         struct_info = json_object_from_file(type_filename);
         json_object_object_foreach(struct_info, key, val){
             json_object_object_get_ex(g_struct_info, key, &test_obj);
-            if(test_obj!=NULL)
+            if(test_obj!=NULL){
                 printf("The json object with key %s has been overwride.\n", key);
+            }
             json_object_object_add(g_struct_info, key, val);
         }
     }
