@@ -294,25 +294,25 @@ static void parse_TcpL(uint64_t pool_body_ptr, uint64_t pmem, UT_array *network_
     char *file_name;
 
     // InetAF
-    if(memfrs_get_phy_virmem_struct_content( cpu, 0, (uint8_t*)&AF, sizeof(AF), pool_body_ptr, "_TCP_LISTENER", "InetAF", "_INETAF", 2, "#AddressFamily")!=0)
+    if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&AF, sizeof(AF), pool_body_ptr, true, "_TCP_LISTENER", 2, "*InetAF", "#AddressFamily")!=0)
         return;
 
     // Owner
-    if(memfrs_get_phy_virmem_struct_content( cpu, 0, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), pool_body_ptr, "_TCP_LISTENER", "Owner", "", 1)!=0)
+    if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), pool_body_ptr, true, "_TCP_LISTENER", 1, "*Owner")!=0)
         return;
-    if(memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&processid, sizeof(processid), eprocess_ptr, "_EPROCESS", 1, "#UniqueProcessId")!=0)
+    if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&processid, sizeof(processid), eprocess_ptr, false, "_EPROCESS", 1, "#UniqueProcessId")!=0)
         return;
-    if(memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)file_name_buf, sizeof(file_name_buf), eprocess_ptr, "_EPROCESS", 1, "#ImageFileName")!=0)
+    if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)file_name_buf, sizeof(file_name_buf), eprocess_ptr, false, "_EPROCESS", 1, "#ImageFileName")!=0)
         return;
     file_name = (char*)malloc(16);
     snprintf(file_name, 16, "%s", file_name_buf);
 
     // CreateTime
-    if(memfrs_get_phy_virmem_struct_content( cpu, 0, (uint8_t*)&time, sizeof(time), pool_body_ptr, "_TCP_LISTENER", "CreateTime", "", 1)!=0)
+    if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&time, sizeof(time), pool_body_ptr, true, "_TCP_LISTENER", 1, "#CreateTime")!=0)
         return;
 
     // Local port
-    if(memfrs_get_phy_virmem_struct_content( cpu, 0, (uint8_t*)&port_local, sizeof(port_local), pool_body_ptr, "_TCP_LISTENER", "Port", "", 1)!=0)
+    if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&port_local, sizeof(port_local), pool_body_ptr, true, "_TCP_LISTENER", 1, "#Port")!=0)
         return;
 
 
@@ -323,14 +323,14 @@ static void parse_TcpL(uint64_t pool_body_ptr, uint64_t pmem, UT_array *network_
 
     // Address
     if(AF==AF_INET){
-        if(memfrs_get_phy_virmem_struct_content( cpu, 0, (uint8_t*)&addr1, sizeof(addr1), pool_body_ptr, "_TCP_LISTENER", "LocalAddr", "", 1)!=0){
+        if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&addr1, sizeof(addr1), pool_body_ptr, true, "_TCP_LISTENER", 1, "*LocalAddr")!=0){
             return;
         }
         else if(addr1==0x0000000000000000){
             addr = (char*)malloc(14);
             sprintf(addr, "0.0.0.0:%s", port_convert(port_local));
         }
-        else if(memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&addr2, sizeof(addr2), addr1, "_LOCAL_ADDRESS", 1, "*pData")!=0){
+        else if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&addr2, sizeof(addr2), addr1, false, "_LOCAL_ADDRESS", 1, "*pData")!=0){
             return;
         }
         else{
@@ -344,14 +344,14 @@ static void parse_TcpL(uint64_t pool_body_ptr, uint64_t pmem, UT_array *network_
         add_network_feild_to_structure(0, "TCPv4", pmem, eprocess_ptr, file_name, processid, "LISTENING", addr, addr_foreign, windows_timestamp_convert(time), network_list);
     }
     else if(AF==AF_INET6){
-        if(memfrs_get_phy_virmem_struct_content( cpu, 0, (uint8_t*)&addr1, sizeof(addr1), pool_body_ptr, "_TCP_LISTENER", "LocalAddr", "", 1)!=0){
+        if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&addr1, sizeof(addr1), pool_body_ptr, true, "_TCP_LISTENER", 1, "*LocalAddr")!=0){
             return;
         }
         else if(addr1==0x0000000000000000){
             addr = (char*)malloc(22);
             sprintf(addr, "0.0.0.0.0.0.0.0:%s", port_convert(port_local));
         }
-        else if(memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&addr2, sizeof(addr2), addr1, "_LOCAL_ADDRESS", 1, "*pData")!=0){
+        else if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&addr2, sizeof(addr2), addr1, false, "_LOCAL_ADDRESS", 1, "*pData")!=0){
             return;
         }
         else{
@@ -384,7 +384,7 @@ OUTPUT: void                    nothing to return
 **********************************************************************************/
 static void parse_TcpE(uint64_t pool_body_ptr, uint64_t pmem, UT_array *network_list, CPUState *cpu)
 {
-    uint64_t addr1, addr2;
+    uint64_t addr1;
 
     uint8_t AF;
     uint32_t state=0;
@@ -395,51 +395,42 @@ static void parse_TcpE(uint64_t pool_body_ptr, uint64_t pmem, UT_array *network_
     uint8_t file_name_buf[16];
     char *file_name;
 
-    json_object *struct_type;
-    field_info *info = NULL;
     int offset_local_addr4_to_INADDR, offset_local_addr6_to_INADDR,
         offset_remote_addr4_to_INADDR, offset_remote_addr6_to_INADDR;
 
-    struct_type = memfrs_q_struct("_IN_ADDR_WIN10_TCPE");
-    info = memfrs_q_field(struct_type, "addr4");
-    offset_local_addr4_to_INADDR = info->offset;
-    info = memfrs_q_field(struct_type, "addr6");
-    offset_local_addr6_to_INADDR = info->offset;
-    struct_type = memfrs_q_struct("_IN_ADDR");
-    info = memfrs_q_field(struct_type, "addr4");
-    offset_remote_addr4_to_INADDR = info->offset;
-    info = memfrs_q_field(struct_type, "addr6");
-    offset_remote_addr6_to_INADDR = info->offset;
-
+    memfrs_get_nested_field_offset(&offset_local_addr4_to_INADDR, "_IN_ADDR_WIN10_TCPE", 1, "addr4");
+    memfrs_get_nested_field_offset(&offset_local_addr6_to_INADDR, "_IN_ADDR_WIN10_TCPE", 1, "addr6");
+    memfrs_get_nested_field_offset(&offset_remote_addr4_to_INADDR, "_IN_ADDR", 1, "addr4");
+    memfrs_get_nested_field_offset(&offset_remote_addr6_to_INADDR, "_IN_ADDR", 1, "addr6");
 
     // InetAF
-    if(memfrs_get_phy_virmem_struct_content( cpu, 0, (uint8_t*)&AF, sizeof(AF), pool_body_ptr, "_TCP_ENDPOINT", "InetAF", "_INETAF", 2, "#AddressFamily")!=0)
+    if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&AF, sizeof(AF), pool_body_ptr, true, "_TCP_ENDPOINT", 2, "*InetAF", "#AddressFamily")!=0)
         return;
 
     // Owner
-    if(memfrs_get_phy_virmem_struct_content( cpu, 0, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), pool_body_ptr, "_TCP_ENDPOINT", "Owner", "", 1)!=0)
+    if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), pool_body_ptr, true, "_TCP_ENDPOINT", 1, "*Owner")!=0)
         return;
-    if(memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&processid, sizeof(processid), eprocess_ptr, "_EPROCESS", 1, "#UniqueProcessId")!=0)
+    if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&processid, sizeof(processid), eprocess_ptr, false, "_EPROCESS", 1, "#UniqueProcessId")!=0)
         return;
-    if(memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)file_name_buf, sizeof(file_name_buf), eprocess_ptr, "_EPROCESS", 1, "#ImageFileName")!=0)
+    if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)file_name_buf, sizeof(file_name_buf), eprocess_ptr, false, "_EPROCESS", 1, "#ImageFileName")!=0)
         return;
     file_name = (char*)malloc(16);
     snprintf(file_name, 16, "%s", file_name_buf);
 
     // CreateTime
-    if(memfrs_get_phy_virmem_struct_content( cpu, 0, (uint8_t*)&time, sizeof(time), pool_body_ptr, "_TCP_ENDPOINT", "CreateTime", "", 1)!=0)
+    if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&time, sizeof(time), pool_body_ptr, true, "_TCP_ENDPOINT", 1, "#CreateTime")!=0)
         return;
 
     // Local port
-    if(memfrs_get_phy_virmem_struct_content( cpu, 0, (uint8_t*)&port_local, sizeof(port_local), pool_body_ptr, "_TCP_ENDPOINT", "LocalPort", "", 1)!=0)
+    if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&port_local, sizeof(port_local), pool_body_ptr, true, "_TCP_ENDPOINT", 1, "#LocalPort")!=0)
         return;
 
     // Local foreign
-    if(memfrs_get_phy_virmem_struct_content( cpu, 0, (uint8_t*)&port_foreign, sizeof(port_foreign), pool_body_ptr, "_TCP_ENDPOINT", "RemotePort", "", 1)!=0)
+    if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&port_foreign, sizeof(port_foreign), pool_body_ptr, true, "_TCP_ENDPOINT", 1, "#RemotePort")!=0)
         return;
 
     // state
-    if(memfrs_get_phy_virmem_struct_content( cpu, 0, (uint8_t*)&state, sizeof(state), pool_body_ptr, "_TCP_ENDPOINT", "State", "", 1)!=0)
+    if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&state, sizeof(state), pool_body_ptr, true, "_TCP_ENDPOINT", 1, "#State")!=0)
         return;
     state_str = map_state_to_str(state);
 
@@ -451,16 +442,15 @@ static void parse_TcpE(uint64_t pool_body_ptr, uint64_t pmem, UT_array *network_
 
     // Address
     if(AF==AF_INET){
-
         // Local address
-        if(memfrs_get_phy_virmem_struct_content( cpu, 0, (uint8_t*)&addr1, sizeof(addr1), pool_body_ptr, "_TCP_ENDPOINT", "AddrInfo", "_ADDRINFO", 2, "*Local", "*pData")!=0)
+        if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&addr1, sizeof(addr1), pool_body_ptr, true, "_TCP_ENDPOINT", 3, "*AddrInfo", "*Local", "*pData")!=0)
             return;
         addr = IPv4_to_str(addr1+offset_local_addr4_to_INADDR, port_local, cpu);
         if(addr==NULL)
             return;
 
         // Foreign address
-        if(memfrs_get_phy_virmem_struct_content( cpu, 0, (uint8_t*)&addr1, sizeof(addr1), pool_body_ptr, "_TCP_ENDPOINT", "AddrInfo", "_ADDRINFO", 2, "*Remote")!=0)
+        if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&addr1, sizeof(addr1), pool_body_ptr, true, "_TCP_ENDPOINT", 2, "*AddrInfo", "*Remote")!=0)
             return;
         addr_foreign = IPv4_to_str(addr1+offset_remote_addr4_to_INADDR, port_foreign, cpu);
         if(addr_foreign==NULL)
@@ -470,16 +460,14 @@ static void parse_TcpE(uint64_t pool_body_ptr, uint64_t pmem, UT_array *network_
     else if(AF==AF_INET6){
 
         // Local address
-        if(memfrs_get_phy_virmem_struct_content( cpu, 0, (uint8_t*)&addr1, sizeof(addr1), pool_body_ptr, "_TCP_ENDPOINT", "AddrInfo", "_ADDRINFO", 2, "*Local")!=0)
+        if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&addr1, sizeof(addr1), pool_body_ptr, true, "_TCP_ENDPOINT", 3, "*AddrInfo", "*Local", "*pData")!=0)
             return;
-        if(memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&addr2, sizeof(addr2), addr1, "_LOCAL_ADDRESS", 1, "*pData")!=0)
-            return;
-        addr = IPv6_to_str(addr2+offset_local_addr6_to_INADDR, port_local, cpu);
+        addr = IPv6_to_str(addr1+offset_local_addr6_to_INADDR, port_local, cpu);
         if(addr==NULL)
             return;
 
         // Foreign address
-        if(memfrs_get_phy_virmem_struct_content( cpu, 0, (uint8_t*)&addr1, sizeof(addr1), pool_body_ptr, "_TCP_ENDPOINT", "AddrInfo", "_ADDRINFO", 2, "*Remote")!=0)
+        if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&addr1, sizeof(addr1), pool_body_ptr, true, "_TCP_ENDPOINT", 2, "*AddrInfo", "*Remote")!=0)
             return;
         addr_foreign = IPv6_to_str(addr1+offset_remote_addr6_to_INADDR, port_foreign, cpu);
         if(addr_foreign==NULL)
@@ -516,25 +504,25 @@ static void parse_UdpA(uint64_t pool_body_ptr, uint64_t pmem, UT_array *network_
     char *file_name;
 
     // InetAF
-    if(memfrs_get_phy_virmem_struct_content( cpu, 0, (uint8_t*)&AF, sizeof(AF), pool_body_ptr, "_UDP_ENDPOINT", "InetAF", "_INETAF", 2, "#AddressFamily")!=0)
+    if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&AF, sizeof(AF), pool_body_ptr, true, "_UDP_ENDPOINT", 2, "*InetAF", "#AddressFamily")!=0)
         return;
 
     // Owner
-    if(memfrs_get_phy_virmem_struct_content( cpu, 0, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), pool_body_ptr, "_UDP_ENDPOINT", "Owner", "", 1)!=0)
+    if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), pool_body_ptr, true, "_UDP_ENDPOINT", 1, "*Owner")!=0)
         return;
-    if(memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&processid, sizeof(processid), eprocess_ptr, "_EPROCESS", 1, "#UniqueProcessId")!=0)
+    if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&processid, sizeof(processid), eprocess_ptr, false, "_EPROCESS", 1, "#UniqueProcessId")!=0)
         return;
-    if(memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)file_name_buf, sizeof(file_name_buf), eprocess_ptr, "_EPROCESS", 1, "#ImageFileName")!=0)
+    if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)file_name_buf, sizeof(file_name_buf), eprocess_ptr, false, "_EPROCESS", 1, "#ImageFileName")!=0)
         return;
     file_name = (char*)malloc(16);
     snprintf(file_name, 16, "%s", file_name_buf);
 
     // CreateTime
-    if(memfrs_get_phy_virmem_struct_content( cpu, 0, (uint8_t*)&time, sizeof(time), pool_body_ptr, "_UDP_ENDPOINT", "CreateTime", "", 1)!=0)
+    if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&time, sizeof(time), pool_body_ptr, true, "_UDP_ENDPOINT", 1, "#CreateTime")!=0)
         return;
 
     // Local port
-    if(memfrs_get_phy_virmem_struct_content( cpu, 0, (uint8_t*)&port_local, sizeof(port_local), pool_body_ptr, "_UDP_ENDPOINT", "Port", "", 1)!=0)
+    if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&port_local, sizeof(port_local), pool_body_ptr, true, "_UDP_ENDPOINT", 1, "#Port")!=0)
         return;
 
 
@@ -545,14 +533,14 @@ static void parse_UdpA(uint64_t pool_body_ptr, uint64_t pmem, UT_array *network_
 
     // Address
     if(AF==AF_INET){
-        if(memfrs_get_phy_virmem_struct_content( cpu, 0, (uint8_t*)&addr1, sizeof(addr1), pool_body_ptr, "_UDP_ENDPOINT", "LocalAddr", "", 1)!=0){
+        if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&addr1, sizeof(addr1), pool_body_ptr, true, "_UDP_ENDPOINT", 1, "*LocalAddr")!=0){
             return;
         }
         else if(addr1==0x0000000000000000){
             addr = (char*)malloc(14);
             sprintf(addr, "0.0.0.0:%s", port_convert(port_local));
         }
-        else if(memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&addr2, sizeof(addr2), addr1, "_LOCAL_ADDRESS_WIN10_UDP", 1, "*pData")!=0){
+        else if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&addr2, sizeof(addr2), addr1, false, "_LOCAL_ADDRESS_WIN10_UDP", 1, "*pData")!=0){
             return;
         }
         else{
@@ -566,14 +554,14 @@ static void parse_UdpA(uint64_t pool_body_ptr, uint64_t pmem, UT_array *network_
         add_network_feild_to_structure(0, "UDPv4", pmem, eprocess_ptr, file_name, processid, NULL, addr, addr_foreign, windows_timestamp_convert(time), network_list);
     }
     else if(AF==AF_INET6){
-        if(memfrs_get_phy_virmem_struct_content( cpu, 0, (uint8_t*)&addr1, sizeof(addr1), pool_body_ptr, "_UDP_ENDPOINT", "LocalAddr", "", 1)!=0){
+        if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&addr1, sizeof(addr1), pool_body_ptr, true, "_UDP_ENDPOINT", 1, "*LocalAddr")!=0){
             return;
         }
         else if(addr1==0x0000000000000000){
             addr = (char*)malloc(22);
             sprintf(addr, "0.0.0.0.0.0.0.0:%s", port_convert(port_local));
         }
-        else if(memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&addr2, sizeof(addr2), addr1, "_LOCAL_ADDRESS_WIN10_UDP", 1, "*pData")!=0){
+        else if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&addr2, sizeof(addr2), addr1, false, "_LOCAL_ADDRESS_WIN10_UDP", 1, "*pData")!=0){
             return;
         }
         else{
@@ -618,7 +606,6 @@ extern UT_array* memfrs_scan_network(CPUState *cpu)
     json_object *test_obj;
     printf("Scan for network patterns.\n" );
 
-
     // Size of pool tag "UdpA", "TcpL", "TcpE" is the same
     pool_tag = (uint8_t*)malloc(strlen(POOL_TAG_UDP_ENDPOINT));
     //pooltag = (uint8_t*)malloc(strlen(POOL_TAG_TCP_ENDPOINT));
@@ -652,8 +639,7 @@ extern UT_array* memfrs_scan_network(CPUState *cpu)
 
     utarray_new( network_list, &network_icd);
     //Scan whole physical memory
-    //for(pmem = 0; pmem < MAXMEM-strlen(POOL_TAG_UDP_ENDPOINT); pmem++)
-    for(pmem = 0; pmem < 0x10000000; pmem++)
+    for(pmem = 0; pmem < MAXMEM-strlen(POOL_TAG_UDP_ENDPOINT); pmem++)
     {
         if(pmem%0x10000000==0x0)
             printf("Scan physical address: 0x%"PRIx64"\n", pmem);

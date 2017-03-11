@@ -151,7 +151,7 @@ extern int memfrs_display_type(CPUState *cpu, uint64_t addr, const char* struct_
 ///     uint64_t field3;
 /// };
 ///
-/// memfrs_get_virmem_struct_content(cpu, cr3, buffer, sizeof(uint64_t), 0xdeadbeef, "A",
+/// memfrs_get_mem_struct_content(cpu, cr3, buffer, sizeof(uint64_t), 0xdeadbeef, "A", false,
 ///         3, "#field1", "*field2", "#field3");
 /// 
 /// \param cpu              the running cpu
@@ -159,28 +159,19 @@ extern int memfrs_display_type(CPUState *cpu, uint64_t addr, const char* struct_
 /// \param buffer           output buffer
 /// \param len              length of content to read
 /// \param struct_addr      the virtual address of the target structure
+/// \param bool             from_physical_memory,
 /// \param struct_type_name the type name of the target structure
 /// \param depth            the field access chain depth
 /// \param ...              field names in the query chain
 /// 
 /// return -1 on error, 0 on success
-extern int memfrs_get_virmem_struct_content(
+extern int memfrs_get_mem_struct_content(
         CPUState   *cpu,
         uint64_t    cr3,
         uint8_t    *buffer,
         int         len,
         uint64_t    struct_addr,
-        const char *struct_type_name,
-        int         depth,
-        ...);
-extern int memfrs_get_phy_virmem_struct_content(
-        CPUState   *cpu,
-        uint64_t    cr3,
-        uint8_t    *buffer,
-        int         len,
-        uint64_t    struct_addr,
-        const char *phy_struct_type_name,
-        const char *phy_field_name,
+        bool        from_physical_memory,
         const char *struct_type_name,
         int         depth,
         ...);

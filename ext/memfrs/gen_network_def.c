@@ -130,7 +130,7 @@ int main(int argc, char **argv)
 
     // =========== _ADDRINFO ==============================
     _addr_info = json_object_new_object();
-    add_field_to_struct(_addr_info, "Local", "_LOCAL_ADDRESS_WIN10_TCPE", 0x00, 0x8, true);
+    add_field_to_struct(_addr_info, "Local", "_LOCAL_ADDRESS", 0x00, 0x8, true);
     add_field_to_struct(_addr_info, "Remote", "_IN_ADDR", 0x10, 0x8, true);
     json_object_object_add(network_type_definition, "_ADDRINFO", _addr_info);
 
@@ -140,9 +140,9 @@ int main(int argc, char **argv)
     json_object_object_add(network_type_definition, "_LOCAL_ADDRESS", _local_address);
 
     // =========== _LOCAL_ADDRESS_WIN10_TCPE =========================
-    _local_address_win10_tcpe = json_object_new_object();
-    add_field_to_struct(_local_address_win10_tcpe, "pData", "_IN_ADDR_WIN10_TCPE", 0x10, 0x8, true);
-    json_object_object_add(network_type_definition, "_LOCAL_ADDRESS", _local_address_win10_tcpe);
+//    _local_address_win10_tcpe = json_object_new_object();
+//    add_field_to_struct(_local_address_win10_tcpe, "pData", "_IN_ADDR_WIN10_TCPE", 0x10, 0x8, true);
+//    json_object_object_add(network_type_definition, "_LOCAL_ADDRESS_WIN10_TCPE", _local_address_win10_tcpe);
 
     // =========== _LOCAL_ADDRESS_WIN10_UDP ===============
     _local_address_win10_udp = json_object_new_object();
