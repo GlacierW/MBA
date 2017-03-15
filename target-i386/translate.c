@@ -5192,7 +5192,7 @@ static target_ulong disas_insn(CPUX86State *env, DisasContext *s,
     int rex_w, rex_r;
 
 #if defined(CONFIG_OBHOOK)
-    uint32_t i;
+    int i;
 
     hwaddr paddr_pc,
            paddr_hk;
