@@ -268,102 +268,7 @@ int enum_tainted_registry( dba_context* ctx ) {
     // TODO: tainted registry parsing
     return 1;
 }
-/*
-static void print_tainted_byte( uint64_t len, uint64_t begin, packet_info* packet_ptr ) {
 
-    uint64_t tmp_b = begin;
-    uint64_t tmp_dis, i;
-
-    printf("\nTaint byte:\n");
-    printf("ethernet header: ");
-    tmp_dis = (u_char*)packet_ptr->ip_head - (u_char*)packet_ptr->eth_head;
-    for ( i = 0; i < tmp_dis; i++ ) {
-        if( dift_get_memory_dirty(tmp_b) ) {
-            printf("%" PRIu64 " ", tmp_b - begin );
-         }
-         tmp_b++;
-    }
-    printf("\n");
-    switch( packet_ptr->packet_protocol ) {
-        case NETTRAMON_PRO_TCP:
-            printf("ip header: ");
-            tmp_dis = (u_char*)packet_ptr->tcp_head - (u_char*)packet_ptr->ip_head;
-            for ( i = 0; i < tmp_dis; i++ ) {
-                if( dift_get_memory_dirty(tmp_b) ) {
-                    printf("%" PRIu64 " ", tmp_b - begin );
-                 }
-                 tmp_b++;
-            }
-            printf("\n");
-            printf("tcp header: ");
-            tmp_dis = (u_char*)packet_ptr->payload - (u_char*)packet_ptr->tcp_head;
-            for ( i = 0; i < tmp_dis; i++ ) {
-                if( dift_get_memory_dirty(tmp_b) ) {
-                    printf("%" PRIu64 " ", tmp_b - begin );
-                 }
-                 tmp_b++;
-            }
-            printf("\n");
-            break;
-        case NETTRAMON_PRO_UDP:
-            printf("ip header: ");
-            tmp_dis = (u_char*)packet_ptr->udp_head - (u_char*)packet_ptr->ip_head;
-            for ( i = 0; i < tmp_dis; i++ ) {
-                if( dift_get_memory_dirty(tmp_b) ) {
-                    printf("%" PRIu64 " ", tmp_b - begin );
-                 }
-                 tmp_b++;
-            }
-            printf("\n");
-            printf("udp header: ");
-            tmp_dis = (u_char*)packet_ptr->payload - (u_char*)packet_ptr->udp_head;
-            for ( i = 0; i < tmp_dis; i++ ) {
-                if( dift_get_memory_dirty(tmp_b) ) {
-                    printf("%" PRIu64 " ", tmp_b - begin );
-                 }
-                 tmp_b++;
-            }
-            printf("\n");
-            break;
-        case NETTRAMON_PRO_ICMP:
-            printf("ip header: ");
-            tmp_dis = (u_char*)packet_ptr->icmp_head - (u_char*)packet_ptr->ip_head;
-            for ( i = 0; i < tmp_dis; i++ ) {
-                if( dift_get_memory_dirty(tmp_b) ) {
-                    printf("%" PRIu64 " ", tmp_b - begin );
-                 }
-                 tmp_b++;
-            }
-            printf("\n");
-            printf("icmp header: ");
-            tmp_dis = (u_char*)packet_ptr->payload - (u_char*)packet_ptr->icmp_head;
-            for ( i = 0; i < tmp_dis; i++ ) {
-                if( dift_get_memory_dirty(tmp_b) ) {
-                    printf("%" PRIu64 " ", tmp_b - begin );
-                 }
-                 tmp_b++;
-            }
-            printf("\n");
-            break;
-        case NETTRAMON_PRO_UNKNOWN:
-        default:
-            break;
-    }
-
-    uint64_t j = packet_ptr->payload - (u_char*)packet_ptr->eth_head;
-    printf("payload: ");
-    if ( j < len ) {
-        for( i = 0; i < len-j; i++ ) {
-            if( dift_get_memory_dirty(tmp_b) ) {
-                printf("%" PRIu64 " ", tmp_b - begin );
-            }
-            tmp_b++;
-        }
-        printf("\n");
-    }
-    printf("\n");
-}
-*/
 void* tainted_packet_cb( size_t len, uint64_t packet_haddr, void* ctx ) {
     
     uint64_t        begin, end;
@@ -403,31 +308,28 @@ void* tainted_packet_cb( size_t len, uint64_t packet_haddr, void* ctx ) {
                     case NETTRAMON_PRO_TCP:
                         print_len = sprintf( tmp, "------TCP Packet------\nFrom: %s\t\t : ",inet_ntoa(packet_ptr->ip_head->ip_src)  );
                         strncat( json_packet_content, tmp, print_len );
-                        print_len = sprintf( tmp, "%d\nTo:   ",                         packet_ptr->tcp_head->th_sport          );
+                        print_len = sprintf( tmp, "%d\nTo:   ",                             packet_ptr->tcp_head->th_sport          );
                         strncat( json_packet_content, tmp, print_len );
-                        print_len = sprintf( tmp, "%s\t : ",                              inet_ntoa(packet_ptr->ip_head->ip_dst)  );
+                        print_len = sprintf( tmp, "%s\t : ",                                inet_ntoa(packet_ptr->ip_head->ip_dst)  );
                         strncat( json_packet_content, tmp, print_len );
-                        print_len = sprintf( tmp, "%d\n",                               packet_ptr->tcp_head->th_dport          );
+                        print_len = sprintf( tmp, "%d\n",                                   packet_ptr->tcp_head->th_dport          );
                         strncat( json_packet_content, tmp, print_len );
-                        //print_tainted_byte( len, packet_haddr, packet_ptr );
                         break; 
                     case NETTRAMON_PRO_UDP:
                         print_len = sprintf( tmp, "------UDP Packet------\nFrom: %s\t\t : ",inet_ntoa(packet_ptr->ip_head->ip_src)  );
                         strncat( json_packet_content, tmp, print_len );
-                        print_len = sprintf( tmp, "%d\nTo:   ",                         packet_ptr->udp_head->uh_sport          );
+                        print_len = sprintf( tmp, "%d\nTo:   ",                             packet_ptr->udp_head->uh_sport          );
                         strncat( json_packet_content, tmp, print_len );
-                        print_len = sprintf( tmp, "%s\t : ",                              inet_ntoa(packet_ptr->ip_head->ip_dst)  );
+                        print_len = sprintf( tmp, "%s\t : ",                                inet_ntoa(packet_ptr->ip_head->ip_dst)  );
                         strncat( json_packet_content, tmp, print_len );
-                        print_len = sprintf( tmp, "%d\n",                               packet_ptr->udp_head->uh_dport          );
+                        print_len = sprintf( tmp, "%d\n",                                   packet_ptr->udp_head->uh_dport          );
                         strncat( json_packet_content, tmp, print_len );
-                        //print_tainted_byte( len, packet_haddr, packet_ptr );
                         break;
                     case NETTRAMON_PRO_ICMP:
-                        print_len = sprintf( tmp, "------ICMP Packet-----\nFrom: %s\t\t : ",inet_ntoa(packet_ptr->ip_head->ip_src)  );
+                        print_len = sprintf( tmp, "------ICMP Packet-----\nFrom: %s \n",    inet_ntoa(packet_ptr->ip_head->ip_src)  );
                         strncat( json_packet_content, tmp, print_len );
-                        print_len = sprintf( tmp, "%s\t : ",                              inet_ntoa(packet_ptr->ip_head->ip_dst)  );
+                        print_len = sprintf( tmp, "To:   %s\n",                             inet_ntoa(packet_ptr->ip_head->ip_dst)  );
                         strncat( json_packet_content, tmp, print_len );
-                        //print_tainted_byte( len, packet_haddr, packet_ptr );
                         break;
                     case NETTRAMON_PRO_UNKNOWN:
                     default:

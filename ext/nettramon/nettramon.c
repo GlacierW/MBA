@@ -334,6 +334,7 @@ int nettramon_set_cb( void*(*cb)( size_t, haddr_t, void* ), void* cb_arg ) {
 
     return next_uid;
 }
+
 /* Delete the call back function with the input uid */
 /* Return 0 for success or 1 for fail */
 int nettramon_delete_cb( int uid ) {
@@ -383,7 +384,7 @@ int nettramon_disable_cb( int uid ) {
     
     ntm->cb_arr[uid]->enabled = FALSE;
 
-    pthread_rwlock_wrlock( &ntm->rwlock );
+    pthread_rwlock_unlock( &ntm->rwlock );
     return 0;
 }
 

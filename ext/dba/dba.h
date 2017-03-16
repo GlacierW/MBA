@@ -115,15 +115,7 @@ extern int dba_delete_task( DBA_TID tid );
 /// Return a pointer to a constant DBA context object on success,
 /// otherwise NULL is returned
 extern const dba_context* dba_get_task_context( DBA_TID tid );
-/*
-/// Set the call back funciton to the nettramon
-/// Note that the task must be IDLE to be configurable
-///
-///     \param  tid         DBA task ID
-///
-/// Return 0 on success, otherwise -1 is returned and the dba_errno is set
-extern int dba_set_ntm_cb( DBA_TID tid );
-*/
+
 /// Set the monitor pointer to let task inform user of finishing sample execution
 /// Note that the task must be IDLE to be configurable
 ///

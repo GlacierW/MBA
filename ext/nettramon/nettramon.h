@@ -239,11 +239,11 @@ unsigned int nettramon_set_filter                ( const char* );
 /* Clear the set filter */
 /* Return 0 for suceess, or 1 for fail */
 unsigned int nettramon_reset_filter              ( void );
-/*------ The upper APIs are for the nettramon module operations ------*/
 
 /* Parse the input u_char array's content as a packet */
 /* Argument packet_info* would be set with pointers of all parts in the u_char array if parsing successfully */
 /* Return 0 for suceess, or 1 for fail */
 int          nettramon_packet_parse              ( const u_char*, size_t, packet_info* );
+/*------ The upper APIs are for the nettramon module operations ------*/
 
 #endif

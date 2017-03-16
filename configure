@@ -1196,9 +1196,7 @@ for opt do
   ;;
   --disable-nettramon) nettramon="no"
   ;;
-  --disable-dba) 
-    echo "NOTE: DBA relies on almost every MBA extension!!"
-    dba="no"
+  --disable-dba) dba="no"
   ;;
   #########################
   *)

@@ -5572,6 +5572,7 @@ void *mba_mon_get_cpu( void ) {
     return mon_get_cpu();
 }
 
+// The following functions should check the setting mode by API
 void mba_readline_start( Monitor* mon, const char *prompt, int read_password,
                          ReadLineFunc *readline_func, void *opaque) {
 #if defined(CONFIG_DBA)

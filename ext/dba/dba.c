@@ -143,7 +143,10 @@ static DBA_TID get_available_tid( void ) {
 #define AGENT_ACT( x ) \
     while( (aret = x) == AGENT_RET_EBUSY ) { asm volatile("pause"); } \
     while( !agent_is_idle() ) { asm volatile( "pause" ); }
-static void invoke_sample( dba_context* ctx ) {
+
+// Wrpper of invoking sample and doing sync
+// Return none
+static void* invoke_sample( dba_context* ctx ) {
 
     MBA_AGENT_RETURN aret;
 
@@ -155,8 +158,12 @@ static void invoke_sample( dba_context* ctx ) {
 
     // flush buffered read/write of the guest OS
     AGENT_ACT( agent_sync() );
+
+    return NULL;
 }
 
+// dba task thread main
+// retirn none
 static void* dba_main_internal( void* ctx_arg ) {
 
     MBA_AGENT_RETURN aret;
@@ -270,16 +277,7 @@ int dba_set_monitor( DBA_TID tid, Monitor* mon ) {
     dba_tasks[tid]->mon = mon;
     return 0;
 }
-/*
-int dba_set_ntm_cb ( DBA_TID tid ) {
 
-    if( !is_task_configurable(tid) ) 
-        return -1;
-
-    dba_tasks[tid]->ntm_cb_id = nettramon_set_cb( &tainted_packet_cb, &dba_tasks[tid] );
-    return 0;
-}
-*/
 int dba_set_timer( DBA_TID tid, size_t seconds ) {
 
     if( !is_task_configurable(tid) ) 

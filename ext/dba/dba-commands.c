@@ -371,6 +371,7 @@ void do_start_dba_task( Monitor* mon, const QDict* qdict ) {
         return;
     }
 
+    // Set by the config file
     if ( config_file_path != NULL ) {
 
         use_config_file = TRUE;
@@ -506,6 +507,8 @@ void do_show_dba_result( Monitor* mon, const QDict* qdict ) {
     }
 }
 
+// Used to check which setting mode is now
+// Return TRUE for setting by config file, FALSE for command line setting
 bool do_dba_config_file_setting ( void ) {
 
     return use_config_file ;
