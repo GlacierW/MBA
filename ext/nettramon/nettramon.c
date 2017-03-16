@@ -25,7 +25,7 @@
 #include "nettramon.h"
 #include "libpcap/pcap/pcap.h"
 
-ntm_context ntm[1] = { { 0 } };
+ntm_context ntm[1] = { { 0, .rwlock=PTHREAD_RWLOCK_INITIALIZER } };
 
 /// Static Functions
 
@@ -311,6 +311,8 @@ bool nettramon_is_active( void ) {
 // Return 0 for success, 1 for fail
 int nettramon_set_cb( void*(*cb)( size_t, haddr_t, void* ), void* cb_arg ) {
 
+    pthread_rwlock_wrlock( &ntm->rwlock );
+    
     int next_uid = get_nettramon_cb_uid();
 
     if ( cb == NULL || next_uid == -1 ) 
@@ -327,6 +329,8 @@ int nettramon_set_cb( void*(*cb)( size_t, haddr_t, void* ), void* cb_arg ) {
 
     // Add cb to array
     ntm->cb_arr[next_uid] = tmp;
+    
+    pthread_rwlock_unlock( &ntm->rwlock );
 
     return next_uid;
 }
@@ -334,6 +338,8 @@ int nettramon_set_cb( void*(*cb)( size_t, haddr_t, void* ), void* cb_arg ) {
 /* Return 0 for success or 1 for fail */
 int nettramon_delete_cb( int uid ) {
     
+    pthread_rwlock_wrlock( &ntm->rwlock );
+
     if ( ntm->cb_arr[uid] == NULL )
         return 1;
 
@@ -346,6 +352,8 @@ int nettramon_delete_cb( int uid ) {
             LL_DELETE( ntm->cb_list, target );
     }
 
+    pthread_rwlock_unlock( &ntm->rwlock );
+    
     return 0;
 }
 
@@ -353,10 +361,14 @@ int nettramon_delete_cb( int uid ) {
 /* Return 0 for success or 1 for fail */
 int nettramon_enable_cb( int uid ) {
     
+    pthread_rwlock_wrlock( &ntm->rwlock );
+
     if ( ntm->cb_arr[uid] == NULL )
         return 1;
     
     ntm->cb_arr[uid]->enabled = TRUE;
+
+    pthread_rwlock_unlock( &ntm->rwlock );
     return 0;
 }
 
@@ -364,10 +376,14 @@ int nettramon_enable_cb( int uid ) {
 /* Return 0 for success or 1 for fail */
 int nettramon_disable_cb( int uid ) {
     
+    pthread_rwlock_wrlock( &ntm->rwlock );
+
     if ( ntm->cb_arr[uid] == NULL )
         return 1;
     
     ntm->cb_arr[uid]->enabled = FALSE;
+
+    pthread_rwlock_wrlock( &ntm->rwlock );
     return 0;
 }
 
@@ -382,6 +398,8 @@ int nettramon_packet_capture( const u_char* buf, size_t len, haddr_t packet_hadd
         if ( !bpf_filter( ntm->filter->bf_insns, (const u_char*)buf, len, len ) )
             return 0;
  
+    pthread_rwlock_wrlock( &ntm->rwlock );
+
     if ( ntm->cb_list != NULL ) {
         nettramon_cb* tmp = ntm->cb_list;
         while( tmp != NULL ) {
@@ -389,6 +407,8 @@ int nettramon_packet_capture( const u_char* buf, size_t len, haddr_t packet_hadd
             tmp = tmp->next;
         }
     }
+
+    pthread_rwlock_unlock( &ntm->rwlock );
 
     if ( ntm->local_mon != NULL || ntm->fp->all_file != NULL || ntm->fp->tcp_file != NULL || ntm->fp->udp_file != NULL || ntm->fp->icmp_file != NULL ) {
         packet_info* packet = (packet_info*)calloc( 1, sizeof(packet_info) );

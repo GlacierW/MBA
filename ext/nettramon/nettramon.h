@@ -180,7 +180,8 @@ struct ntm_context {
     nettramon_cb*       cb_list;
     // call back functoin array
     nettramon_cb*       cb_arr[SZ_NETTRAMON_MAX_CB];
-
+    // read-write lock to protect the internal data
+    pthread_rwlock_t    rwlock;
 };
 typedef struct ntm_context ntm_context;
 
