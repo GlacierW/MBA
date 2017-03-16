@@ -143,22 +143,9 @@ static DBA_TID get_available_tid( void ) {
 #define AGENT_ACT( x ) \
     while( (aret = x) == AGENT_RET_EBUSY ) { asm volatile("pause"); } \
     while( !agent_is_idle() ) { asm volatile( "pause" ); }
-static void* dba_main_internal( void* ctx_arg ) {
+static void invoke_sample( dba_context* ctx ) {
 
     MBA_AGENT_RETURN aret;
-
-    dba_context* ctx = ctx_arg;
-
-    ctx->state = DBA_TASK_BUSY;
-
-    // import sample from host into guest & flush disk cache
-    AGENT_ACT( agent_import(ctx->sample_gpath, ctx->sample_hpath) );
-    AGENT_ACT( agent_sync() );
-
-    if( ctx->taint.is_enabled ) {
-        json_object_object_add( ctx->result, DBA_JSON_KEY_TAINT, json_object_new_object() );
-        set_sample_tainted( ctx );
-    }
 
     // invoke sample
     AGENT_ACT( agent_invoke(ctx->sample_gpath) );
@@ -168,11 +155,46 @@ static void* dba_main_internal( void* ctx_arg ) {
 
     // flush buffered read/write of the guest OS
     AGENT_ACT( agent_sync() );
+}
 
-    if( ctx->taint.is_enabled ) 
+static void* dba_main_internal( void* ctx_arg ) {
+
+    MBA_AGENT_RETURN aret;
+    dba_context* ctx = ctx_arg;
+    int ntm_cb_id;
+
+    ctx->state = DBA_TASK_BUSY;
+
+    // import sample from host into guest & flush disk cache
+    AGENT_ACT( agent_import(ctx->sample_gpath, ctx->sample_hpath) );
+    AGENT_ACT( agent_sync() );
+
+    if( ctx->taint.is_enabled ) {
+
+        json_object_object_add( ctx->result, DBA_JSON_KEY_TAINT, json_object_new_object() );
+        set_sample_tainted( ctx );
+
+        // ---------- Add cb into nettramon ---------- //
+        ntm_cb_id = nettramon_set_cb( &tainted_packet_cb, ctx_arg );
+        // ---------- Start to capture packets ---------- //
+        nettramon_start( NULL );
+
+        // Start to execute sample
+        invoke_sample( ctx );
+
+        // ---------- Delete the ntm call back funciton ---------- //
+        nettramon_stop();
+        nettramon_delete_cb( ntm_cb_id );
+
         enum_tainted_file( ctx );
+    }
+    else {
+        invoke_sample( ctx );
+    }
 
     ctx->state = DBA_TASK_DONE;
+
+    monitor_printf( ctx->mon, "Task %d has finished\n", ctx->task_id );
 
     return NULL;
 }
@@ -240,6 +262,24 @@ const dba_context* dba_get_task_context( DBA_TID tid ) {
     return dba_tasks[tid];
 }
 
+int dba_set_monitor( DBA_TID tid, Monitor* mon ) {
+
+    if( !is_task_configurable(tid) ) 
+        return -1;
+
+    dba_tasks[tid]->mon = mon;
+    return 0;
+}
+/*
+int dba_set_ntm_cb ( DBA_TID tid ) {
+
+    if( !is_task_configurable(tid) ) 
+        return -1;
+
+    dba_tasks[tid]->ntm_cb_id = nettramon_set_cb( &tainted_packet_cb, &dba_tasks[tid] );
+    return 0;
+}
+*/
 int dba_set_timer( DBA_TID tid, size_t seconds ) {
 
     if( !is_task_configurable(tid) ) 

@@ -18,8 +18,8 @@
  */
 {
         .name         = "mba_start_dba",
-        .args_type    = "sample:F,timer:i",
-        .params       = "sample timer",
+        .args_type    = "sample:F,timer:i,config:F?",
+        .params       = "sample timer [config]",
         .help         = "Start dynamic behavior analysis(DBA) on the given sample",
         .mhandler.cmd = do_start_dba_task,
 },

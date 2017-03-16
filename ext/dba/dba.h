@@ -26,13 +26,16 @@
 #include "ext/tsk/tsk.h"
 #include "ext/dift/dift.h"
 #include "ext/agent/agent.h"
+#include "ext/nettramon/nettramon.h"
+#include "monitor/monitor.h"
 
-#define DBA_MAX_TASKS        0x1000
-#define DBA_MAX_FILENAME     255
-#define DBA_GUEST_SAMPLE_DIR "/Users/dsns/Desktop/" 
+#define DBA_MAX_TASKS               0x1000
+#define DBA_MAX_FILENAME            255
+#define DBA_GUEST_SAMPLE_DIR        "/Users/dsns/Desktop/"
+#define DBA_MAX_TAINT_PACKET_LENGTH 1024 
 
-#define DBA_JSON_KEY_TAINT   "TAINT"
-#define DBA_JSON_KEY_SYSCALL "SYSCALL"
+#define DBA_JSON_KEY_TAINT          "TAINT"
+#define DBA_JSON_KEY_SYSCALL        "SYSCALL"
 
 // DBA Task ID
 typedef intptr_t DBA_TID;
@@ -79,6 +82,8 @@ struct dba_context {
     pthread_t thread;
 
     DBA_TASK_STATE state;
+
+    Monitor* mon;
 };
 typedef struct dba_context dba_context;
 
@@ -110,7 +115,23 @@ extern int dba_delete_task( DBA_TID tid );
 /// Return a pointer to a constant DBA context object on success,
 /// otherwise NULL is returned
 extern const dba_context* dba_get_task_context( DBA_TID tid );
-
+/*
+/// Set the call back funciton to the nettramon
+/// Note that the task must be IDLE to be configurable
+///
+///     \param  tid         DBA task ID
+///
+/// Return 0 on success, otherwise -1 is returned and the dba_errno is set
+extern int dba_set_ntm_cb( DBA_TID tid );
+*/
+/// Set the monitor pointer to let task inform user of finishing sample execution
+/// Note that the task must be IDLE to be configurable
+///
+///     \param  tid         DBA task ID
+///     \param  mon         pointer to the QENU monitor
+///
+/// Return 0 on success, otherwise -1 is returned and the dba_errno is set
+extern int dba_set_monitor( DBA_TID tid, Monitor* mon );
 
 /// Set the timer for the sample execution for the DBA task by ID
 /// Note that the task must be IDLE to be configurable
