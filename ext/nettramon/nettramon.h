@@ -25,21 +25,25 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <monitor/monitor.h>
+#include "utlist.h"
 
 #define ETHER_ADDR_LEN           6
 #define SZ_NETTRAMON_PATH_LENGTH 64
+#define SZ_NETTRAMON_MAX_CB      65535
 #define SZ_ETHERNET_H            sizeof(struct sniff_ethernet) 
 #define SZ_IP_H                  sizeof(struct sniff_ip)
 #define SZ_TCP_H                 sizeof(struct sniff_tcp)
 #define SZ_UDP_H                 sizeof(struct sniff_udp)
 #define SZ_ICMP_H                sizeof(struct sniff_icmp)
 
-// Protocol Types
+typedef uint64_t haddr_t;
+
+/* Protocol Types */
 enum MBA_NETTRAMON_PRO {
+    NETTRAMON_PRO_UNKNOWN,
     NETTRAMON_PRO_TCP,
     NETTRAMON_PRO_UDP,
     NETTRAMON_PRO_ICMP,
-    NETTRAMON_PRO_UNKNOWN,
 };
 typedef enum MBA_NETTRAMON_PRO MBA_NETTRAMON_PRO;
 
@@ -120,22 +124,125 @@ struct packet_info {
     size_t                  len;
 };
 
+struct file_ptr {
+    FILE* all_file;
+    FILE* tcp_file;
+    FILE* udp_file;
+    FILE* icmp_file;
+};
+
+struct path_buffer {
+    bool has_set;
+    char all_file_path_buf  [SZ_NETTRAMON_PATH_LENGTH];
+    char tcp_file_path_buf  [SZ_NETTRAMON_PATH_LENGTH];
+    char udp_file_path_buf  [SZ_NETTRAMON_PATH_LENGTH];
+    char icmp_file_path_buf [SZ_NETTRAMON_PATH_LENGTH];
+};
+
+/* call back record structure */
+struct nettramon_cb {
+    // unique identifier for each call back function
+    uint16_t uid;
+    // tell if the call back should be called
+    bool enabled;
+    // call back function pointer
+    void*(*user_cb) (size_t, haddr_t, void*);
+    // argument for call back function
+    void* cb_arg;
+    // pointer to the next call back function
+    struct nettramon_cb* next;
+};
+
 typedef struct sniff_ethernet  ntm_ethernet;
 typedef struct sniff_ip        ntm_ip;
 typedef struct sniff_tcp       ntm_tcp;
 typedef struct sniff_udp       ntm_udp;
 typedef struct sniff_icmp      ntm_icmp;
 typedef struct packet_info     packet_info;
+typedef struct file_ptr        file_ptr;
+typedef struct path_buffer     path_buffer;
+typedef struct nettramon_cb    nettramon_cb;
+
+struct ntm_context {
+    // The handled packet's protocol
+    MBA_NETTRAMON_PRO   protocol_type;
+    // QEMU's monitor pointer
+    Monitor*            local_mon;
+    // compiled packet filter
+    struct bpf_program* filter;
+    // nettramon's status
+    bool                status;
+    // file's pointer for writing
+    file_ptr            fp[1];
+    // file path's buffer for setting file pointer
+    path_buffer         pb[1];
+    // call back function list
+    nettramon_cb*       cb_list;
+    // call back functoin array
+    nettramon_cb*       cb_arr[SZ_NETTRAMON_MAX_CB];
+
+};
+typedef struct ntm_context ntm_context;
+
 
 /* ---- Public APIs ---- */
+
+/* Check if the network traffic monitor is active */
+/* Return a boolean value as true if it's active, or false if it's not active */
 bool         nettramon_is_active                 ( void );
-int          nettramon_parse_buffer              ( const u_char* , size_t, void(*)(u_char*, size_t) );
-unsigned int nettramon_start                     ( Monitor* mon );
+
+/*------ The following APIs are for the call back function opertions ------*/
+/* Set a call back function */
+/* Return the uid of the registered call back function or -1 for error */
+int          nettramon_set_cb                    ( void*(*)( size_t, haddr_t, void* ), void* );
+
+/* Delete the call back function with the input uid */
+/* Return 0 for success or 1 for fail */
+int          nettramon_delete_cb                 ( int );
+
+/* Enable the call back function with the input uid */
+/* Return 0 for success or 1 for fail */
+int          nettramon_enable_cb                 ( int );
+
+/* Disable the call back function with the input uid */
+/* Return 0 for success or 1 for fail */
+int          nettramon_disable_cb                ( int );
+/*------ The upper APIs are for the call back function opertions ------*/
+
+/* Main function for network device to tranmit captured packets */
+/* Should not be called directly */
+int          nettramon_packet_capture            ( const u_char*, size_t, haddr_t );
+
+/*------ The following APIs are for the nettramon module operations ------*/
+/* Start to capture packets, and argument 'mon' should be NULL */
+/* Return 0 for success, 1 for outputing to files, or 2 for fail */ 
+unsigned int nettramon_start                     ( Monitor* );
+
+/* Stop capturing packets */
+/* Return 0 for success, or 1 for fail */
 unsigned int nettramon_stop                      ( void );
+
+/* Set the file for outputing the parsed packets' contents according to protocols*/
+/* The arguments are the paths of files according to protocols in the sequence: all protocols, TCP, UDP, ICMP, NULL for no setting */
+/* Return 0 for suceess, or 1 for fail */
 unsigned int nettramon_set_file_path             ( const char*, const char*, const char*, const char* );
+
+/* Clear the set file paths */
+/* Return 0 for suceess, or 1 for fail */
 unsigned int nettramon_reset_file_path           ( void );
+
+/* Set the packet filter for capturing */
+/* Return 0 for suceess, or 1 for fail */
 unsigned int nettramon_set_filter                ( const char* );
+
+/* Clear the set filter */
+/* Return 0 for suceess, or 1 for fail */
 unsigned int nettramon_reset_filter              ( void );
-struct       packet_info* nettramon_packet_parse ( const u_char*, size_t );
+/*------ The upper APIs are for the nettramon module operations ------*/
+
+/* Parse the input u_char array's content as a packet */
+/* Argument packet_info* would be set with pointers of all parts in the u_char array if parsing successfully */
+/* Return 0 for suceess, or 1 for fail */
+int          nettramon_packet_parse              ( const u_char*, size_t, packet_info* );
 
 #endif

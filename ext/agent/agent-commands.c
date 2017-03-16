@@ -89,6 +89,7 @@ void do_win_expo( Monitor *mon, const QDict *qdict )  {
 }
 
 void do_win_exec( Monitor *mon, const QDict *qdict ) {
+   
     MBA_AGENT_RETURN ret;
 
     char* cmdline = (char*)qdict_get_str(qdict, "cmdline");
@@ -119,6 +120,7 @@ void do_win_exec( Monitor *mon, const QDict *qdict ) {
 }
 
 void do_win_invo( Monitor *mon, const QDict *qdict ) {
+    
     MBA_AGENT_RETURN ret;
 
     char* cmdline = (char*)qdict_get_str(qdict, "cmdline");
@@ -150,6 +152,7 @@ void do_win_invo( Monitor *mon, const QDict *qdict ) {
 }
 
 void do_win_logf( Monitor *mon, const QDict *qdict ) {
+    
     MBA_AGENT_RETURN ret;
 
     char* dst_path = (char*)qdict_get_str(qdict, "dstpath");
@@ -180,6 +183,7 @@ void do_win_logf( Monitor *mon, const QDict *qdict ) {
 }
 
 void do_win_init( Monitor *mon, const QDict *qdict ) {
+
     MBA_AGENT_RETURN ret;
 
     // initialize agent

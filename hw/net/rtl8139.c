@@ -1217,13 +1217,45 @@ static ssize_t rtl8139_do_receive(NetClientState *nc, const uint8_t *buf, size_t
         DPRINTF("received: rx buffer length %d head 0x%04x read 0x%04x\n",
             s->RxBufferSize, s->RxBufAddr, s->RxBufPtr);
 
+#ifdef CONFIG_NETTRAMON
+        //nettramon_packet_capture( (const u_char*)buf, (size_t)size, s->RxBufAddr );
+        /*
+        u_char rx_read_buf[1024];
+        packet_info* rx_info;
+        packet_info* buf_info;
+        int flag = 0;
+
+        rx_info    = (packet_info*)calloc( 1, sizeof(packet_info) );
+        buf_info   = (packet_info*)calloc( 1, sizeof(packet_info) );
+
+        cpu_physical_memory_read( s->RxBufAddr, rx_read_buf, size);
+        if ( nettramon_packet_parse( rx_read_buf, (size_t)size, rx_info ) !=  0  ) {
+            printf("CPLUS TRANSMIT: physical buffer parse error\n");
+            flag = 1;
+        }
+        if ( nettramon_packet_parse( (const u_char*)saved_buffer, (size_t)saved_size, saved_info ) != 0 ) {
+            printf("CPLUS TRANSMIT: saved buffer parse error\n");
+            flag = 1;
+        }
+        if ( flag == 0 ) {
+            if ( strncmp( inet_ntoa(tx_info->ip_head->ip_src), inet_ntoa(saved_info->ip_head->ip_src), strlen(inet_ntoa(tx_info->ip_head->ip_src)) ) != 0 ) {
+                printf("CPLUS TRANSMIT: Physical IP is %s while saved_buffer IP is %s\n", inet_ntoa(tx_info->ip_head->ip_src), inet_ntoa(saved_info->ip_head->ip_src));
+            }
+            else
+                printf("CPLUS TRANSMIT: Physical IP is %s and saved_buffer IP is %s\n", inet_ntoa(tx_info->ip_head->ip_src), inet_ntoa(saved_info->ip_head->ip_src));
+        }
+        else
+            printf("\n");
+
+        free( tx_info );
+        free( saved_info);
+        */
+#endif
+
     }
 
     s->IntrStatus |= RxOK;
 
-    #ifdef CONFIG_NETTRAMON
-    //nettramon_parse_buffer( (const char *)s->RxBuf, (size_t)s->RxBufferSize );
-    #endif
 
     if (do_interrupt)
     {
@@ -1863,23 +1895,6 @@ static void rtl8139_transfer_frame(RTL8139State *s, uint8_t *buf, int size,
     }
 }
 
-#if defined(CONFIG_DIFT)
-static void parse_pkt_tainted( void ) 
-{
-    // TODO: parse & show info.
-    //printf( "TODO: parse tainted packet content\n" );
-    return;
-}
-
-static int is_pkt_tainted( dma_addr_t begin, dma_addr_t end )
-{
-    for(; begin < end; ++begin ) 
-        if( dift_get_memory_dirty(begin) ) 
-            return 1;
-    return 0;
-}
-#endif
-
 static int rtl8139_transmit_one(RTL8139State *s, int descriptor)
 {
     if (!rtl8139_transmitter_enabled(s))
@@ -1905,11 +1920,6 @@ static int rtl8139_transmit_one(RTL8139State *s, int descriptor)
     DPRINTF("+++ transmit reading %d bytes from host memory at 0x%08x\n",
         txsize, s->TxAddr[descriptor]);
 
-#if defined(CONFIG_DIFT)
-    if( is_pkt_tainted(s->TxAddr[descriptor], s->TxAddr[descriptor] + txsize) )
-        parse_pkt_tainted();
-#endif
-
     pci_dma_read(d, s->TxAddr[descriptor], txbuffer, txsize);
 
     /* Mark descriptor as transferred */
@@ -1921,24 +1931,45 @@ static int rtl8139_transmit_one(RTL8139State *s, int descriptor)
     DPRINTF("+++ transmitted %d bytes from descriptor %d\n", txsize,
         descriptor);
 
-    /* BBB Modified by JCJao  */
+#ifdef CONFIG_NETTRAMON
+    nettramon_packet_capture( (const u_char*)txbuffer, (size_t)txsize, s->TxAddr[descriptor] );
     /*
-    printf( "RTL8139 write %d bytes to txbuffer: \n", txsize );
-    printf( "TxBuffer : " );
-    int temp = 0;
-    for( ; temp < txsize; temp++ )
-        if ( isprint(txbuffer[temp]) )
-            printf("%c", txbuffer[temp]);
-        else
-            printf("A");
-    printf( "\nTxBufAddr: %016lx\n", (unsigned long)s->TxAddr[descriptor] );
-    printf( "-----------------------------------\n" );
-    */
-    /* ********************** */
+        u_char haddr_read_buf[1024];
+        packet_info* haddr_info;
+        packet_info* tx_info;
+        int flag = 0;
 
-    #ifdef CONFIG_NETTRAMON
-    nettramon_parse_buffer( (const u_char*)txbuffer, (size_t)txsize, NULL );
-    #endif
+        haddr_info  = (packet_info*)calloc( 1, sizeof(packet_info) );
+        tx_info     = (packet_info*)calloc( 1, sizeof(packet_info) );
+
+        cpu_physical_memory_read( s->TxAddr[descriptor], haddr_read_buf, txsize);
+        if ( nettramon_packet_parse( haddr_read_buf, (size_t)txsize, haddr_info ) !=  0 ) {
+            //printf("TRASMIT: physical packet parse error\n");
+            flag = 1;
+        }
+        if ( nettramon_packet_parse( (const u_char*)txbuffer, (size_t)txsize, tx_info ) != 0) {
+            //printf("TRASMIT: txbuffer packet parse error\n");
+            flag = 1;
+        }
+        if ( flag == 0 ) {
+            if ( strncmp( inet_ntoa(tx_info->ip_head->ip_dst), inet_ntoa(haddr_info->ip_head->ip_dst), strlen(inet_ntoa(tx_info->ip_head->ip_dst)) ) != 0 ) {
+                printf("TRASMIT: DIFFER Physical IP is %s while saved_buffer IP is %s\n", inet_ntoa(haddr_info->ip_head->ip_dst), inet_ntoa(tx_info->ip_head->ip_dst));
+            }
+            else {
+                printf(" ================= \n");
+                printf("TRASMIT: SAME Physical IP is from %p : %s to %s and saved_buffer IP is from %s to %s\n", inet_ntoa(haddr_info->ip_head->ip_src), inet_ntoa(haddr_info->ip_head->ip_dst), inet_ntoa(tx_info->ip_head->ip_src), inet_ntoa(tx_info->ip_head->ip_dst));
+                printf("TRASMIT: Physical IP is from %s and saved_buffer IP is from %s\n", inet_ntoa(haddr_info->ip_head->ip_src), inet_ntoa(tx_info->ip_head->ip_src));
+                printf("TRASMIT: Physical IP is to %s while saved_buffer IP is to %s\n", inet_ntoa(haddr_info->ip_head->ip_dst), inet_ntoa(tx_info->ip_head->ip_dst));
+                printf(" ================= \n");
+            }
+        }
+        else {
+        }
+
+        free( haddr_info );
+        free( tx_info );
+   */
+#endif
 
     /* update interrupt */
     s->IntrStatus |= TxOK;
@@ -2462,30 +2493,42 @@ static int rtl8139_cplus_transmit_one(RTL8139State *s)
 
         DPRINTF("+++ C+ mode transmitting %d bytes packet\n", saved_size);
 
-        rtl8139_transfer_frame(s, saved_buffer, saved_size, 1,
-            (uint8_t *) dot1q_buffer);
+        rtl8139_transfer_frame(s, saved_buffer, saved_size, 1, (uint8_t *) dot1q_buffer);
 
-        /* BBB Added by JCJao */
+#ifdef CONFIG_NETTRAMON
+        nettramon_packet_capture( (const u_char*)saved_buffer, (size_t)saved_size, tx_addr );
         /*
-        printf( "RTL8139 CPLUS MODE write %d bytes : \n", saved_size );
-        size_t i = 0;
-        const char * temp = saved_buffer;
-        while( i < saved_size ) {
-            if ( isprint( temp[i] ) )
-                printf("%c", temp[i]);
-            else
-                printf("A");
-            i++;
-        }
-        printf("\n");
-        printf( "saved_buffer: %016lx, BufferSize: %016lx\n", (unsigned long)saved_buffer, (unsigned long)saved_size );
-        printf( "-----------------------------------\n" );
-        */
-        /* Added By JCJao */
+        u_char tx_read_buf[1024];
+        packet_info* tx_info;
+        packet_info* saved_info;
+        int flag = 0;
 
-        #ifdef CONFIG_NETTRAMON
-        nettramon_parse_buffer( (const u_char*)saved_buffer, (size_t)saved_size, NULL );
-        #endif
+        tx_info    = (packet_info*)calloc( 1, sizeof(packet_info) );
+        saved_info = (packet_info*)calloc( 1, sizeof(packet_info) );
+
+        cpu_physical_memory_read( tx_addr, tx_read_buf, saved_size);
+        if ( nettramon_packet_parse( tx_read_buf, (size_t)saved_size, tx_info ) !=  0  ) {
+            printf("CPLUS TRANSMIT: physical buffer parse error\n");
+            flag = 1;
+        }
+        if ( nettramon_packet_parse( (const u_char*)saved_buffer, (size_t)saved_size, saved_info ) != 0 ) {
+            printf("CPLUS TRANSMIT: saved buffer parse error\n");
+            flag = 1;
+        }
+        if ( flag == 0 ) {
+            if ( strncmp( inet_ntoa(tx_info->ip_head->ip_src), inet_ntoa(saved_info->ip_head->ip_src), strlen(inet_ntoa(tx_info->ip_head->ip_src)) ) != 0 ) {
+                printf("CPLUS TRANSMIT: Physical IP is %s while saved_buffer IP is %s\n", inet_ntoa(tx_info->ip_head->ip_src), inet_ntoa(saved_info->ip_head->ip_src));
+            }
+            else
+                printf("CPLUS TRANSMIT: Physical IP is %s and saved_buffer IP is %s\n", inet_ntoa(tx_info->ip_head->ip_src), inet_ntoa(saved_info->ip_head->ip_src));
+        }
+        else
+            printf("\n");
+
+        free( tx_info );
+        free( saved_info);
+        */
+#endif
 
         /* restore card space if there was no recursion and reset offset */
         if (!s->cplus_txbuffer)
