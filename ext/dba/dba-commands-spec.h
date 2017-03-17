@@ -39,8 +39,9 @@
 },
 {
         .name         = "mba_show_dba_result",
-        .args_type    = "tid:i",
-        .params       = "task_id",
-        .help         = "Show the analysis result of the DBA task specified by ID",
+        .args_type    = "tid:i,file:F",
+        .params       = "task_id [file]",
+        .help         = "Show the analysis result of the DBA task specified by ID." \
+                        "Can specify a file in order to write into it.",
         .mhandler.cmd = do_show_dba_result,
 },

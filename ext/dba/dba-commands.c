@@ -29,29 +29,45 @@ static void cb_dba_set_taint( void* mon, const char* yn, void* opaque );
 
 bool use_config_file = FALSE;
 
-static void show_dba_context_info( Monitor* mon, const dba_context* ctx ) {
+static void show_dba_context_info( Monitor* mon, FILE* fp, const dba_context* ctx ) {
 
-    if( mon == NULL || ctx == NULL )
+    if( (fp == NULL && mon == NULL) || ctx == NULL )
         return;
 
-    monitor_printf( mon, "Task ID:         %d\n", ctx->task_id );
-    monitor_printf( mon, "Host sample:     %s\n", ctx->sample_hpath );
-    monitor_printf( mon, "Guest sample:    %s\n", ctx->sample_gpath );
-    monitor_printf( mon, "Taint analysis:  %s\n", (ctx->taint.is_enabled)? "Enabled" : "Disabled" );
-    if( ctx->taint.is_enabled )
-        monitor_printf( mon, "Taint tag:       %d\n", ctx->taint.tag );
-    monitor_printf( mon, "Syscall tracer:  %s\n", (ctx->syscall.is_enabled)? "Enabled" : "Disabled" );
+    if ( fp != NULL ) {
+        fprintf( fp, "Task ID:         %d\n", ctx->task_id );
+        fprintf( fp, "Host sample:     %s\n", ctx->sample_hpath );
+        fprintf( fp, "Guest sample:    %s\n", ctx->sample_gpath );
+        fprintf( fp, "Taint analysis:  %s\n", (ctx->taint.is_enabled)? "Enabled" : "Disabled" );
+        if( ctx->taint.is_enabled )
+            fprintf( fp, "Taint tag:       %d\n", ctx->taint.tag );
+        fprintf( fp, "Syscall tracer:  %s\n", (ctx->syscall.is_enabled)? "Enabled" : "Disabled" );
+    }
+    else {
+        monitor_printf( mon, "Task ID:         %d\n", ctx->task_id );
+        monitor_printf( mon, "Host sample:     %s\n", ctx->sample_hpath );
+        monitor_printf( mon, "Guest sample:    %s\n", ctx->sample_gpath );
+        monitor_printf( mon, "Taint analysis:  %s\n", (ctx->taint.is_enabled)? "Enabled" : "Disabled" );
+        if( ctx->taint.is_enabled )
+            monitor_printf( mon, "Taint tag:       %d\n", ctx->taint.tag );
+        monitor_printf( mon, "Syscall tracer:  %s\n", (ctx->syscall.is_enabled)? "Enabled" : "Disabled" );
+    }
 }
 
-static inline void show_dba_report_title( Monitor* mon, const char* str ) {
-    monitor_printf( mon, "========== %s ==========\n", str );
+static inline void show_dba_report_title( Monitor* mon, FILE* fp, const char* str ) {
+    if ( ( mon == NULL && fp == NULL ) || str == NULL )
+        return;
+    if ( fp != NULL )
+        fprintf( fp, "========== %s ==========\n", str );
+    else
+        monitor_printf( mon, "========== %s ==========\n", str );
 }
 
 // DBA - confirm ?
 static void cb_dba_confirm( void* mon, const char* yn, void* opaque ) {
 
     monitor_printf( mon, "========== Task Info ==========\n" );
-    show_dba_context_info( mon, dba_get_task_context((DBA_TID)opaque) );
+    show_dba_context_info( mon, NULL, dba_get_task_context((DBA_TID)opaque) );
    
     // confirmed, start analysis
     if( strcasecmp( "y", yn ) == 0 || strcasecmp( "yes", yn ) == 0 ) {
@@ -476,6 +492,7 @@ void do_show_dba_result( Monitor* mon, const QDict* qdict ) {
 
     int i,
         tid = qdict_get_int( qdict, "tid" );
+    const char* file_path = qdict_get_try_str( qdict, "file" );
 
     ctx = dba_get_task_context( tid );
     if( ctx == NULL ) {
@@ -487,23 +504,49 @@ void do_show_dba_result( Monitor* mon, const QDict* qdict ) {
         monitor_printf( mon, "DBA task not done\n" );
         return;
     }
+    
+    if ( file_path == NULL ) {
+        // show summary
+        show_dba_report_title( mon, NULL, "SUMMARY" );
+        show_dba_context_info( mon, NULL, ctx );
 
-    // show summary
-    show_dba_report_title( mon, "SUMMARY" );
-    show_dba_context_info( mon, ctx );
+        // show taint result if enabled
+        if( ctx->taint.is_enabled ) {
+            json_object_object_get_ex( ctx->result, DBA_JSON_KEY_TAINT, &taint_report );
+            show_dba_report_title( mon, NULL, DBA_JSON_KEY_TAINT );
+            json_object_object_foreach( taint_report, taint_field, taint_records  ) {
+                monitor_printf( mon, "%s:\n", taint_field );
 
-    // show taint result if enabled
-    if( ctx->taint.is_enabled ) {
-        json_object_object_get_ex( ctx->result, DBA_JSON_KEY_TAINT, &taint_report );
-        show_dba_report_title( mon, DBA_JSON_KEY_TAINT );
-        json_object_object_foreach( taint_report, taint_field, taint_records  ) {
-            monitor_printf( mon, "%s:\n", taint_field );
-
-            for( i = 0; i < json_object_array_length(taint_records); ++i ) {
-                monitor_printf( mon, "    %s\n",
-                        json_object_get_string(json_object_array_get_idx(taint_records, i)) );
+                for( i = 0; i < json_object_array_length(taint_records); ++i ) {
+                    monitor_printf( mon, "    %s\n",
+                            json_object_get_string(json_object_array_get_idx(taint_records, i)) );
+                }
             }
         }
+    }
+    else {
+        FILE* fp = fopen( file_path, "a" );
+
+        // show summary
+        show_dba_report_title( NULL, fp, "SUMMARY" );
+        show_dba_context_info( NULL, fp, ctx );
+
+        // show taint result if enabled
+        if( ctx->taint.is_enabled ) {
+            json_object_object_get_ex( ctx->result, DBA_JSON_KEY_TAINT, &taint_report );
+            show_dba_report_title( NULL, fp, DBA_JSON_KEY_TAINT );
+            json_object_object_foreach( taint_report, taint_field, taint_records  ) {
+                fprintf( fp, "%s:\n", taint_field );
+
+                for( i = 0; i < json_object_array_length(taint_records); ++i ) {
+                    fprintf( fp, "    %s\n",
+                            json_object_get_string(json_object_array_get_idx(taint_records, i)) );
+                }
+            }
+        }
+
+        fclose( fp );
+        monitor_printf( mon, "Finished writing result to targeted file\n" );
     }
 }
 
