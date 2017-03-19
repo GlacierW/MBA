@@ -97,7 +97,6 @@ typedef struct UT_handles{
 
 // network data structure
 typedef struct network_state{
-    uint64_t offset;
     const char* protocol;
     uint64_t pmem;
     uint64_t eprocess;

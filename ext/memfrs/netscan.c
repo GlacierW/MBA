@@ -68,7 +68,6 @@ static const char* map_state_to_str(uint32_t state)
 
 /*********************************************************************************
 static void add_network_feild_to_structure(
-        uint64_t offset, 
         const char* protocol, 
         uint64_t pmem, 
         uint64_t eprocess, 
@@ -82,8 +81,7 @@ static void add_network_feild_to_structure(
 
 add a network data in UT_array structure network_state
 
-INPUT:  uint64_t offset         offset
-        const char* protocol    network protocol, including UDP/TCP and IPv4/IPv6
+INPUT:  const char* protocol    network protocol, including UDP/TCP and IPv4/IPv6
         uint64_t pmem           physical memory address of the pool tag address
         uint64_t eprocess       eprocess address in virtual memoey
         char* file_name         the file name of owner process
@@ -96,7 +94,6 @@ INPUT:  uint64_t offset         offset
 OUTPUT: void                    nothing to output
 **********************************************************************************/
 static void add_network_feild_to_structure(
-        uint64_t offset, 
         const char* protocol, 
         uint64_t pmem, 
         uint64_t eprocess, 
@@ -109,9 +106,6 @@ static void add_network_feild_to_structure(
         UT_array *network_list)
 {
     network_state network_data;
-
-    // offset
-    network_data.offset = offset;
 
     // protocol
     network_data.protocol = protocol;
@@ -341,7 +335,7 @@ static void parse_TcpL(uint64_t pool_body_ptr, uint64_t pmem, UT_array *network_
         addr_foreign = (char*)malloc(10);
         memset(addr_foreign, 0, 10);
         sprintf(addr_foreign, "0.0.0.0:0");
-        add_network_feild_to_structure(0, "TCPv4", pmem, eprocess_ptr, file_name, processid, "LISTENING", addr, addr_foreign, windows_timestamp_convert(time), network_list);
+        add_network_feild_to_structure("TCPv4", pmem, eprocess_ptr, file_name, processid, "LISTENING", addr, addr_foreign, windows_timestamp_convert(time), network_list);
     }
     else if(AF==AF_INET6){
         if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&addr1, sizeof(addr1), pool_body_ptr, true, "_TCP_LISTENER", 1, "*LocalAddr")!=0){
@@ -362,7 +356,7 @@ static void parse_TcpL(uint64_t pool_body_ptr, uint64_t pmem, UT_array *network_
         addr_foreign = (char*)malloc(10);
         memset(addr_foreign, 0, 10);
         sprintf(addr_foreign, "0.0.0.0:0");
-        add_network_feild_to_structure(0, "TCPv6", pmem, eprocess_ptr, file_name, processid, "LISTENING", addr, addr_foreign, windows_timestamp_convert(time), network_list);
+        add_network_feild_to_structure("TCPv6", pmem, eprocess_ptr, file_name, processid, "LISTENING", addr, addr_foreign, windows_timestamp_convert(time), network_list);
     }
     else{
         return;
@@ -455,7 +449,7 @@ static void parse_TcpE(uint64_t pool_body_ptr, uint64_t pmem, UT_array *network_
         addr_foreign = IPv4_to_str(addr1+offset_remote_addr4_to_INADDR, port_foreign, cpu);
         if(addr_foreign==NULL)
             return;
-        add_network_feild_to_structure(0, "TCPv4", pmem, eprocess_ptr, file_name, processid, state_str, addr, addr_foreign, windows_timestamp_convert(time), network_list);
+        add_network_feild_to_structure("TCPv4", pmem, eprocess_ptr, file_name, processid, state_str, addr, addr_foreign, windows_timestamp_convert(time), network_list);
     }
     else if(AF==AF_INET6){
 
@@ -472,7 +466,7 @@ static void parse_TcpE(uint64_t pool_body_ptr, uint64_t pmem, UT_array *network_
         addr_foreign = IPv6_to_str(addr1+offset_remote_addr6_to_INADDR, port_foreign, cpu);
         if(addr_foreign==NULL)
             return;
-        add_network_feild_to_structure(0, "TCPv6", pmem, eprocess_ptr, file_name, processid, state_str, addr, addr_foreign, windows_timestamp_convert(time), network_list);
+        add_network_feild_to_structure("TCPv6", pmem, eprocess_ptr, file_name, processid, state_str, addr, addr_foreign, windows_timestamp_convert(time), network_list);
     }
     else{
         return;
@@ -551,7 +545,7 @@ static void parse_UdpA(uint64_t pool_body_ptr, uint64_t pmem, UT_array *network_
         addr_foreign = (char*)malloc(4);
         memset(addr_foreign, 0, 4);
         sprintf(addr_foreign, "*:*");
-        add_network_feild_to_structure(0, "UDPv4", pmem, eprocess_ptr, file_name, processid, NULL, addr, addr_foreign, windows_timestamp_convert(time), network_list);
+        add_network_feild_to_structure("UDPv4", pmem, eprocess_ptr, file_name, processid, NULL, addr, addr_foreign, windows_timestamp_convert(time), network_list);
     }
     else if(AF==AF_INET6){
         if(memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&addr1, sizeof(addr1), pool_body_ptr, true, "_UDP_ENDPOINT", 1, "*LocalAddr")!=0){
@@ -572,7 +566,7 @@ static void parse_UdpA(uint64_t pool_body_ptr, uint64_t pmem, UT_array *network_
         addr_foreign = (char*)malloc(4);
         memset(addr_foreign, 0, 4);
         sprintf(addr_foreign, "*:*");
-        add_network_feild_to_structure(0, "UDPv6", pmem, eprocess_ptr, file_name, processid, NULL, addr, addr_foreign, windows_timestamp_convert(time), network_list);
+        add_network_feild_to_structure("UDPv6", pmem, eprocess_ptr, file_name, processid, NULL, addr, addr_foreign, windows_timestamp_convert(time), network_list);
     }
     else{
         return;
