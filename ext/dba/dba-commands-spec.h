@@ -18,8 +18,8 @@
  */
 {
         .name         = "mba_start_dba",
-        .args_type    = "sample:F,timer:i",
-        .params       = "sample timer",
+        .args_type    = "sample:F,timer:i,config:F?",
+        .params       = "sample timer [config]",
         .help         = "Start dynamic behavior analysis(DBA) on the given sample",
         .mhandler.cmd = do_start_dba_task,
 },
@@ -39,8 +39,9 @@
 },
 {
         .name         = "mba_show_dba_result",
-        .args_type    = "tid:i",
-        .params       = "task_id",
-        .help         = "Show the analysis result of the DBA task specified by ID",
+        .args_type    = "tid:i,file:F",
+        .params       = "task_id [file]",
+        .help         = "Show the analysis result of the DBA task specified by ID." \
+                        "Can specify a file in order to write into it.",
         .mhandler.cmd = do_show_dba_result,
 },

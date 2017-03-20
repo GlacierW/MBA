@@ -3,11 +3,13 @@
 #include "qemu/thread.h"
 #include "qmp-commands.h"
 #include "include/utarray.h"
+#include "include/exec/cpu-common.h"
 
 // define Report Field Title for each taint analysis items
 #define RFT_TAINTED_FILE       "Tainted File"
 #define RFT_TAINTED_REGISTRY   "Tainted Registry"
 #define RFT_BOOTCODE           "Tainted Bootcode"
+#define RFT_TAINTED_PACKET     "Tainted Packet"
 
 extern QemuMutex qemu_global_mutex;
 
@@ -36,6 +38,113 @@ static const char* get_device_image( const char* dev ) {
                 return info->value->inserted->file;
     }
     return NULL;
+}
+
+// Print out the content in buf into json_packet_content if the length of json_packet_content is not full
+// Return 0 if success, 1 for full json_packet_content or fail
+static int json_packet_content_sprintf( char* json_packet_content, const char* fmt, ... ) {
+
+    char    tmp[DBA_MAX_TAINT_PACKET_LENGTH];
+    va_list args;
+    
+    va_start( args, fmt );
+    vsprintf( tmp, fmt, args );
+    va_end( args );
+
+    if ( strlen( json_packet_content ) + strlen( tmp ) >= DBA_MAX_TAINT_PACKET_LENGTH )
+        return 1;
+
+    strncat( json_packet_content, tmp, strlen(tmp) );
+
+    return 0;
+
+}
+
+// Print out the payload in hex and ascii format in one line
+// Return none
+static void print_taint_packet_line( char* json_packet_content, const u_char *payload, int len, int offset) {
+    
+    int i;
+    const u_char *hex_head;
+    const u_char *ascii_head;
+
+    /* hex */
+    hex_head = payload;
+    for(i = 0; i < len; i++) {
+        if( json_packet_content_sprintf( json_packet_content, "%02x ", hex_head[i] ) ) 
+            return ;
+    }
+   
+    /* To align the content */
+    if ( len < 16 )
+        for ( i = len; i < 16; i++ )
+            if ( json_packet_content_sprintf( json_packet_content, "   ") )
+                return ;
+
+    if ( json_packet_content_sprintf( json_packet_content, "  ") )
+        return ;
+
+    /* print out ascii */
+    ascii_head = payload;
+    for(i = 0; i < len; i++) {
+        if ( isprint(ascii_head[i]) ) {
+            if ( json_packet_content_sprintf( json_packet_content, "%c", ascii_head[i]) )
+                return ;
+        }
+        else {
+            if ( json_packet_content_sprintf( json_packet_content, ".") )
+                return ;
+        }
+    }
+
+    json_packet_content_sprintf( json_packet_content, "\n");
+
+    return;
+}
+
+// Print out the payload to the json_packet_content
+// Return none
+static void print_taint_packet_payload( char* json_packet_content, const u_char *payload, int len ) {
+    
+    int len_remain = len;
+    int line_width = 16;            /* number of bytes per line */
+    int line_len;
+    int offset = 0;                 /* zero-based offset counter */
+    const u_char *pl_head = payload;
+
+    if (len <= 0)
+        return;
+
+    if ( json_packet_content_sprintf( json_packet_content, "Tainted Packet Payload: \n" ) )
+        return;
+
+    /* data fits on one line */
+    if (len <= line_width) {
+        print_taint_packet_line(json_packet_content, pl_head, len, offset);
+        return;
+    }
+
+    /* data spans multiple lines */
+    for ( ;; ) {
+        /* compute current line length */
+        line_len = line_width % len_remain;
+        /* print line */
+        print_taint_packet_line(json_packet_content, pl_head, line_len, offset);
+        /* compute total remaining */
+        len_remain = len_remain - line_len;
+        /* shift pointer to remaining bytes to print */
+        pl_head = pl_head + line_len;
+        /* add offset */
+        offset = offset + line_width;
+        /* check if we have line width chars or less */
+        if (len_remain <= line_width) {
+            /* print last line and get out */
+            print_taint_packet_line(json_packet_content, pl_head, len_remain, offset);
+            break;
+        }
+    }
+
+    return;
 }
 
 int set_sample_tainted( dba_context* ctx ) {
@@ -159,3 +268,81 @@ int enum_tainted_registry( dba_context* ctx ) {
     // TODO: tainted registry parsing
     return 1;
 }
+
+void* tainted_packet_cb( size_t len, uint64_t packet_haddr, void* ctx ) {
+    
+    uint64_t        begin, end;
+    u_char*         buf;
+    char            json_packet_content[DBA_MAX_TAINT_PACKET_LENGTH] = {0};
+    char            tmp[DBA_MAX_TAINT_PACKET_LENGTH] = {0};
+    int             print_len;
+    packet_info*    packet_ptr;
+
+    json_object*    jo_taint_report;
+    json_object*    jo_taint_packet;
+    
+    // get JSON object for taint result
+    json_object_object_get_ex( ((dba_context*)ctx)->result, DBA_JSON_KEY_TAINT, &jo_taint_report );
+    
+    // get JSON object for tainted result
+    // check if the JSON object is already in the tainted result
+    if ( !json_object_object_get_ex( jo_taint_report, RFT_TAINTED_PACKET, &jo_taint_packet ) ) {
+        // add array JSON object to store tainted packet
+        jo_taint_packet = json_object_new_array();
+        json_object_object_add( jo_taint_report, RFT_TAINTED_PACKET, jo_taint_packet );
+    }
+
+    begin = packet_haddr;
+    end = begin + len;
+
+    for(; begin < end; ++begin ) {
+        if( dift_get_memory_dirty(begin) && ((dba_context*)ctx)->state == DBA_TASK_BUSY ) {
+            buf = (u_char*)calloc( 1, len );
+            packet_ptr = (packet_info*)calloc( 1, sizeof(packet_info) );
+            cpu_physical_memory_read( packet_haddr, buf, len );
+            if ( nettramon_packet_parse( buf, len, packet_ptr ) == 0 ) {
+                switch( packet_ptr->packet_protocol ) {
+                    // Notice that the inet_ntoa puts string to a static buffer and returns the pointer of the static buffer,
+                    // which results in printing the same IP address if call it many times in the same sprintf.
+                    // Separate the calling operations into multiple sprintf and get the right IP address.
+                    case NETTRAMON_PRO_TCP:
+                        print_len = sprintf( tmp, "------TCP Packet------\nFrom: %s\t\t : ",inet_ntoa(packet_ptr->ip_head->ip_src)  );
+                        strncat( json_packet_content, tmp, print_len );
+                        print_len = sprintf( tmp, "%d\nTo:   ",                             packet_ptr->tcp_head->th_sport          );
+                        strncat( json_packet_content, tmp, print_len );
+                        print_len = sprintf( tmp, "%s\t : ",                                inet_ntoa(packet_ptr->ip_head->ip_dst)  );
+                        strncat( json_packet_content, tmp, print_len );
+                        print_len = sprintf( tmp, "%d\n",                                   packet_ptr->tcp_head->th_dport          );
+                        strncat( json_packet_content, tmp, print_len );
+                        break; 
+                    case NETTRAMON_PRO_UDP:
+                        print_len = sprintf( tmp, "------UDP Packet------\nFrom: %s\t\t : ",inet_ntoa(packet_ptr->ip_head->ip_src)  );
+                        strncat( json_packet_content, tmp, print_len );
+                        print_len = sprintf( tmp, "%d\nTo:   ",                             packet_ptr->udp_head->uh_sport          );
+                        strncat( json_packet_content, tmp, print_len );
+                        print_len = sprintf( tmp, "%s\t : ",                                inet_ntoa(packet_ptr->ip_head->ip_dst)  );
+                        strncat( json_packet_content, tmp, print_len );
+                        print_len = sprintf( tmp, "%d\n",                                   packet_ptr->udp_head->uh_dport          );
+                        strncat( json_packet_content, tmp, print_len );
+                        break;
+                    case NETTRAMON_PRO_ICMP:
+                        print_len = sprintf( tmp, "------ICMP Packet-----\nFrom: %s \n",    inet_ntoa(packet_ptr->ip_head->ip_src)  );
+                        strncat( json_packet_content, tmp, print_len );
+                        print_len = sprintf( tmp, "To:   %s\n",                             inet_ntoa(packet_ptr->ip_head->ip_dst)  );
+                        strncat( json_packet_content, tmp, print_len );
+                        break;
+                    case NETTRAMON_PRO_UNKNOWN:
+                    default:
+                        print_len = sprintf( tmp, "------UNKNOWN packet------" );
+                        strncat( json_packet_content, tmp, print_len );
+                        break;
+                }
+                print_taint_packet_payload( json_packet_content, packet_ptr->payload, packet_ptr->len );
+                json_object_array_add( jo_taint_packet, json_object_new_string( json_packet_content ) );
+            }
+            break;   
+        }
+    }
+    return NULL;
+}
+

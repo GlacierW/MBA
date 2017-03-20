@@ -1180,6 +1180,24 @@ for opt do
     nettramon="yes"
     dba="yes"
   ;;
+  --disable-dift) dift="no"
+  ;;
+  --disable-debug-dift) dift_debug="no"
+  ;;
+  --disable-agent) agent="no"
+  ;;
+  --disable-memfrs) memfrs="no"
+  ;;
+  --disable-tsk) tsk="no"
+  ;;
+  --disable-obhook) obhook="no"
+  ;;
+  --disable-tracer) tracer="no"
+  ;;
+  --disable-nettramon) nettramon="no"
+  ;;
+  --disable-dba) dba="no"
+  ;;
   #########################
   *)
       echo "ERROR: unknown option $opt"
