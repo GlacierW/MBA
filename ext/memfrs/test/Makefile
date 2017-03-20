@@ -4,7 +4,7 @@ LINKOBJ   = gtest_main.o memfrs_unittest.o $(GTEST_LIB) libjson-c.a
 LINKFLAGS = -lpthread -lgcov 
 BIN_DEST  = bin
 BIN       = $(BIN_DEST)/test_memfrs
-CXXFLAGS  = -Wall -DCONFIG_MEMFRS_TEST -isystem ${GTEST_DIR}/include -isystem ${GMOCK_DIR}/include 
+CXXFLAGS  = -Wall -DCONFIG_MEMFRS_TEST -isystem ${GTEST_DIR}/include -isystem ${GMOCK_DIR}/include -g
 GCOV_FILE = *.gcno *.gcda *.gcov
 
 .PHONY: all clean

@@ -87,6 +87,13 @@
         .mhandler.cmd = do_module_list,
 },
 {
+        .name = "scan_network",
+        .args_type  = "",
+        .params     = "",
+        .help       = "scan for the network",
+        .mhandler.cmd = do_network_list,
+},
+{
         .name = "load_global_variable",
         .args_type  = "gvar_db:s",
         .params     = "gvar_db",

@@ -137,10 +137,14 @@ json_object* memfrs_q_struct(const char* ds_name)
 
     // Query global structure info with structure name ds_name
     // Restore the query result into target json_object
-    json_object_object_get_ex(g_struct_info, ds_name, &target);
+    if(g_struct_info!=NULL)
+        json_object_object_get_ex(g_struct_info, ds_name, &target);
+    else
+        return NULL;
     
     if(target==NULL)
         printf("%s not found\n", ds_name);
+
     return target;
 }
 
@@ -155,7 +159,21 @@ OUTPUT:    int,                        return 0 if sucess, and not 0 otherwise
 *******************************************************************/
 int memfrs_load_structs( const char* type_filename)
 {
-    g_struct_info = json_object_from_file(type_filename);
+    json_object *struct_info = NULL, *test_obj = NULL;
+    if(g_struct_info==NULL){
+        g_struct_info = json_object_from_file(type_filename);
+    }
+    else{
+        struct_info = json_object_from_file(type_filename);
+        json_object_object_foreach(struct_info, key, val){
+            json_object_object_get_ex(g_struct_info, key, &test_obj);
+            if(test_obj!=NULL){
+                printf("The json object with key %s has been overwride.\n", key);
+            }
+            json_object_object_add(g_struct_info, key, val);
+        }
+    }
+
     return 0;
 }
 
@@ -170,6 +188,7 @@ OUTPUT:    bool,                     return true if kpcr found, else retuen fals
 bool memfrs_kpcr_self_check( uint64_t kpcr_ptr ) {
 
     uint64_t self_ptr = 0;
+    json_object* test_obj;
     json_object* jkpcr =NULL;
     field_info* f_info = NULL;
     int offset_self_to_kpcr = 0;
@@ -181,10 +200,17 @@ bool memfrs_kpcr_self_check( uint64_t kpcr_ptr ) {
     }
 
     // Find the struct _KPCR
+    json_object_object_get_ex(g_struct_info, "_KPCR", &test_obj);
+    if(test_obj==NULL)
+        return false;
+
     jkpcr = memfrs_q_struct("_KPCR");
+    if(jkpcr==NULL)
+        return false;
 
     // Query field name Self in _KPCR structure
     f_info = memfrs_q_field(jkpcr, "Self");
+
     offset_self_to_kpcr = f_info->offset;
     memfrs_close_field(f_info);
 
@@ -404,11 +430,11 @@ UT_array* memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
     }
 
     // Read the concrete memory value of kthread_ptr(CurrentThread) via _KPCR address
-    memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&kthread_ptr, sizeof(kthread_ptr), kpcr_ptr, "_KPCR", 2, "#Prcb", "#CurrentThread");
+    memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&kthread_ptr, sizeof(kthread_ptr), kpcr_ptr, false, "_KPCR", 2, "#Prcb", "#CurrentThread");
 
     // Read the concrete memory value of PROCESS via CurrentThread
     // Get the first PROCESS
-    memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), kthread_ptr, "_KTHREAD", 1, "#Process");
+    memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), kthread_ptr, false, "_KTHREAD", 1, "#Process");
 
     // Assign process_list be a 'process_list_st' structure UTarray
     utarray_new( list, &proc_list_icd);
@@ -420,15 +446,15 @@ UT_array* memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
     do {
 
         //Read CR3 & Process name
-        memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&cr3, sizeof(cr3), eprocess_ptr, "_EPROCESS", 2, "#Pcb", "#DirectoryTableBase");
-        memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&processid, sizeof(processid), eprocess_ptr, "_EPROCESS", 1, "#UniqueProcessId");
-        memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)file_name_buf, sizeof(file_name_buf), eprocess_ptr, "_EPROCESS", 1, "#ImageFileName");
+        memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&cr3, sizeof(cr3), eprocess_ptr, false, "_EPROCESS", 2, "#Pcb", "#DirectoryTableBase");
+        memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&processid, sizeof(processid), eprocess_ptr, false, "_EPROCESS", 1, "#UniqueProcessId");
+        memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)file_name_buf, sizeof(file_name_buf), eprocess_ptr, false, "_EPROCESS", 1, "#ImageFileName");
         //printf( "0x%-20lx%-20lx%-5"PRId64" ", eprocess_ptr, cr3, processid );
 
         if( cr3 !=0 ){
-            if ( memfrs_get_virmem_struct_content(cpu, cr3, (uint8_t*)&length, sizeof(length), eprocess_ptr, "_EPROCESS", 4, "*Peb", "*ProcessParameters", "#ImagePathName", "#Length") == -1 )
+            if ( memfrs_get_mem_struct_content(cpu, cr3, (uint8_t*)&length, sizeof(length), eprocess_ptr, false, "_EPROCESS", 4, "*Peb", "*ProcessParameters", "#ImagePathName", "#Length") == -1 )
                 length =0;
-            if ( memfrs_get_virmem_struct_content(cpu, cr3, (uint8_t*)&buf_ptr, sizeof(buf_ptr), eprocess_ptr, "_EPROCESS", 4, "*Peb", "*ProcessParameters", "#ImagePathName", "*Buffer") == -1 )
+            if ( memfrs_get_mem_struct_content(cpu, cr3, (uint8_t*)&buf_ptr, sizeof(buf_ptr), eprocess_ptr, false, "_EPROCESS", 4, "*Peb", "*ProcessParameters", "#ImagePathName", "*Buffer") == -1 )
                 buf_ptr =0;
         }
 
@@ -457,7 +483,7 @@ UT_array* memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
             break;
 
         // Read next entry
-        memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), eprocess_ptr, "_EPROCESS", 2, "#ActiveProcessLinks", "*Blink");
+        memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), eprocess_ptr, false, "_EPROCESS", 2, "#ActiveProcessLinks", "*Blink");
         // Substract entry_list offset to find base address of eprocess
         memfrs_get_nested_field_offset(&offset_entry_list_to_eprocess, "_EPROCESS", 1, "ActiveProcessLinks");
         eprocess_ptr = eprocess_ptr-offset_entry_list_to_eprocess;
@@ -490,8 +516,6 @@ char* parse_unicode_strptr(uint64_t ustr_ptr, CPUState *cpu)
     cpu_memory_rw_debug( cpu, ustr_ptr+offset, (uint8_t*)&length, sizeof(length), 0 );
     memfrs_close_field(f_info);
   
-    printf("String with size %d/%d\n", length, max_length);
-
     if(length == 0 || length > 256 || max_length ==0 || max_length > 256)
         return NULL;
 
@@ -510,7 +534,6 @@ char* parse_unicode_strptr(uint64_t ustr_ptr, CPUState *cpu)
         str[i/2] = buf[i];   
     str[i] = 0x00;
 
-    printf("Filename %s\n", str);
     free(buf);
     return str;
 }
@@ -526,8 +549,6 @@ char* parse_unicode_str(uint8_t* ustr, CPUState *cpu)
     char* str;
     int i;
 
-    //printf("String va:  %" PRIx64 "\n", ustr_ptr);
-
     justr = memfrs_q_struct("_UNICODE_STRING");
 
     f_info = memfrs_q_field(justr, "MaximumLength");
@@ -541,8 +562,6 @@ char* parse_unicode_str(uint8_t* ustr, CPUState *cpu)
     length = *((uint16_t*)(ustr+offset));
     //cpu_memory_rw_debug( cpu, ustr_ptr+offset, (uint8_t*)&length, sizeof(length), 0 );
     memfrs_close_field(f_info);
-
-    printf("String with size %d/%d\n", length, max_length);
 
     if(length == 0 || length > 256 || max_length ==0 || max_length > 256)
         return NULL;
@@ -729,12 +748,13 @@ int memfrs_display_type(CPUState *cpu, uint64_t addr, const char* struct_name)
     return 0;
 }
 
-int memfrs_get_virmem_struct_content(
+int memfrs_get_mem_struct_content(
         CPUState   *cpu,
         uint64_t    cr3,
         uint8_t    *buffer,
         int         len,
         uint64_t    struct_addr,
+        bool        from_physical_memory,
         const char *struct_type_name,
         int         depth,
         ...) {
@@ -742,10 +762,11 @@ int memfrs_get_virmem_struct_content(
     // indicate that the field is a pointer or not.
     // Should load and parse the structure file correctly instead.
     // XXX: assuming pointer has size of 8
-    json_object *struct_type;
+
+    int errcode = 0;
     va_list vl;
+    json_object *struct_type;
     field_info *info = NULL;
-    int errcode;
     const char *field_name;
 
     struct_type = memfrs_q_struct(struct_type_name);
@@ -753,35 +774,79 @@ int memfrs_get_virmem_struct_content(
         return -1;
 
     va_start(vl, depth);
-    // Process field query
-    while (depth--) {
-        if (info && info->is_pointer) {
-            errcode = memfrs_get_virmem_content(cpu, cr3, struct_addr, 8, (uint8_t*)&struct_addr);
-            if (errcode == -1)
-                goto FAIL;
-        }
 
-        free(info);
+    if(from_physical_memory){
+
         field_name = va_arg(vl, const char*);
         info = memfrs_q_field(struct_type, field_name+1);
-        if (info == NULL)
-            goto FAIL;
 
-        if (field_name[0] == '*')
-            info->is_pointer = true;
+        if(depth==1){
+            cpu_physical_memory_read(struct_addr + info->offset , buffer, len);
+
+            free(info);
+            va_end(vl);
+            return 0;
+        }
+        else if(depth>1){
+            cpu_physical_memory_read( struct_addr + info->offset , &struct_addr, 8);
+            depth = depth-1;
+
+            while(depth--) {
+                struct_type = info->jobject_type;
+                free(info);
+                field_name = va_arg(vl, const char*);
+                info = memfrs_q_field(struct_type, field_name+1);
+                if (info == NULL)
+                    return -1;
+
+                if (field_name[0] == '*')
+                    info->is_pointer = true;
+                else
+                    info->is_pointer = false;
+
+                struct_addr += info->offset;
+
+                if (depth!=0 && info && info->is_pointer) {
+                    errcode = memfrs_get_virmem_content(cpu, cr3, struct_addr, 8, (uint8_t*)&struct_addr);
+                    if (errcode == -1)
+                        return -1;
+                }
+            }
+
+            free(info);
+            va_end(vl);
+            return memfrs_get_virmem_content(cpu, cr3, struct_addr, len, buffer);
+        }
         else
-            info->is_pointer = false;
-
-        struct_addr += info->offset;
-        struct_type = info->jobject_type;
+            return -1;
     }
-    free(info);
-    va_end(vl);
+    else{
+        while (depth--) {
+            if (info && info->is_pointer) {
+                errcode = memfrs_get_virmem_content(cpu, cr3, struct_addr, 8, (uint8_t*)&struct_addr);
+                if (errcode == -1)
+                    return -1;
+            }
 
-    return memfrs_get_virmem_content(cpu, cr3, struct_addr, len, buffer);
-FAIL:
-    va_end(vl);
-    return -1;
+            free(info);
+            field_name = va_arg(vl, const char*);
+            info = memfrs_q_field(struct_type, field_name+1);
+            if (info == NULL)
+                return -1;
+
+            if (field_name[0] == '*')
+                info->is_pointer = true;
+            else
+                info->is_pointer = false;
+
+            struct_addr += info->offset;
+            struct_type = info->jobject_type;
+        }
+        free(info);
+        va_end(vl);
+
+        return memfrs_get_virmem_content(cpu, cr3, struct_addr, len, buffer);
+    }
 }
 
 int memfrs_get_nested_field_offset(int *out, const char *struct_type_name, int depth, ...) {

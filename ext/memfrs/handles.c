@@ -17,7 +17,6 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#if !defined(CONFIG_MEMFRS_TEST)
 #include "qemu-common.h"
 #include "monitor/monitor.h"
 #include "include/exec/cpu-common.h"
@@ -25,7 +24,6 @@
 #include "include/utarray.h"
 #include "include/uthash.h"
 #include "json-c/json.h"
-#endif
 
 #include "memfrs.h"
 #include "memfrs-priv.h"
@@ -156,8 +154,7 @@ static char* extract_entry_name_info_detail( uint64_t handle_table_entry_ptr, ui
     // Get Name offset from _OBJECT_HEADER_NAME_INFO
     memfrs_get_nested_field_offset(&offset_name_to_object_header_name_info, "_OBJECT_HEADER_NAME_INFO", 1, "Name");
 
-
-    memfrs_get_virmem_struct_content( cpu, cr3, (uint8_t*)&infomask, sizeof(infomask), handle_table_entry_ptr, "_OBJECT_HEADER", 1, "#InfoMask");
+    memfrs_get_mem_struct_content( cpu, cr3, (uint8_t*)&infomask, sizeof(infomask), handle_table_entry_ptr, false, "_OBJECT_HEADER", 1, "#InfoMask");
     if( infomask & 0x2 ){
         if( infomask & 0x1 )
             object_header_name_info_ptr = handle_table_entry_ptr-_OBJECT_HEADER_CREATOR_INFO-_OBJECT_HEADER_NAME_INFO;
@@ -190,8 +187,8 @@ static char* extract_process_detail( uint64_t handle_table_entry_ptr, uint64_t c
     uint8_t buf[16]={0};
 
     handle_table_entry_body_ptr = handle_table_entry_ptr+g_body_to_object_header;
-    memfrs_get_virmem_struct_content( cpu, cr3, (uint8_t*)buf, sizeof(buf), handle_table_entry_body_ptr, "_EPROCESS", 1, "#ImageFileName");
-    memfrs_get_virmem_struct_content( cpu, cr3, (uint8_t*)&unique_process_id, sizeof(unique_process_id), handle_table_entry_body_ptr, "_EPROCESS", 1, "#UniqueProcessId");
+    memfrs_get_mem_struct_content( cpu, cr3, (uint8_t*)buf, sizeof(buf), handle_table_entry_body_ptr, false, "_EPROCESS", 1, "#ImageFileName");
+    memfrs_get_mem_struct_content( cpu, cr3, (uint8_t*)&unique_process_id, sizeof(unique_process_id), handle_table_entry_body_ptr, false, "_EPROCESS", 1, "#UniqueProcessId");
 
     process_detail = (char *)malloc(32);
     memset(process_detail, 0, 32);
@@ -229,15 +226,15 @@ static char* extract_registry_detail( uint64_t handle_table_entry_ptr, uint64_t 
     uint8_t name[256];
 
     handle_table_entry_body_ptr = handle_table_entry_ptr+g_body_to_object_header;
-    memfrs_get_virmem_struct_content( cpu, cr3, (uint8_t*)&kcb_ptr, sizeof(kcb_ptr), handle_table_entry_body_ptr, "_CM_KEY_BODY", 1, "*KeyControlBlock");
+    memfrs_get_mem_struct_content( cpu, cr3, (uint8_t*)&kcb_ptr, sizeof(kcb_ptr), handle_table_entry_body_ptr, false, "_CM_KEY_BODY", 1, "*KeyControlBlock");
 
-    while( memfrs_get_virmem_struct_content( cpu, cr3, (uint8_t*)&kcb_parent_ptr, sizeof(kcb_parent_ptr), kcb_ptr, "_CM_KEY_CONTROL_BLOCK", 1, "*ParentKcb") !=-1 ){
+    while( memfrs_get_mem_struct_content( cpu, cr3, (uint8_t*)&kcb_parent_ptr, sizeof(kcb_parent_ptr), kcb_ptr, false, "_CM_KEY_CONTROL_BLOCK", 1, "*ParentKcb") !=-1 ){
 
         memset(name, 0, 256);
-        if( memfrs_get_virmem_struct_content( cpu, cr3, (uint8_t*)&name, sizeof(name), kcb_ptr, "_CM_KEY_CONTROL_BLOCK", 2, "*NameBlock", "#Name") ==-1 )
+        if( memfrs_get_mem_struct_content( cpu, cr3, (uint8_t*)&name, sizeof(name), kcb_ptr, false, "_CM_KEY_CONTROL_BLOCK", 2, "*NameBlock", "#Name") ==-1 )
             break;
 
-        memfrs_get_virmem_struct_content( cpu, cr3, (uint8_t*)&key_length, sizeof(key_length), kcb_ptr, "_CM_KEY_CONTROL_BLOCK", 2, "*NameBlock", "#NameLength");
+        memfrs_get_mem_struct_content( cpu, cr3, (uint8_t*)&key_length, sizeof(key_length), kcb_ptr, false, "_CM_KEY_CONTROL_BLOCK", 2, "*NameBlock", "#NameLength");
 
         total_key_length = total_key_length + key_length+1 ;
 
@@ -290,8 +287,8 @@ static char* extract_thread_detail( uint64_t handle_table_entry_ptr, uint64_t cr
     memset( thread_detail, 0, 32+1);
 
     handle_table_entry_body_ptr = handle_table_entry_ptr+g_body_to_object_header;
-    if ( memfrs_get_virmem_struct_content( cpu, cr3, (uint8_t*)&uniqueProcess, sizeof(uniqueProcess), handle_table_entry_body_ptr, "_ETHREAD", 2, "#Cid", "#UniqueProcess") !=-1 )
-        if ( memfrs_get_virmem_struct_content( cpu, cr3, (uint8_t*)&uniqueThread, sizeof(uniqueThread), handle_table_entry_body_ptr, "_ETHREAD", 2, "#Cid", "#UniqueThread") !=-1 )
+    if ( memfrs_get_mem_struct_content( cpu, cr3, (uint8_t*)&uniqueProcess, sizeof(uniqueProcess), handle_table_entry_body_ptr, false, "_ETHREAD", 2, "#Cid", "#UniqueProcess") !=-1 )
+        if ( memfrs_get_mem_struct_content( cpu, cr3, (uint8_t*)&uniqueThread, sizeof(uniqueThread), handle_table_entry_body_ptr, false, "_ETHREAD", 2, "#Cid", "#UniqueThread") !=-1 )
             sprintf(thread_detail, "{TID %d PID %d}", uniqueProcess, uniqueThread);
 
     return thread_detail;
@@ -327,8 +324,8 @@ static char* extract_file_detail( uint64_t handle_table_entry_ptr, uint64_t cr3,
 
     // Check and extract device path info
     handle_table_entry_body_ptr = handle_table_entry_ptr+g_body_to_object_header;
-    memfrs_get_virmem_struct_content( cpu, cr3, (uint8_t*)&Device_entry_body_ptr, sizeof(Device_entry_body_ptr), handle_table_entry_body_ptr, "_DEVICE_OBJECT", 1, "*DriverObject");
-    if( memfrs_get_virmem_struct_content( cpu, cr3, (uint8_t*)&device_infomask, sizeof(device_infomask), Device_entry_body_ptr-g_body_to_object_header, "_OBJECT_HEADER", 1, "#InfoMask") !=-1 )
+    memfrs_get_mem_struct_content( cpu, cr3, (uint8_t*)&Device_entry_body_ptr, sizeof(Device_entry_body_ptr), handle_table_entry_body_ptr, false, "_DEVICE_OBJECT", 1, "*DriverObject");
+    if( memfrs_get_mem_struct_content( cpu, cr3, (uint8_t*)&device_infomask, sizeof(device_infomask), Device_entry_body_ptr-g_body_to_object_header, false, "_OBJECT_HEADER", 1, "#InfoMask") !=-1 )
         device_detail = extract_entry_name_info_detail( Device_entry_body_ptr-g_body_to_object_header, cr3, cpu );
 
     file_detail = parse_unicode_str_ptr(handle_table_entry_body_ptr+offset_filename_to_file_object, cpu);
@@ -422,7 +419,7 @@ static void do_table_entry( int entry_index, uint64_t handle_table_entry_ptr, ui
     // NoRightsUpgrade : Bitfield Pos 25, 1 Bit
     // Spare1          : Bitfield Pos 26, 6 Bit
     // Spare2          : Uint4B
-    if( memfrs_get_virmem_struct_content( cpu, cr3, (uint8_t*)&type_index, sizeof(type_index), handle_table_entry_ptr, "_OBJECT_HEADER", 1, "#TypeIndex") !=-1 ){
+    if( memfrs_get_mem_struct_content( cpu, cr3, (uint8_t*)&type_index, sizeof(type_index), handle_table_entry_ptr, false, "_OBJECT_HEADER", 1, "#TypeIndex") !=-1 ){
         true_type_index =  (uint8_t)((type_index ^ cookie ^ ((handle_table_entry_ptr & 0x0000ffffffffffff)>>8))& 0xff );
 
         cpu_memory_rw_debug( cpu, g_ObTypeIndexTable_ptr + 0x8*true_type_index , (uint8_t*)&object_type_ptr, sizeof(object_type_ptr), 0 );
@@ -466,11 +463,11 @@ static int entry_is_legal( uint64_t handle_table_entry_ptr, uint64_t cr3, CPUSta
     uint8_t typeindex;
     uint8_t infomask;
 
-    if( memfrs_get_virmem_struct_content( cpu, cr3, (uint8_t*)&pointercount, sizeof(pointercount), handle_table_entry_ptr, "_OBJECT_HEADER", 1, "#PointerCount") !=-1 )
+    if( memfrs_get_mem_struct_content( cpu, cr3, (uint8_t*)&pointercount, sizeof(pointercount), handle_table_entry_ptr, false, "_OBJECT_HEADER", 1, "#PointerCount") !=-1 )
         if( pointercount > 0x1000000 || pointercount < 0 )
             return 0;
 
-    if( memfrs_get_virmem_struct_content( cpu, cr3, (uint8_t*)&handlecount, sizeof(handlecount), handle_table_entry_ptr, "_OBJECT_HEADER", 1, "#HandleCount") !=-1 )
+    if( memfrs_get_mem_struct_content( cpu, cr3, (uint8_t*)&handlecount, sizeof(handlecount), handle_table_entry_ptr, false, "_OBJECT_HEADER", 1, "#HandleCount") !=-1 )
         if( handlecount > 0x1000 || handlecount < 0 )
             return 0;
 
@@ -484,13 +481,13 @@ static int entry_is_legal( uint64_t handle_table_entry_ptr, uint64_t cr3, CPUSta
     //     ('AuditInfo',   '_OBJECT_HEADER_AUDIT_INFO',   0x20),
     //     ('PaddingInfo', '_OBJECT_HEADER_PADDING_INFO', 0x40)
     // )
-    if( memfrs_get_virmem_struct_content( cpu, cr3, (uint8_t*)&infomask, sizeof(infomask), handle_table_entry_ptr, "_OBJECT_HEADER", 1, "#InfoMask") !=-1 )
+    if( memfrs_get_mem_struct_content( cpu, cr3, (uint8_t*)&infomask, sizeof(infomask), handle_table_entry_ptr, false, "_OBJECT_HEADER", 1, "#InfoMask") !=-1 )
         if( infomask > 0x7f )
             return 0;
 
     // the range of type index is 2 to about 53 ,
     // lower bound is 2, but higher bound depending on Windows version
-    if( memfrs_get_virmem_struct_content( cpu, cr3, (uint8_t*)&typeindex, sizeof(typeindex), handle_table_entry_ptr, "_OBJECT_HEADER", 1, "#TypeIndex") !=-1 )
+    if( memfrs_get_mem_struct_content( cpu, cr3, (uint8_t*)&typeindex, sizeof(typeindex), handle_table_entry_ptr, false, "_OBJECT_HEADER", 1, "#TypeIndex") !=-1 )
         if( typeindex >53 || typeindex < 1 )
             return 0;
 
@@ -671,11 +668,11 @@ extern UT_array* memfrs_enum_proc_handles( int target_type, uint64_t target, uin
     }
 
     // Read the concrete memory value of kthread_ptr(CurrentThread) via _KPCR address
-    memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&kthread_ptr, sizeof(kthread_ptr), kpcr_ptr, "_KPCR", 2, "#Prcb", "#CurrentThread");
+    memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&kthread_ptr, sizeof(kthread_ptr), kpcr_ptr, false, "_KPCR", 2, "#Prcb", "#CurrentThread");
 
     // Read the concrete memory value of PROCESS via CurrentThread
     // Get the first PROCESS
-    memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), kthread_ptr, "_KTHREAD", 1, "#Process");
+    memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), kthread_ptr, false, "_KTHREAD", 1, "#Process");
 
     // Get ActiveProcessLinks offset from _EPROCESS
     memfrs_get_nested_field_offset(&offset_entry_list_to_eprocess, "_EPROCESS", 1, "ActiveProcessLinks");
@@ -693,9 +690,9 @@ extern UT_array* memfrs_enum_proc_handles( int target_type, uint64_t target, uin
 
     do {
         //Read CR3 & Process name
-        memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&cr3, sizeof(cr3), eprocess_ptr, "_EPROCESS", 2, "#Pcb", "#DirectoryTableBase");
-        memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)buf, sizeof(buf), eprocess_ptr, "_EPROCESS", 1, "#ImageFileName");
-        memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&processid, sizeof(processid), eprocess_ptr, "_EPROCESS", 1, "#UniqueProcessId");
+        memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&cr3, sizeof(cr3), eprocess_ptr, false, "_EPROCESS", 2, "#Pcb", "#DirectoryTableBase");
+        memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)buf, sizeof(buf), eprocess_ptr, false, "_EPROCESS", 1, "#ImageFileName");
+        memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&processid, sizeof(processid), eprocess_ptr, false, "_EPROCESS", 1, "#UniqueProcessId");
 
         if( cr3!=0 ){
 
@@ -705,7 +702,7 @@ extern UT_array* memfrs_enum_proc_handles( int target_type, uint64_t target, uin
                     ( target_type==PARSING_HANDLE_TYPE_CR3 && target==cr3 ) || 
                     ( target_type==PARSING_HANDLE_TYPE_EPROCESS && target==eprocess_ptr ) || 
                     ( target_type==PARSING_HANDLE_TYPE_PID && target==processid ) ){
-                memfrs_get_virmem_struct_content( cpu, cr3, (uint8_t*)&tablecode_ptr, sizeof(tablecode_ptr), eprocess_ptr, "_EPROCESS", 2, "*ObjectTable", "#TableCode");
+                memfrs_get_mem_struct_content( cpu, cr3, (uint8_t*)&tablecode_ptr, sizeof(tablecode_ptr), eprocess_ptr, false, "_EPROCESS", 2, "*ObjectTable", "#TableCode");
                 table_level = tablecode_ptr & 0x3;
                 tablecode_ptr = tablecode_ptr & 0xfffffffffffffffc ;
 
@@ -737,7 +734,7 @@ extern UT_array* memfrs_enum_proc_handles( int target_type, uint64_t target, uin
             break;
 
         // Read next entry
-        memfrs_get_virmem_struct_content( cpu, 0, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), eprocess_ptr, "_EPROCESS", 2, "#ActiveProcessLinks", "*Blink");
+        memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), eprocess_ptr, false, "_EPROCESS", 2, "#ActiveProcessLinks", "*Blink");
         // Substract entry_list offset to find base address of eprocess
         eprocess_ptr = eprocess_ptr-offset_entry_list_to_eprocess;
     }while( eprocess_ptr != eprocess_ptr_init );
@@ -891,9 +888,9 @@ extern UT_array* memfrs_enum_handles_types( uint64_t kpcr_ptr, CPUState *cpu )
     type_index=0;
     while(type_index<256){
         if ( cpu_memory_rw_debug( cpu, g_ObTypeIndexTable_ptr + 0x8*type_index , (uint8_t*)&object_type_ptr, sizeof(object_type_ptr), 0 ) ==0 ){
-            if( memfrs_get_virmem_struct_content(cpu, 0, (uint8_t*)&length, sizeof(length), object_type_ptr, "_OBJECT_TYPE", 2, "#Name", "#Length") == -1 )
+            if( memfrs_get_mem_struct_content(cpu, 0, (uint8_t*)&length, sizeof(length), object_type_ptr, false, "_OBJECT_TYPE", 2, "#Name", "#Length") == -1 )
                 length=0;
-            if( memfrs_get_virmem_struct_content(cpu, 0, (uint8_t*)&type_buf_ptr, sizeof(type_buf_ptr), object_type_ptr, "_OBJECT_TYPE", 2, "#Name", "*Buffer") == -1 )
+            if( memfrs_get_mem_struct_content(cpu, 0, (uint8_t*)&type_buf_ptr, sizeof(type_buf_ptr), object_type_ptr, false, "_OBJECT_TYPE", 2, "#Name", "*Buffer") == -1 )
                 type_buf_ptr=0;
 
             if( type_buf_ptr!=0 && memfrs_get_virmem_content( cpu, 0, type_buf_ptr, sizeof(type_buf), (uint8_t*)type_buf ) != -1 ){

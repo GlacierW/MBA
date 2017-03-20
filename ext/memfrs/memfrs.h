@@ -95,9 +95,26 @@ typedef struct UT_handles{
 
 
 
+// network data structure
+typedef struct network_state{
+    const char* protocol;
+    uint64_t pmem;
+    uint64_t eprocess;
+    char* file_name;
+    uint64_t pid;
+    const char* state;
+    char* local_addr;
+    char* foreign_addr;
+    char* time;
+}network_state;
+
+
+
 //public API 
 extern bool memfrs_check_struct_info(void);
+extern bool memfrs_check_network_struct_info(void);
 extern int memfrs_load_structs( const char* type_filename);
+extern int memfrs_load_network_structs( const char* type_filename);
 extern bool memfrs_kpcr_self_check( uint64_t seg_gs_cpl0 );
 extern UT_array* memfrs_enum_proc_list( uint64_t seg_gs_cpl0, CPUState *cp );
 extern json_object* memfrs_q_struct(const char* ds_name);
@@ -133,7 +150,7 @@ extern int memfrs_display_type(CPUState *cpu, uint64_t addr, const char* struct_
 ///     uint64_t field3;
 /// };
 ///
-/// memfrs_get_virmem_struct_content(cpu, cr3, buffer, sizeof(uint64_t), 0xdeadbeef, "A",
+/// memfrs_get_mem_struct_content(cpu, cr3, buffer, sizeof(uint64_t), 0xdeadbeef, "A", false,
 ///         3, "#field1", "*field2", "#field3");
 /// 
 /// \param cpu              the running cpu
@@ -141,17 +158,19 @@ extern int memfrs_display_type(CPUState *cpu, uint64_t addr, const char* struct_
 /// \param buffer           output buffer
 /// \param len              length of content to read
 /// \param struct_addr      the virtual address of the target structure
+/// \param bool             from_physical_memory,
 /// \param struct_type_name the type name of the target structure
 /// \param depth            the field access chain depth
 /// \param ...              field names in the query chain
 /// 
 /// return -1 on error, 0 on success
-extern int memfrs_get_virmem_struct_content(
+extern int memfrs_get_mem_struct_content(
         CPUState   *cpu,
         uint64_t    cr3,
         uint8_t    *buffer,
         int         len,
         uint64_t    struct_addr,
+        bool        from_physical_memory,
         const char *struct_type_name,
         int         depth,
         ...);
@@ -193,6 +212,16 @@ INPUT:     uint64_t kpcr_ptr,        the address of _KPCR struct
 OUTPUT:    UT_array*                 return a UT_array with handles types
 *******************************************************************/
 extern UT_array* memfrs_enum_handles_types( uint64_t kpcr_ptr, CPUState *cpu );
+
+/*********************************************************************************
+UT_array memfrs_scan_network(CPUState *cpu)
+
+Scan the whole physical memory for network pool tag, and list all the network state.
+
+INPUT:  CPUState *cpu            pointer to current cpu
+OUTPUT: UT_array*                return a UT_array with handles types
+**********************************************************************************/
+extern UT_array* memfrs_scan_network(CPUState *cpu);
 
 /*
 extern void parse_unicode_strptr(uint64_t ustr_ptr, CPUState *cpu);
