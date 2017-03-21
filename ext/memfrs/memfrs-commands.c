@@ -327,7 +327,8 @@ void do_gvar_lookup(Monitor *mon, const QDict *qdict)
     printf("Symbol Lookup\n");
     sym_rev_hash = memfrs_build_gvar_lookup_map();
     name = memfrs_get_symbolname_via_address( sym_rev_hash, addr);
-    printf("%s\n", name);
+    if(name)
+        monitor_printf(mon, "%s\n", name);
     memfrs_free_reverse_lookup_map(sym_rev_hash);
 }
 
