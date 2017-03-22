@@ -43,7 +43,7 @@ UT_array* memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu )
 {
     UT_array *list = NULL;
     
-process_list_st proc_list;
+    process_list_st proc_list;
 
     int i;
     uint64_t kthread_ptr,

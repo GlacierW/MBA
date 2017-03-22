@@ -484,3 +484,38 @@ void do_handles_types_list(Monitor *mon, const QDict *qdict)
     else
         monitor_printf(mon, "Something is wrong, please check error number\n");
 }
+
+/******************************************************************
+* PURPOSE : List the ssdt
+******************************************************************/
+void do_ssdt_list(Monitor *mon, const QDict *qdict)
+{
+    CPUState *cpu, *thiscpu=NULL;
+    UT_array *ssdt_list;
+    ssdt_list_st *print_ssdt_list;
+
+    // Find the first CPU
+    CPU_FOREACH(cpu)
+    {
+        monitor_printf(mon, "%p\n", cpu);
+        thiscpu = cpu;
+        break;
+    }
+
+    ssdt_list = memfrs_enum_ssdt_list(g_kpcr_ptr, thiscpu);
+
+    if( ssdt_list != NULL ){
+        print_ssdt_list = NULL;
+        monitor_printf(mon, "Offset  system call addr          system call name\n");
+        monitor_printf(mon, "------ ------------------ --------------------------------\n");
+        while( (print_ssdt_list=(ssdt_list_st*)utarray_next(ssdt_list,print_ssdt_list)) ){
+            monitor_printf(mon, "0x%-6x 0x%-18"PRIx64" nt!%s\n", 
+                print_ssdt_list->offset,
+                print_ssdt_list->address,
+                print_ssdt_list->system_call_name);
+        }
+        free(ssdt_list);
+    }
+    else
+        monitor_printf(mon, "Something is wrong, please check error number\n");
+}

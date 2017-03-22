@@ -39,6 +39,9 @@ typedef enum MEMFRS_ERRNO{
     MEMFRS_ERR_NOT_LOADED_GLOBAL_STRUCTURE,
     MEMFRS_ERR_NOT_LOADED_STRUCTURE,
     MEMFRS_ERR_NOT_FOUND_KPCR,
+    MEMFRS_ERR_NOT_FOUND_GLOBAL_STRUCTURE,
+    MEMFRS_ERR_NOT_FOUND_KERNEL_BASE,
+    MEMFRS_ERR_MEMORY_READ_FAILED,
     MEMFRS_ERR_INVALID_CPU
 }MEMFRS_ERRNO;
 
@@ -110,13 +113,21 @@ typedef struct network_state{
 
 
 
+// process list
+typedef struct ssdt_list_st{
+    int      offset;
+    uint64_t address;
+    char *system_call_name;
+}ssdt_list_st;
+
+
+
 //public API 
 extern bool memfrs_check_struct_info(void);
 extern bool memfrs_check_network_struct_info(void);
 extern int memfrs_load_structs( const char* type_filename);
 extern int memfrs_load_network_structs( const char* type_filename);
 extern bool memfrs_kpcr_self_check( uint64_t seg_gs_cpl0 );
-extern UT_array* memfrs_enum_proc_list( uint64_t seg_gs_cpl0, CPUState *cp );
 extern json_object* memfrs_q_struct(const char* ds_name);
 extern field_info* memfrs_q_field( json_object* struc, const char* field_name  );
 extern int memfrs_close_field(field_info* field);
@@ -176,6 +187,21 @@ extern int memfrs_get_mem_struct_content(
         ...);
 extern int memfrs_get_nested_field_offset(int *out, const char *struct_type_name, int depth, ...);
 
+
+
+/*******************************************************************
+extern UT_array* memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu );
+
+Eumerate the running process
+
+INPUT:     uint64_t kpcr_ptr         kpcr address
+           CPUState *cpu,            the pointer to current cpu
+OUTPUT:    UT_array*                 return a UT_array with process data
+*******************************************************************/
+extern UT_array* memfrs_enum_proc_list( uint64_t kpcr_ptr, CPUState *cpu );
+
+
+
 /*******************************************************************
 extern UT_array* memfrs_enum_proc_handles( int target_type, uint64_t target, uint64_t kpcr_ptr, CPUState *cpu )
 
@@ -222,6 +248,19 @@ INPUT:  CPUState *cpu            pointer to current cpu
 OUTPUT: UT_array*                return a UT_array with handles types
 **********************************************************************************/
 extern UT_array* memfrs_scan_network(CPUState *cpu);
+
+
+
+/*******************************************************************
+extern UT_array* memfrs_enum_ssdt_list( uint64_t kpcr_ptr, CPUState *cpu );
+
+Eumerate the ssdt
+
+INPUT:     uint64_t kpcr_ptr         kpcr address
+           CPUState *cpu,            the pointer to current cpu
+OUTPUT:    UT_array*                 return a UT_array with ssdt data
+*******************************************************************/
+extern UT_array* memfrs_enum_ssdt_list( uint64_t kpcr_ptr, CPUState *cpu );
 
 /*
 extern void parse_unicode_strptr(uint64_t ustr_ptr, CPUState *cpu);

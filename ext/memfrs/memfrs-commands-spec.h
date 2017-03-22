@@ -148,3 +148,10 @@
         .help       = "listing all types of handles",
         .mhandler.cmd = do_handles_types_list,
 },
+{
+        .name = "list_ssdt",
+        .args_type  = "",
+        .params     = "",
+        .help       = "listing all system call name and address.",
+        .mhandler.cmd = do_ssdt_list,
+},
