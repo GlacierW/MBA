@@ -22,6 +22,7 @@
 #define __TRACER_H__
 
 #include <inttypes.h> 
+#include <pthread.h>
 #include "utlist.h"
 
 #define MAX_SZ_TRACER_LABEL 16
@@ -61,13 +62,22 @@ struct tracer_cb_record {
 
 typedef struct tracer_cb_record tracer_cb_record;
 
-extern tracer_cb_record *g_process_tracer_head;
-extern tracer_cb_record *g_universal_kernel_tracer_head;
-extern tracer_cb_record *g_universal_tracer_head;
+struct tracer_context {
+    int serial_num;
 
-extern tracer_cb_record *g_process_btracer_head;
-extern tracer_cb_record *g_universal_kernel_btracer_head;
-extern tracer_cb_record *g_universal_btracer_head;
+    tracer_cb_record *process_tracer_head;
+    tracer_cb_record *universal_kernel_tracer_head;
+    tracer_cb_record *universal_tracer_head;
+    tracer_cb_record *process_btracer_head;
+    tracer_cb_record *universal_kernel_btracer_head;
+    tracer_cb_record *universal_btracer_head;
+
+    // read-write lock to protect the internal data of OBHook (UTHASH not fully thread-safe)
+    pthread_rwlock_t rwlock;
+};
+
+typedef struct tracer_context tracer_context;
+extern tracer_context tracer_cxt;
 
 //Public API
 /// int tracer_enable_tracer(int uid)

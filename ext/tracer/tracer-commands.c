@@ -26,6 +26,7 @@
 
 #include "ext/tracer/tracer-commands.h"
 #include "ext/tracer/tracer.h"
+#include "ext/tracer/tracer-priv.h"
 
 
 void do_enable_tracer(Monitor *mon, const QDict *qdict)

@@ -31,17 +31,21 @@
 #define MASK_KERN_ADDR 0xffff000000000000
 
 // Inst Trace Linked-List Head
-tracer_cb_record *g_process_tracer_head =NULL;
-tracer_cb_record *g_universal_kernel_tracer_head =NULL;
-tracer_cb_record *g_universal_tracer_head =NULL;
-
-tracer_cb_record *g_process_btracer_head =NULL;
-tracer_cb_record *g_universal_kernel_btracer_head =NULL;
-tracer_cb_record *g_universal_btracer_head =NULL;
-
-int g_serial_num = 0;
 
 int g_error_no = 0;
+
+tracer_context tracer_cxt = {
+    .serial_num = 0,
+
+    .process_tracer_head = NULL,
+    .universal_kernel_tracer_head = NULL,
+    .universal_tracer_head = NULL,
+    .universal_tracer_head = NULL,
+    .process_btracer_head = NULL,
+    .universal_btracer_head = NULL,
+
+    .rwlock = PTHREAD_RWLOCK_INITIALIZER
+};
 
 void show_tracer_list_info( tracer_cb_record* head );
 
@@ -67,13 +71,13 @@ inline int enable_tracer_in_list(tracer_cb_record* head, int uid)
 int tracer_enable_tracer(int uid)
 {
     
-    if( enable_tracer_in_list( g_process_tracer_head, uid)== 0) return 0;
-    if( enable_tracer_in_list( g_universal_kernel_tracer_head, uid)== 0) return 0;
-    if( enable_tracer_in_list( g_universal_tracer_head, uid)== 0) return 0;
+    if( enable_tracer_in_list( tracer_cxt.process_tracer_head, uid)== 0) return 0;
+    if( enable_tracer_in_list( tracer_cxt.universal_kernel_tracer_head, uid)== 0) return 0;
+    if( enable_tracer_in_list( tracer_cxt.universal_tracer_head, uid)== 0) return 0;
 
-    if( enable_tracer_in_list( g_process_btracer_head, uid)== 0) return 0;
-    if( enable_tracer_in_list( g_universal_kernel_btracer_head, uid)== 0) return 0;
-    if( enable_tracer_in_list( g_universal_btracer_head, uid)== 0) return 0;
+    if( enable_tracer_in_list( tracer_cxt.process_btracer_head, uid)== 0) return 0;
+    if( enable_tracer_in_list( tracer_cxt.universal_kernel_btracer_head, uid)== 0) return 0;
+    if( enable_tracer_in_list( tracer_cxt.universal_btracer_head, uid)== 0) return 0;
     printf("enable tracer\n");
 
     g_error_no = TRACER_INVALID_ID;
@@ -98,13 +102,13 @@ inline int disable_tracer_in_list(tracer_cb_record* head, int uid)
 int tracer_disable_tracer(int uid)
 {
 
-    if( disable_tracer_in_list( g_process_tracer_head, uid)== 0) return 0;
-    if( disable_tracer_in_list( g_universal_kernel_tracer_head, uid)== 0) return 0;
-    if( disable_tracer_in_list( g_universal_tracer_head, uid)== 0) return 0;
+    if( disable_tracer_in_list( tracer_cxt.process_tracer_head, uid)== 0) return 0;
+    if( disable_tracer_in_list( tracer_cxt.universal_kernel_tracer_head, uid)== 0) return 0;
+    if( disable_tracer_in_list( tracer_cxt.universal_tracer_head, uid)== 0) return 0;
 
-    if( disable_tracer_in_list( g_process_btracer_head, uid)== 0) return 0;
-    if( disable_tracer_in_list( g_universal_kernel_btracer_head, uid)== 0) return 0;
-    if( disable_tracer_in_list( g_universal_btracer_head, uid)== 0) return 0;
+    if( disable_tracer_in_list( tracer_cxt.process_btracer_head, uid)== 0) return 0;
+    if( disable_tracer_in_list( tracer_cxt.universal_kernel_btracer_head, uid)== 0) return 0;
+    if( disable_tracer_in_list( tracer_cxt.universal_btracer_head, uid)== 0) return 0;
     //printf("enable tracer\n");
 
     g_error_no = TRACER_INVALID_ID;
@@ -136,7 +140,7 @@ static int add_tracer_internal( target_ulong cr3, const char* label, bool is_ker
 
     tracer_cb_record* tracer_rec = (tracer_cb_record *) calloc(1, sizeof(tracer_cb_record));
     //Add management for uid
-    tracer_rec-> uid = ++g_serial_num ;
+    tracer_rec-> uid = ++tracer_cxt.serial_num ;
     strncpy( tracer_rec->label, label, MAX_SZ_TRACER_LABEL );
     //tracer_rec->enabled = true;
     tracer_rec->cr3 = cr3;
@@ -150,15 +154,15 @@ static int add_tracer_internal( target_ulong cr3, const char* label, bool is_ker
     {    
         if( tracer_rec->cr3 !=0)
         {
-            LL_APPEND(g_process_tracer_head, tracer_rec);
+            LL_APPEND(tracer_cxt.process_tracer_head, tracer_rec);
         }
         if( tracer_rec->cr3 == 0 && tracer_rec->is_kernel_trace)
         {
-            LL_APPEND(g_universal_kernel_tracer_head, tracer_rec);
+            LL_APPEND(tracer_cxt.universal_kernel_tracer_head, tracer_rec);
         }
         if( tracer_rec->cr3 == 0 && !tracer_rec->is_kernel_trace)
         {
-            LL_APPEND(g_universal_tracer_head, tracer_rec);
+            LL_APPEND(tracer_cxt.universal_tracer_head, tracer_rec);
         }
     }
 
@@ -167,15 +171,15 @@ static int add_tracer_internal( target_ulong cr3, const char* label, bool is_ker
     {
         if( tracer_rec->cr3 !=0)
         {
-            LL_APPEND(g_process_btracer_head, tracer_rec);
+            LL_APPEND(tracer_cxt.process_btracer_head, tracer_rec);
         }
         if( tracer_rec->cr3 == 0 && tracer_rec->is_kernel_trace)
         {
-            LL_APPEND(g_universal_kernel_btracer_head, tracer_rec);
+            LL_APPEND(tracer_cxt.universal_kernel_btracer_head, tracer_rec);
         }
         if( tracer_rec->cr3 == 0 && !tracer_rec->is_kernel_trace)
         {
-            LL_APPEND(g_universal_btracer_head, tracer_rec);
+            LL_APPEND(tracer_cxt.universal_btracer_head, tracer_rec);
         }
     }
 
@@ -188,19 +192,31 @@ static int add_tracer_internal( target_ulong cr3, const char* label, bool is_ker
 
 int tracer_add_inst_tracer( target_ulong cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) ) {
     int tracer_id = -1;
-    if(cb == NULL) 
+    if(cb == NULL){ 
+        pthread_rwlock_wrlock( tracer_cxt.rwlock );
         tracer_id = add_tracer_internal(cr3, label, is_kernel, TRACER_GRANULARITY_INSTR, &default_callback);
-    else
+        pthread_rwlock_unlock( tracer_cxt.rwlock );
+    }
+    else{
+        pthread_rwlock_wrlock( tracer_cxt.rwlock );
         tracer_id = add_tracer_internal(cr3, label, is_kernel, TRACER_GRANULARITY_INSTR, cb);
+        pthread_rwlock_unlock( tracer_cxt.rwlock );
+    }
     return tracer_id;
 }
 
 int tracer_add_block_tracer( target_ulong cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) ) { 
     int tracer_id = -1;
-    if(cb == NULL) 
+    if(cb == NULL){ 
+        pthread_rwlock_wrlock( tracer_cxt.rwlock );
         tracer_id = add_tracer_internal(cr3, label, is_kernel, TRACER_GRANULARITY_CODEBLOCK, &default_callback);
-    else
+        pthread_rwlock_unlock( tracer_cxt.rwlock );
+    }
+    else{
+        pthread_rwlock_wrlock( tracer_cxt.rwlock );
         tracer_id = add_tracer_internal(cr3, label, is_kernel, TRACER_GRANULARITY_CODEBLOCK, cb);
+        pthread_rwlock_unlock( tracer_cxt.rwlock );
+    }
     return tracer_id;
 }
 
@@ -220,14 +236,14 @@ void show_tracer_list_info( tracer_cb_record* head ){
 void tracer_list_callback(void){
     
     printf("=================Instruction Tracer============================\n");
-    show_tracer_list_info(g_process_tracer_head);
-    show_tracer_list_info(g_universal_tracer_head);
-    show_tracer_list_info(g_universal_kernel_tracer_head);
+    show_tracer_list_info(tracer_cxt.process_tracer_head);
+    show_tracer_list_info(tracer_cxt.universal_tracer_head);
+    show_tracer_list_info(tracer_cxt.universal_kernel_tracer_head);
 
     printf("=================Code Block Tracer============================\n");
-    show_tracer_list_info(g_process_btracer_head);
-    show_tracer_list_info(g_universal_btracer_head);
-    show_tracer_list_info(g_universal_kernel_btracer_head);
+    show_tracer_list_info(tracer_cxt.process_btracer_head);
+    show_tracer_list_info(tracer_cxt.universal_btracer_head);
+    show_tracer_list_info(tracer_cxt.universal_kernel_btracer_head);
 
 }
 
