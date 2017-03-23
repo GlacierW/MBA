@@ -38,6 +38,7 @@
         .mhandler.cmd = do_show_virmem_content,
 },
 {
+
         .name = "show_phymem_content",
         .args_type  = "addr:l,len:l",
         .params     = "addr len",
@@ -125,7 +126,7 @@
         .name = "dt",
         .args_type  = "addr:l,struct:s",
         .params     = "addr struct",
-        .help       = "Fit the memory at addr into structure fields.",
+        .help       = "Fit the memory at addr into structure fields",
         .mhandler.cmd = do_display_type,
 },
 {

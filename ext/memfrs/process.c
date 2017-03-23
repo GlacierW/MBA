@@ -22,6 +22,7 @@
 
 #include "memfrs.h"
 #include "memfrs-priv.h"
+#include "process.h"
 
 
 

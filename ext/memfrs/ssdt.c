@@ -22,7 +22,7 @@
 
 #include "memfrs.h"
 #include "memfrs-priv.h"
-
+#include "ssdt.h"
 
 
 static void ssdt_list_dtor(void *_elt) {

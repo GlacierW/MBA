@@ -52,10 +52,23 @@ json_object *g_globalvar_info = NULL;
 
 MEMFRS_ERRNO memfrs_errno;
 
+
+
+/*******************************************************************
+bool memfrs_check_struct_info(void)
+
+Check whether struct has been load.
+
+INPUT:  no input
+
+OUTPUT: bool                    return 1 if loaded struct.
+*******************************************************************/
 bool memfrs_check_struct_info(void)
 {
     return (g_struct_info!=NULL)? 1 : 0;
 }
+
+
 
 /*******************************************************************
 field_info* memfrs_q_field( json_object* struc, const char* field_name  )
@@ -68,7 +81,6 @@ INPUT: json_object* struc       json object of structure we want to query
 
 OUTPUT: field_info*             return the field information in type if field_info
 *******************************************************************/
-
 field_info* memfrs_q_field( json_object* struc, const char* field_name )
 {
     json_object* target = NULL;
@@ -107,6 +119,7 @@ field_info* memfrs_q_field( json_object* struc, const char* field_name )
 }
 
 
+
 /*******************************************************************
 int memfrs_close_field(field_info* field)
 
@@ -121,6 +134,8 @@ int memfrs_close_field(field_info* field)
     free(field);
     return 0;
 }
+
+
 
 /*******************************************************************
 json_object* memfrs_q_struct(const char* ds_name)
@@ -147,6 +162,8 @@ json_object* memfrs_q_struct(const char* ds_name)
 
     return target;
 }
+
+
 
 /*******************************************************************
 int memfrs_load_structs( const char* type_filename)
@@ -176,6 +193,8 @@ int memfrs_load_structs( const char* type_filename)
 
     return 0;
 }
+
+
 
 /*******************************************************************
 bool memfrs_kpcr_self_check( uint64_t kpcr_ptr )
@@ -232,8 +251,22 @@ bool memfrs_kpcr_self_check( uint64_t kpcr_ptr ) {
     return false;
 }
 
-//TODO: Still buggy
+
+
 UT_icd adr_icd = {sizeof(uint64_t), NULL, NULL, NULL };
+/*******************************************************************
+UT_array* memfrs_scan_virmem( CPUState *cpu, uint64_t start_addr, uint64_t end_addr, const char* pattern, int length ) {
+
+Scan the virmem for the specific pattern
+
+INPUT:    CPUState *cpu          Current cpu
+          uint64_t start_addr    start address
+          uint64_t end_addr      end address
+          const char* pattern    Search pattern
+          int length             length of pattern
+OUTPUT:   UT_array*              return NULL if cannot allocate memory for do_show_memory_taint_map()
+*******************************************************************/
+// TODO: Still buggy
 UT_array* memfrs_scan_virmem( CPUState *cpu, uint64_t start_addr, uint64_t end_addr, const char* pattern, int length ) {
     uint64_t i;
 
@@ -267,6 +300,8 @@ UT_array* memfrs_scan_virmem( CPUState *cpu, uint64_t start_addr, uint64_t end_a
     }
     return match_addr;
 }
+
+
 
 /*******************************************************************
 UT_array* memfrs_scan_phymem( uint64_t start_addr, uint64_t end_addr, const char* pattern )
@@ -308,6 +343,8 @@ UT_array* memfrs_scan_phymem( uint64_t start_addr, uint64_t end_addr, const char
     return match_addr;
 }
 
+
+
 /*******************************************************************
 int memfrs_get_virmem_content( CPUState *cpu, uint64_t cr3, uint64_t target_addr, uint64_t target_length, uint8_t* buf)
 
@@ -319,7 +356,6 @@ INPUT:    CPUState *cpu          Current cpu
           uint64_t target_length The length to be getten
           uint8_t* buf           The buffer to save the memory content
 OUTPUT:   int                    -1 indicate fails
-
 *******************************************************************/
 int memfrs_get_virmem_content( CPUState *cpu, uint64_t cr3, uint64_t target_addr, uint64_t target_length, uint8_t* buf)
 {
@@ -340,6 +376,18 @@ int memfrs_get_virmem_content( CPUState *cpu, uint64_t cr3, uint64_t target_addr
     return 0;
 }
 
+
+
+/*******************************************************************
+void hexdump(Monitor *mon, uint8_t* buf, size_t length)
+
+Get the memory content in virtual memory
+
+INPUT:    Monitor *mon           Monitor
+          uint8_t* buf           target buffer
+          size_t length          length of buffer
+OUTPUT:   void
+*******************************************************************/
 void hexdump(Monitor *mon, uint8_t* buf, size_t length)
 {
     int i,j ;
@@ -371,6 +419,15 @@ void hexdump(Monitor *mon, uint8_t* buf, size_t length)
 
 
 
+/*******************************************************************
+char* parse_unicode_strptr(uint64_t ustr_ptr, CPUState *cpu)
+
+Get the memory content in virtual memory
+
+INPUT:    uint64_t ustr_ptr      unicode structure address
+          CPUState *cpu          Current cpu
+OUTPUT:   char*                  ascii string
+*******************************************************************/
 char* parse_unicode_strptr(uint64_t ustr_ptr, CPUState *cpu)
 {
     json_object* ustr = NULL;
@@ -416,6 +473,17 @@ char* parse_unicode_strptr(uint64_t ustr_ptr, CPUState *cpu)
     return str;
 }
 
+
+
+/*******************************************************************
+char* parse_unicode_str(uint8_t* ustr, CPUState *cpu)
+
+Get the memory content in virtual memory
+
+INPUT:    uint64_t ustr          unicode string
+          CPUState *cpu          Current cpu
+OUTPUT:   char*                  ascii string
+*******************************************************************/
 char* parse_unicode_str(uint8_t* ustr, CPUState *cpu)
 {
     json_object* justr = NULL;
@@ -464,6 +532,8 @@ char* parse_unicode_str(uint8_t* ustr, CPUState *cpu)
     return str;
 }
 
+
+
 /*******************************************************************
 int memfrs_load_structs( const char* gvar_filename)
 
@@ -478,6 +548,8 @@ int memfrs_load_globalvar( const char* gvar_filename)
     g_globalvar_info = json_object_from_file(gvar_filename);
     return 0;
 }
+
+
 
 /*******************************************************************
 json_object* memfrs_q_globalvar(const char* gvar_name)
@@ -504,6 +576,8 @@ json_object* memfrs_q_globalvar(const char* gvar_name)
     return target;
 }
 
+
+
 /*******************************************************************
 uint64_t memfrs_gvar_offset(json_object* gvarobj)
 
@@ -514,7 +588,6 @@ memfrs_q_globalvar should be invoked first to get the json_object.
 
 INPUT:    json_object* gvarobj  the json obj of interesting global symbol
 OUTPUT:   int64_t               the virtual address of specific global variable, -1 indicates fails
-
 *******************************************************************/
 int64_t memfrs_gvar_offset(json_object* gvarobj)
 {
@@ -525,13 +598,16 @@ int64_t memfrs_gvar_offset(json_object* gvarobj)
     return offset;
 }
 
-/*
-typedef struct reverse_symbol {
-    int offset;            // we'll use this field as the key //
-    char* symbol;             
-    UT_hash_handle hh; // makes this structure hashable //
-} reverse_symbol;*/
 
+
+/*******************************************************************
+reverse_symbol* memfrs_build_gvar_lookup_map(void)
+
+Load global variable to reverse_symbol_table
+
+INPUT:    void
+OUTPUT:   reverse_symbol*       reverse_symbol_table
+*******************************************************************/
 reverse_symbol* memfrs_build_gvar_lookup_map(void)
 {
     //json_object* lookup_map = NULL;
@@ -559,6 +635,17 @@ reverse_symbol* memfrs_build_gvar_lookup_map(void)
     return rev_symtab;
 }
 
+
+
+/*******************************************************************
+char* memfrs_get_symbolname_via_address(reverse_symbol* rsym_tab, int offset)
+
+get the symbolname at specific virtual memory address from reverse_symbol_table
+
+INPUT:    reverse_symbol* rsym_tab  reverse_symbol_table
+          int offset                target address
+OUTPUT:   char*                     symbol name
+*******************************************************************/
 char* memfrs_get_symbolname_via_address(reverse_symbol* rsym_tab, int offset)
 {
     reverse_symbol* sym = NULL;
@@ -573,6 +660,17 @@ char* memfrs_get_symbolname_via_address(reverse_symbol* rsym_tab, int offset)
     return sym->symbol; 
 }
 
+
+
+/*******************************************************************
+int memfrs_free_reverse_lookup_map(reverse_symbol* rsym_tab)
+
+Free reverse_symbol_table
+
+INPUT:    reverse_symbol* rsym_tab  
+          int offset                target address
+OUTPUT:   int                       return 0 for success
+*******************************************************************/
 int memfrs_free_reverse_lookup_map(reverse_symbol* rsym_tab)
 {
     reverse_symbol *current_sym, *tmp;
@@ -587,6 +685,18 @@ int memfrs_free_reverse_lookup_map(reverse_symbol* rsym_tab)
     return 0;
 }
 
+
+
+/*******************************************************************
+int memfrs_display_type(CPUState *cpu, uint64_t addr, const char* struct_name)
+
+Fit the memory at addr into structure fields
+
+INPUT:    CPUState *cpu             Current cpu
+          uint64_t addr             address
+          const char* struct_name   struct name
+OUTPUT:   int                       return 0 for success
+*******************************************************************/
 int memfrs_display_type(CPUState *cpu, uint64_t addr, const char* struct_name)
 {
     printf("%s\n", struct_name);
@@ -625,6 +735,8 @@ int memfrs_display_type(CPUState *cpu, uint64_t addr, const char* struct_name)
     }
     return 0;
 }
+
+
 
 int memfrs_get_mem_struct_content(
         CPUState   *cpu,
@@ -726,6 +838,8 @@ int memfrs_get_mem_struct_content(
         return memfrs_get_virmem_content(cpu, cr3, struct_addr, len, buffer);
     }
 }
+
+
 
 int memfrs_get_nested_field_offset(int *out, const char *struct_type_name, int depth, ...) {
     json_object *struct_type;
