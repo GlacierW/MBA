@@ -193,14 +193,14 @@ static int add_tracer_internal( target_ulong cr3, const char* label, bool is_ker
 int tracer_add_inst_tracer( target_ulong cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) ) {
     int tracer_id = -1;
     if(cb == NULL){ 
-        pthread_rwlock_wrlock( tracer_cxt.rwlock );
+        pthread_rwlock_wrlock( &tracer_cxt.rwlock );
         tracer_id = add_tracer_internal(cr3, label, is_kernel, TRACER_GRANULARITY_INSTR, &default_callback);
-        pthread_rwlock_unlock( tracer_cxt.rwlock );
+        pthread_rwlock_unlock( &tracer_cxt.rwlock );
     }
     else{
-        pthread_rwlock_wrlock( tracer_cxt.rwlock );
+        pthread_rwlock_wrlock( &tracer_cxt.rwlock );
         tracer_id = add_tracer_internal(cr3, label, is_kernel, TRACER_GRANULARITY_INSTR, cb);
-        pthread_rwlock_unlock( tracer_cxt.rwlock );
+        pthread_rwlock_unlock( &tracer_cxt.rwlock );
     }
     return tracer_id;
 }
@@ -208,14 +208,14 @@ int tracer_add_inst_tracer( target_ulong cr3, const char* label, bool is_kernel,
 int tracer_add_block_tracer( target_ulong cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) ) { 
     int tracer_id = -1;
     if(cb == NULL){ 
-        pthread_rwlock_wrlock( tracer_cxt.rwlock );
+        pthread_rwlock_wrlock( &tracer_cxt.rwlock );
         tracer_id = add_tracer_internal(cr3, label, is_kernel, TRACER_GRANULARITY_CODEBLOCK, &default_callback);
-        pthread_rwlock_unlock( tracer_cxt.rwlock );
+        pthread_rwlock_unlock( &tracer_cxt.rwlock );
     }
     else{
-        pthread_rwlock_wrlock( tracer_cxt.rwlock );
+        pthread_rwlock_wrlock( &tracer_cxt.rwlock );
         tracer_id = add_tracer_internal(cr3, label, is_kernel, TRACER_GRANULARITY_CODEBLOCK, cb);
-        pthread_rwlock_unlock( tracer_cxt.rwlock );
+        pthread_rwlock_unlock( &tracer_cxt.rwlock );
     }
     return tracer_id;
 }

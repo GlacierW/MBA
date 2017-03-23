@@ -99,18 +99,19 @@ extern int tracer_disable_tracer(int);
 /// int tracer_add_inst_tracer( uint64_t cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) );
 /// Add a new instruction level tracer
 ///
-/// \param cr3			the target process which want to monitor	
-///				if the cr3 is 0, then the tracer monitor all the process
-/// \param label		the name label for identifying the tracer, user can provide their own name
-/// \param is_kernel		denote if we want to trace kernel instructions, 
-///				1 for kernel, 0 for user-level 
-/// \param cb			the callback function after the instrction executed.
-///				cb must receive 3 argument, 1st is CPUX86State(user must convert it from void* to CPUX86State*) 
-///				2nd is start address of instruction, 3rd is useless in 
-///                             the default call back is used when cb == NULL
-///				instruction tracer(always be 0), and the cb must return void*
+/// \param cr3                  the target process which want to monitor	
+///                             if the cr3 is 0, then the tracer monitor all the process
+/// \param label                the name label for identifying the tracer, user can provide their own name
+/// \param is_kernel            denote if we want to trace kernel instructions, 
+///                             1 for kernel, 0 for user-level 
+/// \param cb                   the callback function after the instrction executed.
+///	                            cb must receive 3 arguments:
+///                                 1st is CPUX86State(user must convert it from void* to CPUX86State*) 
+///                                 2nd is start address of instruction
+///                                 3rd is useless in the default call back which is used when cb == NULL
+///                             instruction tracer(always be 0), and the cb must return void*
 /// 
-/// return -1 on error, 0 on success
+/// return -1 on error, tracer_id on success
 extern int tracer_add_inst_tracer( uint64_t cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) );
 
 /// int tracer_add_block_tracer( uint64_t cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) );
@@ -121,13 +122,14 @@ extern int tracer_add_inst_tracer( uint64_t cr3, const char* label, bool is_kern
 /// \param label                the name label for identifying the tracer, user can provide their own name
 /// \param is_kernel            denote if we want to trace kernel instructions, 
 ///                             1 for kernel, 0 for user-level 
-/// \param cb                   the callback function after the instrction executed.
-///                             cb must receive 3 argument, 1st is CPUX86State(user must convert it from void* to CPUX86State*) 
-///                             2nd is start address of block, 3rd is address of last ins of block 
-///                              and the cb must return void*
-///				the default call back is used when cb == NULL
+/// \param cb                   The callback function after the instrction executed.
+///                             cb must receive 3 arguments:
+///                                 1st is CPUX86State(user must convert it from void* to CPUX86State*) 
+///                                 2nd is start address of block
+///                                 3rd is address of last ins of block 
+///                             the cb must return void*, and the default call back is used when cb == NULL
 /// 
-/// return -1 on error, 0 on success
+/// return -1 on error, tracer_id on success
 extern int tracer_add_block_tracer( uint64_t cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) );
 
 /// int get_error_no(void);
