@@ -34,11 +34,16 @@
 #define SIZEOFUNICODESTRING 0x10
 
 
+extern uint64_t g_kpcr_ptr;
+
 
 typedef enum MEMFRS_ERRNO{
     MEMFRS_ERR_NOT_LOADED_GLOBAL_STRUCTURE,
     MEMFRS_ERR_NOT_LOADED_STRUCTURE,
     MEMFRS_ERR_NOT_FOUND_KPCR,
+    MEMFRS_ERR_NOT_FOUND_GLOBAL_STRUCTURE,
+    MEMFRS_ERR_NOT_FOUND_KERNEL_BASE,
+    MEMFRS_ERR_MEMORY_READ_FAILED,
     MEMFRS_ERR_INVALID_CPU
 }MEMFRS_ERRNO;
 
@@ -62,61 +67,13 @@ typedef struct reverse_symbol {
     UT_hash_handle hh; /* makes this structure hashable */
 } reverse_symbol;
 
-extern uint64_t g_kpcr_ptr;
-
-
-
-// process list
-typedef struct process_list_st{
-    uint64_t eprocess;
-    uint64_t CR3;
-    uint64_t pid;
-    char *full_file_path;
-}process_list_st;
-
-
-
-// handles data sturcture
-typedef struct handles_node_st{
-    int handle_table_entry_index;
-    uint64_t handle_table_entry_address;
-    uint64_t grantedaccess;
-    char *type;
-    char *detail;
-}handles_node_st;
-
-typedef struct UT_handles{
-    uint64_t CR3;
-    uint64_t eprocess;
-    uint64_t pid;
-    char *imagename;
-    UT_array *handles_node;
-}handles_st;
-
-
-
-// network data structure
-typedef struct network_state{
-    const char* protocol;
-    uint64_t pmem;
-    uint64_t eprocess;
-    char* file_name;
-    uint64_t pid;
-    const char* state;
-    char* local_addr;
-    char* foreign_addr;
-    char* time;
-}network_state;
-
 
 
 //public API 
 extern bool memfrs_check_struct_info(void);
+extern bool memfrs_kpcr_self_check( uint64_t seg_gs_cpl0 );
 extern bool memfrs_check_network_struct_info(void);
 extern int memfrs_load_structs( const char* type_filename);
-extern int memfrs_load_network_structs( const char* type_filename);
-extern bool memfrs_kpcr_self_check( uint64_t seg_gs_cpl0 );
-extern UT_array* memfrs_enum_proc_list( uint64_t seg_gs_cpl0, CPUState *cp );
 extern json_object* memfrs_q_struct(const char* ds_name);
 extern field_info* memfrs_q_field( json_object* struc, const char* field_name  );
 extern int memfrs_close_field(field_info* field);
@@ -176,57 +133,5 @@ extern int memfrs_get_mem_struct_content(
         ...);
 extern int memfrs_get_nested_field_offset(int *out, const char *struct_type_name, int depth, ...);
 
-/*******************************************************************
-extern UT_array* memfrs_enum_proc_handles( int target_type, uint64_t target, uint64_t kpcr_ptr, CPUState *cpu )
 
-Eumerate the running process handles
-
-INPUT:     int target_type,          searching type of handles
-           uint64_t target,          searching target
-           uint64_t kpcr_ptr,        the address of _KPCR struct
-           CPUState *cpu,            the pointer to current cpu
-OUTPUT:    UT_array*                 return a UT_array with handles data
-*******************************************************************/
-extern UT_array* memfrs_enum_proc_handles( int target_type, uint64_t target, uint64_t kpcr_ptr, CPUState *cpu );
-
-/*******************************************************************
-extern UT_array* memfrs_enum_proc_handles_detail( int target_type, const char* target, uint64_t kpcr_ptr, CPUState *cpu )
-
-Eumerate the running process handles, expect for types and details
-
-INPUT:     int target_type,          searching type of handles
-           const char* target        searching target
-           uint64_t kpcr_ptr,        the address of _KPCR struct
-           CPUState *cpu,            the pointer to current cpu
-OUTPUT:    UT_array*                 return a UT_array with handles data
-*******************************************************************/
-extern UT_array* memfrs_enum_proc_handles_detail( int target_type, const char* target, uint64_t kpcr_ptr, CPUState *cpu );
-
-/*******************************************************************
-extern UT_array* memfrs_enum_handles_types( uint64_t kpcr_ptr, CPUState *cpu )
-
-Eumerate the handles types
-
-INPUT:     uint64_t kpcr_ptr,        the address of _KPCR struct
-           CPUState *cpu,            the pointer to current cpu
-OUTPUT:    UT_array*                 return a UT_array with handles types
-*******************************************************************/
-extern UT_array* memfrs_enum_handles_types( uint64_t kpcr_ptr, CPUState *cpu );
-
-/*********************************************************************************
-UT_array memfrs_scan_network(CPUState *cpu)
-
-Scan the whole physical memory for network pool tag, and list all the network state.
-
-INPUT:  CPUState *cpu            pointer to current cpu
-OUTPUT: UT_array*                return a UT_array with handles types
-**********************************************************************************/
-extern UT_array* memfrs_scan_network(CPUState *cpu);
-
-/*
-extern void parse_unicode_strptr(uint64_t ustr_ptr, CPUState *cpu);
-extern void parse_unicode_str(uint8_t* ustr, CPUState *cpu);
-extern void hexdump(Monitor *mon, uint8_t* buf, size_t length);
-*/
 #endif
-

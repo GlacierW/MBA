@@ -17,7 +17,6 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "qom/cpu.h"
 #define MAXMEM 0x80000000
 
 #define POOL_TAG_UDP_ENDPOINT "UdpA"
@@ -47,3 +46,28 @@ extern TCP_STATE tcp_state;
 #define AF_INET 2
 #define AF_INET6 23
 
+
+// network data structure
+typedef struct network_state{
+    const char* protocol;
+    uint64_t pmem;
+    uint64_t eprocess;
+    char* file_name;
+    uint64_t pid;
+    const char* state;
+    char* local_addr;
+    char* foreign_addr;
+    char* time;
+}network_state;
+
+
+
+/*********************************************************************************
+UT_array memfrs_scan_network(CPUState *cpu)
+
+Scan the whole physical memory for network pool tag, and list all the network state.
+
+INPUT:  CPUState *cpu            pointer to current cpu
+OUTPUT: UT_array*                return a UT_array with handles types
+**********************************************************************************/
+extern UT_array* memfrs_scan_network(CPUState *cpu);

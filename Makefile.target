@@ -194,6 +194,8 @@ all-obj-y += ../ext/memfrs/vad.o
 all-obj-y += ../ext/memfrs/kmod.o
 all-obj-y += ../ext/memfrs/handles.o
 all-obj-y += ../ext/memfrs/netscan.o
+all-obj-y += ../ext/memfrs/process.o
+all-obj-y += ../ext/memfrs/ssdt.o
 ../ext/memfrs/memfrs.o-cflags := -D__STDC_VERSION__=199901 -I../json-c/
 endif
 
