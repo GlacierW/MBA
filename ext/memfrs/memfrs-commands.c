@@ -576,7 +576,7 @@ void do_ssdt_list(Monitor *mon, const QDict *qdict)
         monitor_printf(mon, "------ ------------------ --------------------------------\n");
         while( (print_ssdt_list=(ssdt_list_st*)utarray_next(ssdt_list,print_ssdt_list)) ){
             monitor_printf(mon, "0x%-6x 0x%-18"PRIx64" nt!%s\n", 
-                    print_ssdt_list->offset,
+                    print_ssdt_list->index,
                     print_ssdt_list->address,
                     print_ssdt_list->system_call_name);
         }

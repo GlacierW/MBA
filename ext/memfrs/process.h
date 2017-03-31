@@ -20,10 +20,12 @@
 
 // process list
 typedef struct process_list_st{
-    uint64_t eprocess;
-    uint64_t CR3;
-    uint64_t pid;
-    char *full_file_path;
+    uint64_t eprocess;          // the process' eprocess
+    uint64_t CR3;               // the process' CR3
+    uint64_t pid;               // the process' process id
+    char *full_file_path;       // the process' full file path (not include command)
+                                //     if full file path can't find in data struct
+                                //     only stored the file name.
 }process_list_st;
 
 

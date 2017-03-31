@@ -37,7 +37,7 @@ Eumerate the ssdt
 
 INPUT:     uint64_t kpcr_ptr,        the address of _KPCR struct
            CPUState *cpu,            the pointer to current cpu
-OUTPUT:    int,                      return 0 if sucess, and not 0 otherwise
+OUTPUT:    UT_array*                 return a UT_array with ssdt data
 *******************************************************************/
 UT_array* memfrs_enum_ssdt_list( uint64_t kpcr_ptr, CPUState *cpu )
 {
@@ -135,7 +135,7 @@ UT_array* memfrs_enum_ssdt_list( uint64_t kpcr_ptr, CPUState *cpu )
 
 
             // Insert datas to ssdt structure
-            ssdt_list.offset = i;
+            ssdt_list.index = i;
             ssdt_list.address = syscall_addr;
             syscall_len = strlen(syscall_name);
             ssdt_list.system_call_name = (char*)malloc(syscall_len+1);

@@ -33,19 +33,19 @@ extern PARSING_HANDLE_TYPE parsing_handle_type;
 
 // handles data sturcture
 typedef struct handles_node_st{
-    int handle_table_entry_index;
-    uint64_t handle_table_entry_address;
-    uint64_t grantedaccess;
-    char *type;
-    char *detail;
+    int handle_table_entry_index;           // the process' handle table entry index
+    uint64_t handle_table_entry_address;    // the process' handle table entry address
+    uint64_t grantedaccess;                 // the handle's granted access
+    char *type;                             // the handle's type
+    char *detail;                           // the handle's detail
 }handles_node_st;
 
 typedef struct UT_handles{
-    uint64_t CR3;
-    uint64_t eprocess;
-    uint64_t pid;
-    char *imagename;
-    UT_array *handles_node;
+    uint64_t CR3;           // the process' CR3
+    uint64_t eprocess;      // the process' eprocess
+    uint64_t pid;           // the process' process id
+    char *imagename;        // the process' file name
+    UT_array *handles_node; // handles node, store the target process' handles
 }handles_st;
 
 
