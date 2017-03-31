@@ -18,7 +18,7 @@
  */
 {
         .name = "mba_load_structures",
-        .args_type  = "sdb:s",
+        .args_type  = "sdb:F",
         .params     = "sdb",
         .help       = "loading structures information",
         .mhandler.cmd = do_load_structures,
@@ -96,7 +96,7 @@
 },
 {
         .name = "mba_load_global_variable",
-        .args_type  = "gvar_db:s",
+        .args_type  = "gvar_db:F",
         .params     = "gvar_db",
         .help       = "loading global variable information",
         .mhandler.cmd = do_load_global_variable,
@@ -117,7 +117,7 @@
 },
 {
         .name = "mba_gen_pdb_profiles",
-        .args_type  = "profiles_dir:s",
+        .args_type  = "profiles_dir:F",
         .params     = "profiles_dir",
         .help       = "Generate PDB's global var and structure info into profiles_dir",
         .mhandler.cmd = do_gen_pdb_profiles,
