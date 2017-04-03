@@ -23,7 +23,9 @@
 
 #include <inttypes.h> 
 #include <pthread.h>
+#if !defined(CONFIG_TRACER_TEST)
 #include "utlist.h"
+#endif
 
 #define MAX_SZ_TRACER_LABEL 16
 
@@ -31,7 +33,8 @@
 enum TRACER_ERRNO {
     TRACER_ERR_FAIL,
     TRACER_INVALID_GRANULARITY,
-    TRACER_INVALID_ID
+    TRACER_INVALID_ID,
+    TRACER_MAX_TRACER_ID
 };
 
 enum TRACER_GRANULARITY {
@@ -77,7 +80,7 @@ struct tracer_context {
 };
 
 typedef struct tracer_context tracer_context;
-extern tracer_context tracer_cxt;
+extern tracer_context tracer_ctx;
 
 //Public API
 /// int tracer_enable_tracer(int uid)
@@ -132,9 +135,27 @@ extern int tracer_add_inst_tracer( uint64_t cr3, const char* label, bool is_kern
 /// return -1 on error, tracer_id on success
 extern int tracer_add_block_tracer( uint64_t cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) );
 
+
+/// char* tracer_get_tracer_label(int uid)
+/// Return the label of tracer with uid
+///
+/// \param uid                 the uid of target tracer       
+/// 
+/// return NULL on error, tracer's label  on success
+extern char* tracer_get_tracer_label(int uid);
+
+/// int tracer_get_tracer_status(int uid)
+/// Return the status of tracer with uid
+///
+/// \param uid                 the uid of target tracer       
+/// 
+/// return -1 on error, 1 for enable and 0 for disable
+extern int tracer_get_tracer_status(int uid);
+
 /// int get_error_no(void);
 /// get the error number 
 /// return the int of enum TRACER_ERRNO
 extern int get_error_no(void);
+extern int tracer_clean_up(void);
 #endif
 
