@@ -109,7 +109,7 @@ int main(int argc, char **argv)
     add_field_to_struct(_tcp_endpoint, "AddrInfo", "_ADDRINFO", 0x18, 0x8, true);
     add_field_to_struct(_tcp_endpoint, "State", "UINT4B", 0x6c, 0x4, false);
     add_field_to_struct(_tcp_endpoint, "LocalPort", "UINT2B", 0x70, 0x2, false);
-    add_field_to_struct(_tcp_endpoint, "RemotePort", "UINT2B", 0x74, 0x2, false);
+    add_field_to_struct(_tcp_endpoint, "RemotePort", "UINT2B", 0x72, 0x2, false);
     add_field_to_struct(_tcp_endpoint, "Owner", "_EPROCESS", 0x258, 0x8, true);
     add_field_to_struct(_tcp_endpoint, "CreateTime", "WinTimeStamp", 0x268, 0x8, false);
     json_object_object_add(network_type_definition, "_TCP_ENDPOINT", _tcp_endpoint);
