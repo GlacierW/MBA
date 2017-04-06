@@ -604,55 +604,73 @@ static uint64_t char_convert_uint64(const char *text)
 void do_print_registry_by_address(Monitor *mon, const QDict *qdict) {
     const char* address = qdict_get_str(qdict, "address");
     download_hive_to_tmp(mon);
-    if( print_registry_by_address(address) != 0 )
+    if( print_registry_by_address(address) == NULL )
         printf("print hive fail\n");
 }  
-int print_registry_by_address(const char* address) {
+UT_array* print_registry_by_address(const char* address) {
     const char* device_id = "ide0-hd0";
     char* filename = NULL;
     libcerror_error_t *error                             = NULL;
     system_character_t *source                           = NULL;
     int verbose = 0, runPrint = 0;
+    UT_array* ret;
 
     filename = calloc( StringLength, sizeof(char*) );
     source = calloc( StringLength, sizeof(char*) );
+    utarray_new( ret, &ut_str_icd );
 
-    for ( ; runPrint < 4 ; runPrint++ ) {
+    for ( ; runPrint < 1 ; runPrint++ ) {
         if ( runPrint == 0 ) {
-            strcpy( filename, "/Windows/System32/config/SYSTEM" );
-            strcpy( source, "./SYSTEM" );
+            strcpy( filename, "/Windows/System32/config/SOFTWARE" );
+            strcpy( source, "./SOFTWARE" );
         } // if
         else if ( runPrint == 1 ) {
-            strcpy( filename, "/Windows/System32/config/SAM" );
-            strcpy( source, "./SAM" );
+            strcpy( filename, "/Windows/System32/config/SYSTEMM" );
+            strcpy( source, "./SYSTEMM" );
         } // else if
         else if ( runPrint == 2 ) {     
             strcpy( filename, "/Windows/System32/config/SECURITY" );
             strcpy( source, "./SECURITY" );
         } // else if
         else if ( runPrint == 3 ) {            
-            strcpy( filename, "/Windows/System32/config/SOFTWARE" );
-            strcpy( source, "./SOFTWARE" );
+            strcpy( filename, "/Windows/System32/config/SAM" );
+            strcpy( source, "./SAM" );
         } // else if
         
 
     UT_array* blocks;
-    //int cnt = 0;
+    int isRegistry = 0;
     uint64_t input_address = char_convert_uint64(address), offset_total = 0;
     TSK_DADDR_T *p = NULL;
     //extern key_offset_list key_list[800000];
     //temporary hardcode image path
     const char* tmp = get_imagepath_by_block_id(device_id);;
 
-    printf("Getting address of  %s, in image %s\n", filename, tmp);
+    // printf("Getting address of  %s, in image %s\n", filename, tmp);
     key_list_index = 0;
     blocks = tsk_find_haddr_by_filename(tmp, filename);
     if(blocks==NULL)
     {
         printf( "No such file found\n");
-        return -1;
+        return NULL;
     }
       
+    merge_continuous_address(blocks);
+    for ( p=(TSK_DADDR_T*)utarray_front(blocks);
+          p != NULL;
+          p=(TSK_DADDR_T*)utarray_next(blocks, p)) {
+        if ( input_address >= p[0] && input_address < p[1] ) {
+            break;
+        } // if
+        else if ((TSK_DADDR_T*)utarray_next(blocks, p) == NULL ) {
+            isRegistry = 1;
+            break;
+        } // else if
+    } // for
+
+    if ( isRegistry == 1 )
+        continue;
+    printf("out\n");
     libcnotify_stream_set(
             stderr,
             NULL );
@@ -747,6 +765,8 @@ int print_registry_by_address(const char* address) {
                     for ( ; search_address < key_list_index ; search_address++ ) {
                        if ( offset_total + ( input_address - p[0] ) >= key_list[search_address].offset 
                          && offset_total + ( input_address - p[0] ) < key_list[search_address].offset + key_list[search_address].name_size + key_list[search_address].data_size + 40 ) {
+                           const char *temp_to_push = key_list[search_address].key;
+                           utarray_push_back( ret, &temp_to_push ); 
                            printf( "search key%s  key_list_index:%d\n", key_list[search_address].key, key_list_index );
                            break;
                        } // if
@@ -759,7 +779,7 @@ int print_registry_by_address(const char* address) {
   
     } // for
 
-    return (EXIT_SUCCESS);
+    return ret;
 
     on_error:
         if (error != NULL) {
@@ -773,6 +793,6 @@ int print_registry_by_address(const char* address) {
                     &regfinfo_info_handle,
                     NULL);
         }
-        return (EXIT_FAILURE);
+        return NULL;
 }
 

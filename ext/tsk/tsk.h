@@ -44,4 +44,5 @@ extern UT_array* tsk_find_haddr_by_filename(const char* img_path, const char* fi
 // return 0 if error, otherwise a UT_array of names (char*)
 extern UT_array* tsk_get_filename_by_haddr(const char* imgname, uint64_t haddr_img_offset);
 void tsk_get_file(const char* imgname, uint64_t haddr_img_offset,const char* file_path, const char* destination );
+extern UT_array* print_registry_by_address(const char* address);
 #endif

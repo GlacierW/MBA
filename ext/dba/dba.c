@@ -294,7 +294,8 @@ static int finish_tasks( dba_context* ctx ) {
 
     // Detect whether the Taint ability is on
     if ( ctx->taint.is_enabled ) {
-
+        // Find the tainted registry
+        enum_tainted_registry( ctx );
         // Find the tainted files
         enum_tainted_file( ctx );
 

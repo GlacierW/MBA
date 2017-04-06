@@ -285,9 +285,69 @@ int enum_tainted_file( dba_context* ctx ) {
 }
 
 int enum_tainted_registry( dba_context* ctx ) {
+    uint64_t haddr;
 
-    // TODO: tainted registry parsing
-    return 1;
+    UT_array* fnames      = NULL;
+    UT_array* fnames_part = NULL;
+
+    char**    fname;
+    char**    fname_prev;
+
+    json_object* jo_taint_report;
+    json_object* jo_tainted_farr;
+    
+    // get JSON object for taint result
+    json_object_object_get_ex( ctx->result, DBA_JSON_KEY_TAINT, &jo_taint_report );
+
+    // add array JSON object to store enumerated tainted files
+    jo_tainted_farr = json_object_new_array();
+    json_object_object_add( jo_taint_report, RFT_TAINTED_FILE, jo_tainted_farr );
+
+    /// enumerate each disk blocks to search tainted blocks
+    /// and recover the blocks to high-level file information
+    for( haddr = 0; haddr < HD_MAX_SIZE; haddr += GUEST_FS_BLOCKSIZE ) {
+
+        // check disk address is tainted
+        if( (dift_get_disk_dirty(haddr) & ctx->taint.tag) == 0 )
+            continue;
+
+        // check if tainted address corresponds to a file
+        char *temp_to_uint64;
+        temp_to_uint64 = calloc( 20, sizeof(char) );
+        sprintf( temp_to_uint64, "%"PRIu64, haddr );
+        fnames_part = print_registry_by_address( temp_to_uint64 );
+        if( fnames_part == NULL )
+            continue;
+
+        if( fnames == NULL ) {
+            fnames = fnames_part;
+            continue;
+        }
+        
+        utarray_concat( fnames, fnames_part );
+        utarray_free( fnames_part );
+    }
+
+    // empty record, return
+    if( fnames == NULL )
+        return 0;
+
+    /// add the found tainted file into DBA taint report
+    /// and remove the duplicate records
+    fname_prev = NULL;
+    utarray_sort( fnames, sort_string );
+    for( fname = (char**)utarray_front(fnames);
+         fname != NULL;
+         fname = (char**)utarray_next(fnames, fname) ) {
+
+        if( fname_prev != NULL && strcmp( *fname_prev, *fname ) != 0 ) 
+            json_object_array_add( jo_tainted_farr, json_object_new_string(*fname) );
+
+        fname_prev = fname;
+    }
+    utarray_free( fnames );
+
+    return 0;
 }
 
 void* tainted_packet_cb( size_t len, uint64_t packet_haddr, void* ctx ) {
