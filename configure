@@ -1179,6 +1179,7 @@ for opt do
     obhook="yes"
     nettramon="yes"
     dba="yes"
+    tracer="yes"
   ;;
   --disable-dift) dift="no"
   ;;

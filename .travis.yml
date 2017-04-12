@@ -59,3 +59,6 @@ matrix: # define more builds here
     - env: EXTRA_CONFIG="--enable-memfrs"
            TEST_CMD="make memfrs -C ext -f Makefile.test && ext/memfrs/test/bin/test_memfrs"
       compiler: gcc
+    - env: EXTRA_CONFIG="--enable-tracer"
+           TEST_CMD="make tracer -C ext -f Makefile.test && ext/tracer/test/bin/test_tracer"
+      compiler: gcc    

@@ -32,6 +32,10 @@ obhook: $(GTEST_LIB)
 	cd obhook/test && \
 	make GTEST_DIR=$(GTEST_DIR) GMOCK_DIR=$(GMOCK_DIR) GTEST_LIB=$(GTEST_LIB)
 
+tracer: $(GTEST_LIB)
+	cd tracer/test && \
+	make GTEST_DIR=$(GTEST_DIR) GMOCK_DIR=$(GMOCK_DIR) GTEST_LIB=$(GTEST_LIB)
+
 $(GTEST_LIB):
 	rm -rf $(GTEST_ROOT)
 	git clone https://github.com/google/googletest.git $(GTEST_ROOT)

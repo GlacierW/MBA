@@ -29,24 +29,6 @@
 /// return true if addr is in kernel, 0 otherwise
 bool tracer_is_kern_addr( uint64_t addr );
 
-/// int enable_tracer_in_list(tracer_cb_record* head, int uid);
-/// Given the tracer list, check every tracer in the list and enable it if id is match
-///
-/// \param head			the head of tracer linked list
-/// \param uid			the id want to enable
-/// 
-/// return -1 on error, 0 on success
-int enable_tracer_in_list(tracer_cb_record* head, int uid);
-
-/// int disable_tracer_in_list(tracer_cb_record* head, int uid);
-/// Given the tracer list, check every tracer in the list and disable it if id is match
-///
-/// \param head                 the head of tracer linked list
-/// \param uid                  the id want to disable
-/// 
-/// return -1 on error, 0 on success
-int disable_tracer_in_list(tracer_cb_record* head, int uid);
-
 /// void* default_callback(void* env_state, uint64_t pc_start, uint64_t pc_end );
 /// the default callback as sample call back function
 /// this callback will print out address, assembly and register value
@@ -59,4 +41,25 @@ void* default_callback(void* env_state, uint64_t pc_start, uint64_t pc_end );
 /// void tracer_list_callback(void);
 /// list all callback
 void tracer_list_callback(void);
+
+
+/// tracer_cb_record* get_tracer_in_list(tracer_cb_record* head, int uid);
+/// Given the tracer list, check every tracer in the list and return the tracer it if id is match
+///
+/// \param head                 the head of tracer linked list
+/// \param uid                  the target id
+/// 
+/// return NULL on error, tracer's pointer on success
+tracer_cb_record* get_tracer_in_list(tracer_cb_record* head, int uid);
+
+/// tracer_cb_record* get_tracer(int uid);
+/// Return the pointer to tracer of specify uid
+///
+/// \param uid                  the target id
+///
+/// return NULL on error, tracer's pointer on success
+tracer_cb_record* get_tracer(int uid);
+
+
+int tracer_clean_up_by_list( tracer_cb_record* head );
 #endif

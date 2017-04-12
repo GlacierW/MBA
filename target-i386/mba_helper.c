@@ -61,23 +61,23 @@ void helper_obhook_dispatcher( CPUX86State* env ) {
 void helper_tracer_dispatcher( CPUX86State* env, uint64_t pc ) {
     tracer_cb_record *cb_rec = NULL;
     
-    if(g_process_tracer_head!=NULL && !tracer_is_kern_addr(pc)){
-    	LL_FOREACH( g_process_tracer_head , cb_rec){
+    if(tracer_ctx.process_tracer_head!=NULL && !tracer_is_kern_addr(pc)){
+    	LL_FOREACH( tracer_ctx.process_tracer_head , cb_rec){
         	if( env->cr[3] == cb_rec->cr3 && cb_rec->enabled == 1){
                 	cb_rec->cb_func( ENV_GET_CPU(env), pc, 0 );
         	}
     	}
     }
 
-    if( g_universal_kernel_tracer_head!=NULL && tracer_is_kern_addr(pc) ){
-            LL_FOREACH( g_universal_kernel_tracer_head , cb_rec){
+    if( tracer_ctx.universal_kernel_tracer_head!=NULL && tracer_is_kern_addr(pc) ){
+            LL_FOREACH( tracer_ctx.universal_kernel_tracer_head , cb_rec){
             if(cb_rec->enabled == 1)
                 cb_rec->cb_func( ENV_GET_CPU(env), pc, 0 );
         }
     }
 
-    if( g_universal_tracer_head!=NULL && !tracer_is_kern_addr(pc) ){
-            LL_FOREACH( g_universal_tracer_head , cb_rec){
+    if( tracer_ctx.universal_tracer_head!=NULL && !tracer_is_kern_addr(pc) ){
+            LL_FOREACH( tracer_ctx.universal_tracer_head , cb_rec){
             if(cb_rec->enabled == 1)
                 cb_rec->cb_func( ENV_GET_CPU(env), pc, 0 );
         }
@@ -87,22 +87,22 @@ void helper_tracer_dispatcher( CPUX86State* env, uint64_t pc ) {
 void helper_btracer_dispatcher( CPUX86State* env, uint64_t bstart, uint64_t bend ) {
     tracer_cb_record *cb_rec = NULL;
           
-    if( g_process_btracer_head!=NULL && !tracer_is_kern_addr(bstart) ){
-            LL_FOREACH( g_process_btracer_head , cb_rec){
+    if( tracer_ctx.process_btracer_head!=NULL && !tracer_is_kern_addr(bstart) ){
+            LL_FOREACH( tracer_ctx.process_btracer_head , cb_rec){
             if(env->cr[3] == cb_rec->cr3  && cb_rec->enabled == 1)
                 cb_rec->cb_func( ENV_GET_CPU(env), bstart, bend );
         }
     }
 
-    if( g_universal_kernel_btracer_head!=NULL && tracer_is_kern_addr(bstart) ){
-            LL_FOREACH( g_universal_kernel_btracer_head , cb_rec){
+    if( tracer_ctx.universal_kernel_btracer_head!=NULL && tracer_is_kern_addr(bstart) ){
+            LL_FOREACH( tracer_ctx.universal_kernel_btracer_head , cb_rec){
             if(cb_rec->enabled == 1)
                 cb_rec->cb_func( ENV_GET_CPU(env), bstart, bend );
         }
     }
 
-    if( g_universal_btracer_head!=NULL && !tracer_is_kern_addr(bstart) ){
-            LL_FOREACH( g_universal_btracer_head , cb_rec){
+    if( tracer_ctx.universal_btracer_head!=NULL && !tracer_is_kern_addr(bstart) ){
+            LL_FOREACH( tracer_ctx.universal_btracer_head , cb_rec){
             if(cb_rec->enabled == 1)
                 cb_rec->cb_func( ENV_GET_CPU(env), bstart, bend );
         }

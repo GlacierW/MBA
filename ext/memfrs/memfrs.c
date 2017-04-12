@@ -110,6 +110,13 @@ field_info* memfrs_q_field( json_object* struc, const char* field_name )
     strncpy(f_info->type_name, json_object_get_string(tmp_jobject), STRLEN);
 
     //TODO: type size leave empty now
+    f_info -> type_size = json_object_get_int(json_object_array_get_idx(target, 2));
+    f_info -> pointer_dereference_count = json_object_get_int(json_object_array_get_idx(target, 3));
+    
+    if(f_info -> pointer_dereference_count > 0)
+        f_info->is_pointer = true;
+    else
+        f_info->is_pointer = false;    
 
     // Put the json object of field type into fielf_info structure
     if(g_struct_info != NULL)

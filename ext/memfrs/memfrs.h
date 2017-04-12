@@ -58,6 +58,7 @@ typedef struct field_info
     char type_name[STRLEN];
     int type_size;                 // the size of the field
     bool is_pointer;               // idicate if the field is pointer
+    int pointer_dereference_count;               // idicate if the field is pointer
     json_object* jobject_type;     // the json object to the field type
 } field_info;
 

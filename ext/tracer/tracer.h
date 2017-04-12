@@ -22,7 +22,10 @@
 #define __TRACER_H__
 
 #include <inttypes.h> 
+#include <pthread.h>
+#if !defined(CONFIG_TRACER_TEST)
 #include "utlist.h"
+#endif
 
 #define MAX_SZ_TRACER_LABEL 16
 
@@ -30,7 +33,8 @@
 enum TRACER_ERRNO {
     TRACER_ERR_FAIL,
     TRACER_INVALID_GRANULARITY,
-    TRACER_INVALID_ID
+    TRACER_INVALID_ID,
+    TRACER_MAX_TRACER_ID
 };
 
 enum TRACER_GRANULARITY {
@@ -61,13 +65,22 @@ struct tracer_cb_record {
 
 typedef struct tracer_cb_record tracer_cb_record;
 
-extern tracer_cb_record *g_process_tracer_head;
-extern tracer_cb_record *g_universal_kernel_tracer_head;
-extern tracer_cb_record *g_universal_tracer_head;
+struct tracer_context {
+    int serial_num;
 
-extern tracer_cb_record *g_process_btracer_head;
-extern tracer_cb_record *g_universal_kernel_btracer_head;
-extern tracer_cb_record *g_universal_btracer_head;
+    tracer_cb_record *process_tracer_head;
+    tracer_cb_record *universal_kernel_tracer_head;
+    tracer_cb_record *universal_tracer_head;
+    tracer_cb_record *process_btracer_head;
+    tracer_cb_record *universal_kernel_btracer_head;
+    tracer_cb_record *universal_btracer_head;
+
+    // read-write lock to protect the internal data of OBHook (UTHASH not fully thread-safe)
+    pthread_rwlock_t rwlock;
+};
+
+typedef struct tracer_context tracer_context;
+extern tracer_context tracer_ctx;
 
 //Public API
 /// int tracer_enable_tracer(int uid)
@@ -89,18 +102,19 @@ extern int tracer_disable_tracer(int);
 /// int tracer_add_inst_tracer( uint64_t cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) );
 /// Add a new instruction level tracer
 ///
-/// \param cr3			the target process which want to monitor	
-///				if the cr3 is 0, then the tracer monitor all the process
-/// \param label		the name label for identifying the tracer, user can provide their own name
-/// \param is_kernel		denote if we want to trace kernel instructions, 
-///				1 for kernel, 0 for user-level 
-/// \param cb			the callback function after the instrction executed.
-///				cb must receive 3 argument, 1st is CPUX86State(user must convert it from void* to CPUX86State*) 
-///				2nd is start address of instruction, 3rd is useless in 
-///                             the default call back is used when cb == NULL
-///				instruction tracer(always be 0), and the cb must return void*
+/// \param cr3                  the target process which want to monitor	
+///                             if the cr3 is 0, then the tracer monitor all the process
+/// \param label                the name label for identifying the tracer, user can provide their own name
+/// \param is_kernel            denote if we want to trace kernel instructions, 
+///                             1 for kernel, 0 for user-level 
+/// \param cb                   the callback function after the instrction executed.
+///	                            cb must receive 3 arguments:
+///                                 1st is CPUX86State(user must convert it from void* to CPUX86State*) 
+///                                 2nd is start address of instruction
+///                                 3rd is useless in the default call back which is used when cb == NULL
+///                             instruction tracer(always be 0), and the cb must return void*
 /// 
-/// return -1 on error, 0 on success
+/// return -1 on error, tracer_id on success
 extern int tracer_add_inst_tracer( uint64_t cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) );
 
 /// int tracer_add_block_tracer( uint64_t cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) );
@@ -111,18 +125,37 @@ extern int tracer_add_inst_tracer( uint64_t cr3, const char* label, bool is_kern
 /// \param label                the name label for identifying the tracer, user can provide their own name
 /// \param is_kernel            denote if we want to trace kernel instructions, 
 ///                             1 for kernel, 0 for user-level 
-/// \param cb                   the callback function after the instrction executed.
-///                             cb must receive 3 argument, 1st is CPUX86State(user must convert it from void* to CPUX86State*) 
-///                             2nd is start address of block, 3rd is address of last ins of block 
-///                              and the cb must return void*
-///				the default call back is used when cb == NULL
+/// \param cb                   The callback function after the instrction executed.
+///                             cb must receive 3 arguments:
+///                                 1st is CPUX86State(user must convert it from void* to CPUX86State*) 
+///                                 2nd is start address of block
+///                                 3rd is address of last ins of block 
+///                             the cb must return void*, and the default call back is used when cb == NULL
 /// 
-/// return -1 on error, 0 on success
+/// return -1 on error, tracer_id on success
 extern int tracer_add_block_tracer( uint64_t cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) );
+
+
+/// char* tracer_get_tracer_label(int uid)
+/// Return the label of tracer with uid
+///
+/// \param uid                 the uid of target tracer       
+/// 
+/// return NULL on error, tracer's label  on success
+extern char* tracer_get_tracer_label(int uid);
+
+/// int tracer_get_tracer_status(int uid)
+/// Return the status of tracer with uid
+///
+/// \param uid                 the uid of target tracer       
+/// 
+/// return -1 on error, 1 for enable and 0 for disable
+extern int tracer_get_tracer_status(int uid);
 
 /// int get_error_no(void);
 /// get the error number 
 /// return the int of enum TRACER_ERRNO
 extern int get_error_no(void);
+extern int tracer_clean_up(void);
 #endif
 
