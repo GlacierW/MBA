@@ -22,7 +22,10 @@
  */
 #ifndef _TSK_H
 #define _TSK_H
-
+#define SOFTWARE 0
+#define SYSTEM   1
+#define SECURITY 2
+#define SAM      3
 
 #include "utarray.h"
 typedef uint64_t TSK_DADDR_T;
@@ -44,5 +47,10 @@ extern UT_array* tsk_find_haddr_by_filename(const char* img_path, const char* fi
 // return 0 if error, otherwise a UT_array of names (char*)
 extern UT_array* tsk_get_filename_by_haddr(const char* imgname, uint64_t haddr_img_offset);
 void tsk_get_file(const char* imgname, uint64_t haddr_img_offset,const char* file_path, const char* destination );
+extern void tsk_parse_registry(int hive_file_type);
+extern UT_array* tsk_get_registry_value_by_address(const char* address, UT_array* block, int* search_address, uint64_t* haddr );
 extern UT_array* print_registry_by_address(const char* address);
+int get_hive_file( const char* sourcePath, const char* destination);
+int disk_offset_tuple_cmp(const void *a, const void *b);
+void merge_continuous_address(UT_array *arr);
 #endif

@@ -34,16 +34,21 @@
 
 extern QemuMutex qemu_global_mutex;
 
+UT_array* UT_SOFTWARE = NULL;
+UT_array* UT_SAM      = NULL;
+UT_array* UT_SYSTEM   = NULL;
+UT_array* UT_SECURITY = NULL;
+
 // XXX: currently use hardcoded block size & static function
 // to get the device image file, These should be fixed by 
 // improving TSK extension
 #define GUEST_FS_BLOCKSIZE 4096
+#define TEMP_SIZE 20
 
 static int sort_string( const void* a, const void* b ) {
     
     const char* str_a = *(const char**)a;
     const char* str_b = *(const char**)b;
-
     return strcmp( str_a, str_b );
 }
 
@@ -225,7 +230,8 @@ int enum_tainted_file( dba_context* ctx ) {
 
     UT_array* fnames      = NULL;
     UT_array* fnames_part = NULL;
-
+    UT_array* UT_blocks = NULL;
+  
     char**    fname;
     char**    fname_prev;
 
@@ -247,12 +253,33 @@ int enum_tainted_file( dba_context* ctx ) {
         // check disk address is tainted
         if( (dift_get_disk_dirty(haddr) & ctx->taint.tag) == 0 )
             continue;
-
+        TSK_DADDR_T *p;
+        for ( p=(TSK_DADDR_T*)utarray_front(UT_SOFTWARE);
+              p != NULL;
+              p=(TSK_DADDR_T*)utarray_next(UT_SOFTWARE, p)) {
+            if ( p[0] <= haddr && haddr < p[1] ) 
+                haddr = p[1];
+        } // for
         // check if tainted address corresponds to a file
         fnames_part = tsk_get_filename_by_haddr( img, haddr );
         if( fnames_part == NULL )
             continue;
+ 
+        char ** tempPart = (char**)utarray_front(fnames_part);
+        if ( tempPart == NULL )  
+            continue;
 
+        // printf( "fileName:%s\n", *tempPart );
+        UT_blocks = tsk_find_haddr_by_filename( img, *tempPart );
+        if ( UT_blocks != NULL ) {
+            for ( p=(TSK_DADDR_T*)utarray_front(UT_blocks);
+                  p != NULL;
+                  p=(TSK_DADDR_T*)utarray_next(UT_blocks, p)) {
+                if ( p[0]-1 <= haddr && haddr < p[1] ) 
+                    haddr = p[1];
+            } // for
+        } // if
+  
         if( fnames == NULL ) {
             fnames = fnames_part;
             continue;
@@ -279,17 +306,70 @@ int enum_tainted_file( dba_context* ctx ) {
 
         fname_prev = fname;
     }
-    utarray_free( fnames );
 
+    utarray_free( fnames );
+    
     return 0;
 }
 
-int enum_tainted_registry( dba_context* ctx ) {
+static void get_registry_address(const char* img) {
+    UT_SOFTWARE = tsk_find_haddr_by_filename( img, "/Windows/System32/config/SOFTWARE"); 
+    merge_continuous_address(UT_SOFTWARE);
+
+    UT_SAM = tsk_find_haddr_by_filename( img, "/Windows/System32/config/SAM");   
+    merge_continuous_address(UT_SAM);
+
+    UT_SECURITY = tsk_find_haddr_by_filename( img, "/Windows/System32/config/SECURITY");
+    merge_continuous_address(UT_SECURITY);
+
+    UT_SYSTEM = tsk_find_haddr_by_filename( img, "/Windows/System32/config/SYSTEM");     
+    merge_continuous_address(UT_SYSTEM);
+} 
+
+static UT_array* search_registry( int hive_type, UT_array* UT_registry, dba_context* ctx ) {
+    TSK_DADDR_T *p;
+    UT_array* fnames      = NULL;
+    UT_array* fnames_part = NULL;
     uint64_t haddr;
+
+    tsk_parse_registry(hive_type); 
+    for ( p=(TSK_DADDR_T*)utarray_front(UT_registry);
+          p != NULL;
+          p=(TSK_DADDR_T*)utarray_next(UT_registry, p)) {
+          for( haddr = p[0] ; haddr < p[1]; haddr += 1 ) {
+            // check disk address is tainted
+            if( (dift_get_disk_dirty(haddr) & ctx->taint.tag) == 0 )
+                continue;
+            int search_address = 0; 
+            // check if tainted address corresponds to a file
+            char *temp_to_uint64;
+            temp_to_uint64 = calloc( TEMP_SIZE, sizeof(char) );
+            sprintf( temp_to_uint64, "%"PRIu64, haddr );
+            printf("origin haddr:%"PRIu64"\n", haddr );
+            fnames_part = tsk_get_registry_value_by_address( temp_to_uint64, UT_registry, &search_address, &haddr );
+            printf("haddr:%"PRIu64"\n\n", haddr );
+            if( fnames_part == NULL ) {
+                continue;
+            } // if
+
+            if( fnames == NULL ) {
+                fnames = fnames_part;
+                continue;
+            }
+        
+            utarray_concat( fnames, fnames_part );
+            utarray_free( fnames_part );
+        } // for   
+    } // for    
+
+    return fnames;
+} 
+int enum_tainted_registry( dba_context* ctx ) {
+    const char* img;
 
     UT_array* fnames      = NULL;
     UT_array* fnames_part = NULL;
-
+  
     char**    fname;
     char**    fname_prev;
 
@@ -301,36 +381,43 @@ int enum_tainted_registry( dba_context* ctx ) {
 
     // add array JSON object to store enumerated tainted files
     jo_tainted_farr = json_object_new_array();
-    json_object_object_add( jo_taint_report, RFT_TAINTED_FILE, jo_tainted_farr );
+    json_object_object_add( jo_taint_report, RFT_TAINTED_REGISTRY, jo_tainted_farr );
 
     /// enumerate each disk blocks to search tainted blocks
     /// and recover the blocks to high-level file information
-    for( haddr = 0; haddr < HD_MAX_SIZE; haddr += GUEST_FS_BLOCKSIZE ) {
+    img = get_device_image( "ide0-hd0" );
+    if ( get_hive_file( "/Windows/System32/config/SAM", "./SAM") < 0 )    
+        printf("Download SAM failed\n");
+    if ( get_hive_file( "/Windows/System32/config/SYSTEM", "./SYSTEM") < 0 )
+        printf( "Download SYSTEM failed\n");
+    if ( get_hive_file( "/Windows/System32/config/SECURITY", "./SECURITY") < 0 )
+        printf( "Download SECURITY failed\n");
+    if ( get_hive_file( "/Windows/System32/config/SOFTWARE", "./SOFTWARE") < 0 )
+        printf( "Download SOFTWARE failed\n");
+    // for( haddr = 0 ; haddr < HD_MAX_SIZE; haddr += GUEST_FS_BLOCKSIZE ) {
+   
+    get_registry_address(img);
+    fnames = search_registry( SOFTWARE, UT_SOFTWARE, ctx );
 
-        // check disk address is tainted
-        if( (dift_get_disk_dirty(haddr) & ctx->taint.tag) == 0 )
-            continue;
-
-        // check if tainted address corresponds to a file
-        char *temp_to_uint64;
-        temp_to_uint64 = calloc( 20, sizeof(char) );
-        sprintf( temp_to_uint64, "%"PRIu64, haddr );
-        fnames_part = print_registry_by_address( temp_to_uint64 );
-        if( fnames_part == NULL )
-            continue;
-
-        if( fnames == NULL ) {
-            fnames = fnames_part;
-            continue;
-        }
-        
+    fnames_part = search_registry( SAM, UT_SAM, ctx );
+    if ( fnames_part != NULL )
         utarray_concat( fnames, fnames_part );
-        utarray_free( fnames_part );
-    }
 
+    fnames_part = search_registry( SYSTEM, UT_SYSTEM, ctx );
+    if ( fnames_part != NULL )
+        utarray_concat( fnames, fnames_part );
+
+    fnames_part = search_registry( SECURITY, UT_SECURITY, ctx );
+    if ( fnames_part != NULL ) {
+        utarray_concat( fnames, fnames_part );        
+        utarray_free( fnames_part );
+    } // if
+   
     // empty record, return
-    if( fnames == NULL )
+    if( fnames == NULL ) {
+        printf( "empty record\n");
         return 0;
+    } // if
 
     /// add the found tainted file into DBA taint report
     /// and remove the duplicate records
@@ -345,8 +432,9 @@ int enum_tainted_registry( dba_context* ctx ) {
 
         fname_prev = fname;
     }
-    utarray_free( fnames );
 
+    utarray_free( fnames );
+    
     return 0;
 }
 

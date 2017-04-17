@@ -79,10 +79,8 @@ void do_get_filename_by_haddr(Monitor *mon, const QDict *qdict)
     return;  
 }
 
-static int disk_offset_tuple_cmp(const void *a, const void *b);
 
 static void sort_and_merge_continuous_address(UT_array *arr);
-static void merge_continuous_address(UT_array *arr);
 
 void do_get_haddr_by_filename(Monitor *mon, const QDict *qdict)
 {
@@ -155,7 +153,7 @@ void do_get_file(Monitor *mon, const QDict *qdict)
     tsk_get_file(imgname, haddr_img_offset, file_path, destiation );
 }
 
-int get_hive_file( Monitor *mon, const char* sourcePath, const char* destination) {
+int get_hive_file( const char* sourcePath, const char* destination) {
     char* device_id;
     UT_array* blocks;
     int cnt = 0;
@@ -169,7 +167,7 @@ int get_hive_file( Monitor *mon, const char* sourcePath, const char* destination
     blocks = tsk_find_haddr_by_filename(imgname, sourcePath);
     if(blocks==NULL)
     {
-        monitor_printf(mon, "No such file found\n");
+        // monitor_printf(mon, "No such file found\n");
         return -1;
     }
 
@@ -185,8 +183,8 @@ int get_hive_file( Monitor *mon, const char* sourcePath, const char* destination
     imgname = get_imagepath_by_block_id(device_id);
     if(imgname == NULL)
     {
-        monitor_printf(mon, "Cannot get image by path\n");
-        return -1;
+        // monitor_printf(mon, "Cannot get image by path\n");
+        return -2;
     }
  
     tsk_get_file(imgname, haddr_img_offset, sourcePath, destination );
@@ -207,7 +205,7 @@ static char* get_imagepath_by_block_id(const char* dev_id)
     }
     return NULL;
 }
-static int disk_offset_tuple_cmp(const void *a, const void *b){
+int disk_offset_tuple_cmp(const void *a, const void *b){
     TSK_DADDR_T *p = (TSK_DADDR_T*)a;
     TSK_DADDR_T *q = (TSK_DADDR_T*)b;
 
@@ -240,7 +238,7 @@ static void sort_and_merge_continuous_address(UT_array *arr){
         }
     }
 }
-static void merge_continuous_address(UT_array *arr){
+void merge_continuous_address(UT_array *arr){
     int i;
     TSK_DADDR_T *prev;
     TSK_DADDR_T *p;
@@ -262,14 +260,14 @@ static void merge_continuous_address(UT_array *arr){
     }
 }
 void download_hive_to_tmp(Monitor *mon) {
-    if ( get_hive_file(mon,"/Windows/System32/config/SAM", "./SAM") < 0 )
-        monitor_printf(mon, "Download SAM to tmp failed\n"); 
-    if ( get_hive_file(mon,"/Windows/System32/config/SYSTEM", "./SYSTEM") < 0 )
-        monitor_printf(mon, "Download SYSTEM to tmp failed\n");
-    if ( get_hive_file(mon,"/Windows/System32/config/SECURITY", "./SECURITY") < 0 )
-        monitor_printf(mon, "Download SECURITY to tmp failed\n");
-    if ( get_hive_file(mon,"/Windows/System32/config/SOFTWARE", "./SOFTWARE") < 0 )
-        monitor_printf(mon, "Download SOFTWARE to tmp failed\n");
+    if ( get_hive_file( "/Windows/System32/config/SAM", "./SAM") < 0 )
+        monitor_printf(mon, "Download SAM failed\n"); 
+    if ( get_hive_file( "/Windows/System32/config/SYSTEM", "./SYSTEM") < 0 )
+        monitor_printf(mon, "Download SYSTEM failed\n");
+    if ( get_hive_file( "/Windows/System32/config/SECURITY", "./SECURITY") < 0 )
+        monitor_printf(mon, "Download SECURITY failed\n");
+    if ( get_hive_file( "/Windows/System32/config/SOFTWARE", "./SOFTWARE") < 0 )
+        monitor_printf(mon, "Download SOFTWARE failed\n");
 }
 void do_search_registry_by_key(Monitor *mon, const QDict *qdict) {
     const char* key = qdict_get_str(qdict, "key"); 
@@ -619,14 +617,14 @@ UT_array* print_registry_by_address(const char* address) {
     source = calloc( StringLength, sizeof(char*) );
     utarray_new( ret, &ut_str_icd );
 
-    for ( ; runPrint < 1 ; runPrint++ ) {
+    for ( ; runPrint < 4 ; runPrint++ ) {
         if ( runPrint == 0 ) {
             strcpy( filename, "/Windows/System32/config/SOFTWARE" );
             strcpy( source, "./SOFTWARE" );
         } // if
         else if ( runPrint == 1 ) {
-            strcpy( filename, "/Windows/System32/config/SYSTEMM" );
-            strcpy( source, "./SYSTEMM" );
+            strcpy( filename, "/Windows/System32/config/SYSTEM" );
+            strcpy( source, "./SYSTEM" );
         } // else if
         else if ( runPrint == 2 ) {     
             strcpy( filename, "/Windows/System32/config/SECURITY" );
@@ -639,7 +637,6 @@ UT_array* print_registry_by_address(const char* address) {
         
 
     UT_array* blocks;
-    int isRegistry = 0;
     uint64_t input_address = char_convert_uint64(address), offset_total = 0;
     TSK_DADDR_T *p = NULL;
     //extern key_offset_list key_list[800000];
@@ -656,6 +653,7 @@ UT_array* print_registry_by_address(const char* address) {
     }
       
     merge_continuous_address(blocks);
+    /*
     for ( p=(TSK_DADDR_T*)utarray_front(blocks);
           p != NULL;
           p=(TSK_DADDR_T*)utarray_next(blocks, p)) {
@@ -671,6 +669,8 @@ UT_array* print_registry_by_address(const char* address) {
     if ( isRegistry == 1 )
         continue;
     printf("out\n");
+    */
+
     libcnotify_stream_set(
             stderr,
             NULL );
@@ -764,7 +764,7 @@ UT_array* print_registry_by_address(const char* address) {
                     int search_address = 0;
                     for ( ; search_address < key_list_index ; search_address++ ) {
                        if ( offset_total + ( input_address - p[0] ) >= key_list[search_address].offset 
-                         && offset_total + ( input_address - p[0] ) < key_list[search_address].offset + key_list[search_address].name_size + key_list[search_address].data_size + 40 ) {
+                         && offset_total + ( input_address - p[0] ) < key_list[search_address].offset + key_list[search_address].name_size + key_list[search_address].data_size + 20 ) {
                            const char *temp_to_push = key_list[search_address].key;
                            utarray_push_back( ret, &temp_to_push ); 
                            printf( "search key%s  key_list_index:%d\n", key_list[search_address].key, key_list_index );
@@ -794,5 +794,191 @@ UT_array* print_registry_by_address(const char* address) {
                     NULL);
         }
         return NULL;
+}
+
+void tsk_parse_registry(int hive_file_type) {
+    char* filename             = NULL;
+    libcerror_error_t *error   = NULL;
+    system_character_t *source = NULL;
+    int verbose                = 0;
+
+    filename = calloc( StringLength, sizeof(char*) );
+    source = calloc( StringLength, sizeof(char*) );
+
+    if ( hive_file_type == 0 ) {
+        strcpy( filename, "/Windows/System32/config/SOFTWARE" );
+        strcpy( source, "./SOFTWARE" );
+    } // if
+    else if ( hive_file_type == 1 ) {
+        strcpy( filename, "/Windows/System32/config/SYSTEM" );
+        strcpy( source, "./SYSTEM" );
+    } // else if
+    else if ( hive_file_type == 2 ) {     
+        strcpy( filename, "/Windows/System32/config/SECURITY" );
+        strcpy( source, "./SECURITY" );
+    } // else if
+    else if ( hive_file_type == 3 ) {            
+        strcpy( filename, "/Windows/System32/config/SAM" );
+        strcpy( source, "./SAM" );
+    } // else if
+        
+
+    //temporary hardcode image path
+    key_list_index = 0;
+      
+    libcnotify_stream_set(
+            stderr,
+            NULL );
+    libcnotify_verbose_set(
+            1 );
+
+    if( libclocale_initialize(
+            "regftools",
+            &error ) != 1 )
+    {
+        fprintf(
+                stderr,
+                "Unable to initialize locale values.\n" );
+
+        goto on_error;
+    }
+    if( libcsystem_initialize(
+            _IONBF,
+            &error ) != 1 )
+    {
+        fprintf(
+                stderr,
+                "Unable to initialize system values.\n" );
+
+        goto on_error;
+    }
+            
+    libcnotify_verbose_set(verbose);
+	    libregf_notify_set_stream(
+		        stderr,
+		        NULL);
+	    libregf_notify_set_verbose(
+		        verbose);
+	    if (info_handle_initialize(
+		    &regfinfo_info_handle,
+		    &error) != 1) {
+		    fprintf(
+		            stderr,
+		            "Unable to initialize info handle.\n");
+
+		    goto on_error;
+	    }
+	    if (info_handle_open_input(
+		    regfinfo_info_handle,
+		    source,
+		    &error) != 1) {
+		    fprintf(
+		            stderr,
+		            "Unable to open: %"
+		            PRIs_SYSTEM
+		            ".\n", source );
+
+		    goto on_error;
+	    }
+	    if (info_handle_file_print_by_address(
+		    regfinfo_info_handle,
+		    &error) != 1) {
+		    fprintf(
+		            stderr,
+		            "Unable to print file information.\n");
+
+		    goto on_error;
+	    }
+	    if (info_handle_close_input(
+		    regfinfo_info_handle,
+		    &error) != 0) {
+		    fprintf(
+		            stderr,
+		            "Unable to close info handle.\n");
+
+		    goto on_error;
+	    }
+	    if (info_handle_free(
+		    &regfinfo_info_handle,
+		    &error) != 1) {
+		    fprintf(
+		        stderr,
+		        "Unable to free info handle.\n");
+
+		    goto on_error;
+	    }
+
+        on_error:
+        if (error != NULL) {
+            libcnotify_print_error_backtrace(
+                    error);
+            libcerror_error_free(
+                    &error);
+        }
+        if (regfinfo_info_handle != NULL) {
+            info_handle_free(
+                    &regfinfo_info_handle,
+                    NULL);
+        }
+
+        return;   
+}
+
+UT_array* tsk_get_registry_value_by_address(const char* address, UT_array* blocks, int* search_address, uint64_t* haddr ) {
+    uint64_t input_address = char_convert_uint64(address), offset_total = 0;
+    TSK_DADDR_T *p = NULL;
+    UT_array* ret;
+    utarray_new( ret, &ut_str_icd );    
+
+    for (p=(TSK_DADDR_T*)utarray_front(blocks);
+         p != NULL;
+         p=(TSK_DADDR_T*)utarray_next(blocks, p)) {
+        
+        if ( input_address >= p[0] && input_address < p[1] ) {
+            /*
+            for ( ; *search_address < key_list_index ; (*search_address)++ ) {
+                if ( offset_total + ( input_address - p[0] ) >= key_list[*search_address].offset 
+                  && offset_total + ( input_address - p[0] ) < key_list[*search_address].offset + key_list[*search_address].name_size + key_list[*search_address].data_size + 20 ) {
+                    const char *temp_to_push = key_list[*search_address].key;
+                    utarray_push_back( ret, &temp_to_push ); 
+                    //printf( "search key%s  key_list_index:%d\n", key_list[*search_address].key, key_list_index );
+                    *haddr += 20 + key_list[*search_address].name_size + key_list[*search_address].data_size;
+                    if ( *haddr >= p[1] )
+                        *haddr = p[1];
+                    return ret;
+                } // if
+            } // for 
+            */
+
+            int low = 0, high = key_list_index - 1;
+            while ( low <= high ) {
+                *search_address = (low + high) / 2;
+                if ( offset_total + ( input_address - p[0] ) >= key_list[*search_address].offset 
+                  && offset_total + ( input_address - p[0] ) < key_list[*search_address].offset + key_list[*search_address].name_size + key_list[*search_address].data_size + 20 ) {
+                    const char *temp_to_push = key_list[*search_address].key;
+                    utarray_push_back( ret, &temp_to_push ); 
+                    //printf( "search key%s  key_list_index:%d\n", key_list[*search_address].key, key_list_index );
+                    *haddr += 20 + key_list[*search_address].name_size + key_list[*search_address].data_size;
+                    if ( *haddr >= p[1] )
+                        *haddr = p[1];
+                    return ret;
+                } // if
+                else if ( offset_total + ( input_address - p[0] ) < key_list[*search_address].offset ) {
+                    high = *search_address - 1;
+                } // else if  
+                else if ( offset_total + ( input_address - p[0] ) >= key_list[*search_address].offset + key_list[*search_address].name_size + key_list[*search_address].data_size + 20 ) {
+                    low = *search_address + 1;
+                } // else if
+            } // while
+        } // if
+        else {
+            offset_total += p[1] - p[0];
+        } // else
+        
+
+
+    } // for 
+    
+    return ret;
 }
 

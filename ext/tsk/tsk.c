@@ -644,7 +644,6 @@ UT_array* tsk_find_haddr_by_filename(const char* img_path, const char* file_path
         ret = data.offsets_in_disk;
     }
     else {
-        printf("file block not found\n");
         tsk_vs_close(vs);
         tsk_img_close(img);
         return NULL;

@@ -29,7 +29,6 @@ struct QDict;
 void do_get_filename_by_haddr(Monitor *mon, const QDict *qdict);
 void do_get_haddr_by_filename(Monitor *mon, const QDict *qdict);
 void do_get_file(Monitor *mon, const QDict *qdict);
-int get_hive_file(Monitor *mon,const char* sourcePath, const char* destination);
 void download_hive_to_tmp(Monitor *mon);
 void do_search_registry_by_key(Monitor *mon, const QDict *qdict);
 int search_registry_by_key(const char* key);
