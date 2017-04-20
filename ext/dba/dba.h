@@ -2,6 +2,7 @@
  *  MBA Dynamic Behavior Analyzer, DBA header
  *
  *  Copyright (c)   2016 Chiawei Wang
+ *                  2017 JuiChien Jao
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -32,7 +33,7 @@
 #define DBA_MAX_TASKS               0x1000
 #define DBA_MAX_FILENAME            255
 #define DBA_GUEST_SAMPLE_DIR        "/Users/dsns/Desktop/"
-#define DBA_MAX_TAINT_PACKET_LENGTH 1024 
+#define DBA_MAX_TAINT_PACKET_LENGTH 1024
 
 #define DBA_JSON_KEY_TAINT          "TAINT"
 #define DBA_JSON_KEY_SYSCALL        "SYSCALL"
@@ -62,20 +63,33 @@ typedef enum DBA_TASK_STATE DBA_TASK_STATE;
 
 struct dba_context {
 
-    int task_id;
+    int          task_id;
+    target_ulong task_cr3;
 
     struct {
-        bool is_enabled;
-        CONTAMINATION_RECORD tag;
+        bool                    is_enabled;
+        CONTAMINATION_RECORD    tag;
+        bool                    ntm_is_enabled;
+        int                     ntm_cb_id;
     } taint;
 
     struct {
         bool is_enabled;
     } syscall;
 
+    struct {
+        bool is_enabled;
+        bool instr_enabled;
+        bool block_enabled;
+        int  intr_tracer_cb_id;
+        int  mmcreatepeb_hook_id;
+    } instr_tracer;
+
     char   sample_hpath[ DBA_MAX_FILENAME + 1 ];
     char   sample_gpath[ DBA_MAX_FILENAME + sizeof(DBA_GUEST_SAMPLE_DIR) ];
     size_t sample_timer;
+
+    char   sample_name[ DBA_MAX_FILENAME + 1 ];
 
     json_object* result;
 

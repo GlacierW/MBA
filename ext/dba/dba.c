@@ -2,6 +2,7 @@
  *  MBA Dynamic Behavior Analyzer, DBA implementation
  *
  *  Copyright (c)   2016 Chiawei Wang
+ *                  2017 JuiChien Jao
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -19,6 +20,7 @@
 
 #include "dba.h"
 #include "dba_taint.h"
+#include "dba_tracer.h"
 
 #include "net/slirp.h"
 #include "qmp-commands.h"
@@ -166,9 +168,15 @@ static void* invoke_sample( dba_context* ctx ) {
 // retirn none
 static void* dba_main_internal( void* ctx_arg ) {
 
-    MBA_AGENT_RETURN aret;
     dba_context* ctx = ctx_arg;
-    int ntm_cb_id;
+    MBA_AGENT_RETURN aret;
+
+    // Hook Create Peb to Get CR3 of sample if tracer is turned on
+    if ( ctx->instr_tracer.is_enabled == true ) {
+        if ( set_obhook_on_mmcreatepeb( ctx ) != 0 ) {
+            return NULL;
+        }
+    }
 
     ctx->state = DBA_TASK_BUSY;
 
@@ -181,17 +189,21 @@ static void* dba_main_internal( void* ctx_arg ) {
         json_object_object_add( ctx->result, DBA_JSON_KEY_TAINT, json_object_new_object() );
         set_sample_tainted( ctx );
 
-        // ---------- Add cb into nettramon ---------- //
-        ntm_cb_id = nettramon_set_cb( &tainted_packet_cb, ctx_arg );
-        // ---------- Start to capture packets ---------- //
-        nettramon_start( NULL );
+        if ( ctx->taint.ntm_is_enabled ) {
+            // ---------- Add cb into nettramon ---------- //
+            ctx->taint.ntm_cb_id = nettramon_set_cb( &tainted_packet_cb, ctx_arg );
+            // ---------- Start to capture packets ---------- //
+            nettramon_start( NULL );
+        }
 
         // Start to execute sample
         invoke_sample( ctx );
 
-        // ---------- Delete the ntm call back funciton ---------- //
-        nettramon_stop();
-        nettramon_delete_cb( ntm_cb_id );
+        if ( ctx->taint.ntm_is_enabled ) {
+            // ---------- Delete the ntm call back funciton ---------- //
+            nettramon_stop();
+            nettramon_delete_cb( ctx->taint.ntm_cb_id );
+        }
 
         enum_tainted_file( ctx );
     }
@@ -308,6 +320,10 @@ int dba_set_sample( DBA_TID tid, const char* path ) {
     // setup sample guest path
     bzero( ctx->sample_gpath, DBA_MAX_FILENAME + sizeof(DBA_GUEST_SAMPLE_DIR) );
     sprintf( ctx->sample_gpath, "%s%s", DBA_GUEST_SAMPLE_DIR, basename(ctx->sample_hpath) );
+
+    // setup sample name according to guest path
+    bzero( ctx->sample_hpath, DBA_MAX_FILENAME + 1 );
+    sprintf( ctx->sample_name, "%s", basename(ctx->sample_hpath) );
 
     return 0;
 }
