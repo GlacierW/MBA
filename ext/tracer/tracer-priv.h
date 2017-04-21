@@ -3,6 +3,7 @@
  *
  *  Copyright (c)   2016 Chiawei Wang
  *                  2016 ChongKuan Chen
+ *                  2017 JuiChien Jao
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -36,7 +37,7 @@ bool tracer_is_kern_addr( uint64_t addr );
 /// \param env_state		the cpu state
 /// \param pc_start		the start addess of block, or instruction
 /// \param pa_end		the end address of block, or 0 for instruction tracer
-void* default_callback(void* env_state, uint64_t pc_start, uint64_t pc_end );
+void* default_callback(void* env_state, uint64_t pc_start, uint64_t pc_end, void* arg );
 
 /// void tracer_list_callback(void);
 /// list all callback
