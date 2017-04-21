@@ -3,6 +3,7 @@
  *
  *  Copyright (c)   2016 Chiawei Wang
  *                  2016 ChongKuan Chen
+ *                  2017 JuiChien Jao
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -58,7 +59,8 @@ struct tracer_cb_record {
     // user-friendly label string
     char label[MAX_SZ_TRACER_LABEL];
 
-    void* (*cb_func) (void*,uint64_t, uint64_t);
+    void* (*cb_func) (void*,uint64_t, uint64_t, void*);
+    void* cb_arg;
 
     struct tracer_cb_record* next;
 };
@@ -115,7 +117,7 @@ extern int tracer_disable_tracer(int);
 ///                             instruction tracer(always be 0), and the cb must return void*
 /// 
 /// return -1 on error, tracer_id on success
-extern int tracer_add_inst_tracer( uint64_t cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) );
+extern int tracer_add_inst_tracer( uint64_t cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t, void*), void* usr_cb_arg );
 
 /// int tracer_add_block_tracer( uint64_t cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) );
 /// Add a new block level tracer
@@ -133,7 +135,7 @@ extern int tracer_add_inst_tracer( uint64_t cr3, const char* label, bool is_kern
 ///                             the cb must return void*, and the default call back is used when cb == NULL
 /// 
 /// return -1 on error, tracer_id on success
-extern int tracer_add_block_tracer( uint64_t cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) );
+extern int tracer_add_block_tracer( uint64_t cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t, void*), void* usr_cb_arg );
 
 
 /// char* tracer_get_tracer_label(int uid)
