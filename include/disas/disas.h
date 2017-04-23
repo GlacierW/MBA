@@ -8,7 +8,7 @@
 void disas(FILE *out, void *code, unsigned long size);
 void target_disas(FILE *out, CPUArchState *env, target_ulong code,
                   target_ulong size, int flags);
-void target_disas_inst_count(FILE *out, CPUArchState *env, target_ulong code,
+int target_disas_inst_count(FILE *out, CPUArchState *env, target_ulong code,
                   target_ulong size, int num_inst, int flags);
 void monitor_disas(Monitor *mon, CPUArchState *env,
                    target_ulong pc, int nb_insn, int is_physical, int flags);

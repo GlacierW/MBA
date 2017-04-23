@@ -1,1 +1,30 @@
-{"MODULE":{"AGENT":"no","DIFT":"no","NETTRAMON":"no"},"TAINT":{"ENABLE":"no","TAG":"1"},"SYSCALL_TRACER":{"ENABLE":"no"}}
+{
+    "MODULE":
+    {
+        "AGENT":"no",
+        "DIFT":"no",
+        "NETTRAMON":"no"
+    },
+    "TAINT":
+    {
+        "ENABLE":"no",
+        "TAG":"1"
+    },
+    "SYSCALL_TRACER":
+    {
+        "ENABLE":"no"
+    },
+    "INSTR_TRACER":
+    {
+        "INSTR":
+        {
+            "ENABLE":"yes",
+            "IS_KERNEL":"no"
+        },
+        "BLOCK":
+        {
+            "ENABLE":"no",
+            "IS_KERNEL":"no"
+        }
+    }
+}

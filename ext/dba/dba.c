@@ -100,6 +100,42 @@ static int toggle_syscall_tracer( DBA_TID tid, bool is_enable ) {
     return 0;
 }
 
+static int toggle_block_tracer_is_kernel( DBA_TID tid, bool is_enable ) {
+    
+    if( !is_task_configurable(tid) )
+        return -1;
+
+    dba_tasks[tid]->instr_tracer.block_is_kernel = is_enable;
+    return 0;
+}
+
+static int toggle_block_tracer( DBA_TID tid, bool is_enable ) {
+    
+    if( !is_task_configurable(tid) )
+        return -1;
+
+    dba_tasks[tid]->instr_tracer.block_enabled = is_enable;
+    return 0;
+}
+
+static int toggle_instr_tracer_is_kernel( DBA_TID tid, bool is_enable ) {
+    
+    if( !is_task_configurable(tid) )
+        return -1;
+
+    dba_tasks[tid]->instr_tracer.instr_is_kernel = is_enable;
+    return 0;
+}
+
+static int toggle_instr_tracer( DBA_TID tid, bool is_enable ) {
+    
+    if( !is_task_configurable(tid) )
+        return -1;
+
+    dba_tasks[tid]->instr_tracer.instr_enabled = is_enable;
+    return 0;
+}
+
 static DBA_TID get_available_tid( void ) {
  
     DBA_TID tid,
@@ -172,7 +208,9 @@ static void* dba_main_internal( void* ctx_arg ) {
     MBA_AGENT_RETURN aret;
 
     // Hook Create Peb to Get CR3 of sample if tracer is turned on
-    if ( ctx->instr_tracer.is_enabled == true ) {
+    if ( ctx->instr_tracer.instr_enabled == true || ctx->instr_tracer.block_enabled == true ) {
+
+        json_object_object_add( ctx->result, DBA_JSON_KEY_TRACER, json_object_new_object() );
         if ( set_obhook_on_mmcreatepeb( ctx ) != 0 ) {
             return NULL;
         }
@@ -198,6 +236,12 @@ static void* dba_main_internal( void* ctx_arg ) {
 
         // Start to execute sample
         invoke_sample( ctx );
+
+        if ( ctx->instr_tracer.instr_enabled )
+            tracer_disable_tracer( ctx->instr_tracer.instr_tracer_cb_id );
+
+        if ( ctx->instr_tracer.block_enabled )
+            tracer_disable_tracer( ctx->instr_tracer.block_tracer_cb_id );
 
         if ( ctx->taint.ntm_is_enabled ) {
             // ---------- Delete the ntm call back funciton ---------- //
@@ -322,10 +366,42 @@ int dba_set_sample( DBA_TID tid, const char* path ) {
     sprintf( ctx->sample_gpath, "%s%s", DBA_GUEST_SAMPLE_DIR, basename(ctx->sample_hpath) );
 
     // setup sample name according to guest path
-    bzero( ctx->sample_hpath, DBA_MAX_FILENAME + 1 );
+    bzero( ctx->sample_name, DBA_MAX_FILENAME + 1 );
     sprintf( ctx->sample_name, "%s", basename(ctx->sample_hpath) );
 
     return 0;
+}
+
+int dba_enable_block_tracer_is_kernel( DBA_TID tid ) {
+    return toggle_block_tracer_is_kernel( tid, true );
+}
+
+int dba_disable_block_tracer_is_kernel( DBA_TID tid ) {
+    return toggle_block_tracer_is_kernel( tid, false );
+}
+
+int dba_enable_block_tracer( DBA_TID tid ) {
+    return toggle_block_tracer( tid, true );
+}
+
+int dba_disable_block_tracer( DBA_TID tid ) {
+    return toggle_block_tracer( tid, false );
+}
+
+int dba_enable_instr_tracer_is_kernel( DBA_TID tid ) {
+    return toggle_instr_tracer_is_kernel( tid, true );
+}
+
+int dba_disable_instr_tracer_is_kernel( DBA_TID tid ) {
+    return toggle_instr_tracer_is_kernel( tid, false );
+}
+
+int dba_enable_instr_tracer( DBA_TID tid ) {
+    return toggle_instr_tracer( tid, true );
+}
+
+int dba_disable_instr_tracer( DBA_TID tid ) {
+    return toggle_instr_tracer( tid, false );
 }
 
 int dba_enable_syscall_trace( DBA_TID tid ) {
