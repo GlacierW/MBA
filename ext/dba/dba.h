@@ -28,6 +28,7 @@
 #include "ext/dift/dift.h"
 #include "ext/agent/agent.h"
 #include "ext/nettramon/nettramon.h"
+#include "ext/tracer/tracer.h"
 #include "monitor/monitor.h"
 
 #define DBA_MAX_TASKS               0x1000
@@ -37,6 +38,7 @@
 
 #define DBA_JSON_KEY_TAINT          "TAINT"
 #define DBA_JSON_KEY_SYSCALL        "SYSCALL"
+#define DBA_JSON_KEY_TRACER         "TRACER"
 
 // DBA Task ID
 typedef intptr_t DBA_TID;
@@ -78,10 +80,12 @@ struct dba_context {
     } syscall;
 
     struct {
-        bool is_enabled;
         bool instr_enabled;
+        bool instr_is_kernel;
+        int  instr_tracer_cb_id;
         bool block_enabled;
-        int  intr_tracer_cb_id;
+        bool block_is_kernel;
+        int  block_tracer_cb_id;
         int  mmcreatepeb_hook_id;
     } instr_tracer;
 
@@ -156,6 +160,70 @@ extern int dba_set_timer( DBA_TID tid, size_t seconds );
 ///
 /// Return 0 on success, otherwise -1 is returned and the dba_errno is set
 extern int dba_set_sample( DBA_TID tid, const char* path );
+
+/// Enable block tracer in kernel address for the DBA task speicified by ID
+/// Note that the task must be IDLE to be configurable
+///
+///     \param  tid     DBA task ID
+///
+/// Return 0 on success, otherwise -1 is returned and the dba_errno is set
+extern int dba_enable_block_tracer_is_kernel( DBA_TID tid );
+
+/// Disable block tracer in kernel address for the DBA task speicified by ID
+///
+/// Note that the task must be IDLE to be configurable
+///     \param  tid     DBA task ID
+///
+/// Return 0 on success, otherwise -1 is returned and the dba_errno is set
+extern int dba_disable_block_tracer_is_kernel( DBA_TID tid );
+
+/// Enable block tracer for the DBA task speicified by ID
+/// Note that the task must be IDLE to be configurable
+///
+///     \param  tid     DBA task ID
+///
+/// Return 0 on success, otherwise -1 is returned and the dba_errno is set
+extern int dba_enable_block_tracer( DBA_TID tid );
+
+/// Disable block tracer for the DBA task speicified by ID
+///
+/// Note that the task must be IDLE to be configurable
+///     \param  tid     DBA task ID
+///
+/// Return 0 on success, otherwise -1 is returned and the dba_errno is set
+extern int dba_disable_block_tracer( DBA_TID tid );
+
+/// Enable instruction tracer in kernel address for the DBA task speicified by ID
+/// Note that the task must be IDLE to be configurable
+///
+///     \param  tid     DBA task ID
+///
+/// Return 0 on success, otherwise -1 is returned and the dba_errno is set
+extern int dba_enable_instr_tracer_is_kernel( DBA_TID tid );
+
+/// Disable instruction tracer in kernel address for the DBA task speicified by ID
+///
+/// Note that the task must be IDLE to be configurable
+///     \param  tid     DBA task ID
+///
+/// Return 0 on success, otherwise -1 is returned and the dba_errno is set
+extern int dba_disable_instr_tracer_is_kernel( DBA_TID tid );
+
+/// Enable instruction tracer for the DBA task speicified by ID
+/// Note that the task must be IDLE to be configurable
+///
+///     \param  tid     DBA task ID
+///
+/// Return 0 on success, otherwise -1 is returned and the dba_errno is set
+extern int dba_enable_instr_tracer( DBA_TID tid );
+
+/// Disable instruction tracer for the DBA task speicified by ID
+///
+/// Note that the task must be IDLE to be configurable
+///     \param  tid     DBA task ID
+///
+/// Return 0 on success, otherwise -1 is returned and the dba_errno is set
+extern int dba_disable_instr_tracer( DBA_TID tid );
 
 /// Enable system call tracer for the DBA task speicified by ID
 /// Note that the task must be IDLE to be configurable

@@ -155,7 +155,7 @@ static int add_obhk_internal( target_ulong cr3, target_ulong addr, const char* l
     cb_rec->enabled   = true;
     cb_rec->universal = (cb_rec->ht_rec->cr3 == 0)? true : false;
     cb_rec->cb_func   = cb;
-    cb_rec->cb_arg   = usr_cb_arg;
+    cb_rec->cb_arg    = usr_cb_arg;
     strncpy( cb_rec->label, label, MAX_SZ_OBHOOK_LABEL );
 
     // add the callback record to the linked list & index table
