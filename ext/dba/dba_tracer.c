@@ -1,5 +1,4 @@
 /*
- *
  *  Tracer abilities of DBA
  *
  *  Copyright (c)    2017 JuiChien Jao
@@ -21,10 +20,16 @@
 #include "ext/obhook/obhook.h"
 #include "disas/disas.h"
 
-#define RFT_INSTR                   "Instruction"
-#define RFT_BLOCK                   "Block"
-#define MAX_SZ_TRACER_LABEL         16
+// Tag in DBA result
+#define RFT_INSTR "Instruction"
+#define RFT_BLOCK "Block"
 
+/// Callback Function for instruction tracer
+/// Decode the instructions, write into a buffer via open_memstream, and append to the result.
+///
+/// Parameters are defined by "ext/tracer/tracer.h"
+///
+/// Return None
 static void* cb_instr_tracer( void* env_state, uint64_t start_addr, uint64_t useless_arg, void* cur_ctx ) {
 
     X86CPU* cpu = X86_CPU(env_state);
@@ -55,14 +60,23 @@ static void* cb_instr_tracer( void* env_state, uint64_t start_addr, uint64_t use
         jo_instr = json_object_new_array();
         json_object_object_add( jo_tracer, RFT_INSTR, jo_instr );
     }
-    
+
+    // Add result to result
     json_object_array_add( jo_instr, json_object_new_string( instr_buf ) );
     
+    // This "free" operation must be done, must be done, must be done...,
+    // since the open_memstream will not handle for this allocated buffer.
     free( instr_buf );
 
     return NULL;
 }
 
+/// Callback Function for block tracer
+/// Decode the block instructions, write into a buffer via open_memstream, and append to the result.
+///
+/// Parameters are defined by "ext/tracer/tracer.h"
+///
+/// Return None
 static void* cb_block_tracer( void* env_state, uint64_t start_addr, uint64_t end_addr, void* cur_ctx ) {
     
     X86CPU* cpu = X86_CPU(env_state);
@@ -105,6 +119,12 @@ static void* cb_block_tracer( void* env_state, uint64_t start_addr, uint64_t end
     return NULL;
 }
 
+/// Callback Function for hook on MmCreatePeb
+/// Try to get the cr3 of the sample by compareing the program name of the process with the sample name ( Only the begining 14 characters )
+///
+/// Parameters are defined by "ext/obhook/obhook.h"
+///
+/// Return None
 static void* cb_hook_mmcreatepeb( void* cpu, void* cur_ctx ) {
 
     X86CPU *x86cpu = ( X86CPU* )cpu;
@@ -140,7 +160,7 @@ static void* cb_hook_mmcreatepeb( void* cpu, void* cur_ctx ) {
     
     // TODO: Add Tracer Callback function
     if ( ctx->instr_tracer.instr_enabled ) {
-        ctx->instr_tracer.instr_tracer_cb_id = tracer_add_inst_tracer( ctx->task_cr3, "DBA_TASK", ctx->instr_tracer.instr_is_kernel, cb_instr_tracer, cur_ctx );
+        ctx->instr_tracer.instr_tracer_cb_id = tracer_add_inst_tracer( ctx->task_cr3, "DBA_INSTR", ctx->instr_tracer.instr_is_kernel, cb_instr_tracer, cur_ctx );
         if ( ctx->instr_tracer.instr_tracer_cb_id == -1 ) {
             monitor_printf( ctx->mon, "Fail to register instr tracer of Task %d\n", ctx->task_id );
             return NULL;
@@ -152,12 +172,12 @@ static void* cb_hook_mmcreatepeb( void* cpu, void* cur_ctx ) {
     }
 
     if ( ctx->instr_tracer.block_enabled ) {
-        ctx->instr_tracer.block_tracer_cb_id = tracer_add_block_tracer( ctx->task_cr3, "DBA_TASK", ctx->instr_tracer.block_is_kernel, cb_block_tracer, cur_ctx );
+        ctx->instr_tracer.block_tracer_cb_id = tracer_add_block_tracer( ctx->task_cr3, "DBA_BLOCK", ctx->instr_tracer.block_is_kernel, cb_block_tracer, cur_ctx );
         if ( ctx->instr_tracer.block_tracer_cb_id == -1 ) {
             monitor_printf( ctx->mon, "Fail to register block tracer of Task %d\n", ctx->task_id );
             return NULL;
         }
-        if ( tracer_enable_tracer( ctx->instr_tracer.block_tracer_cb_id ) ) {
+        if ( tracer_enable_tracer( ctx->instr_tracer.block_tracer_cb_id ) == -1 ) {
             monitor_printf( ctx->mon, "Fail to enable block tracer of Task %d\n", ctx->task_id );
             return NULL;
         }
@@ -167,7 +187,7 @@ static void* cb_hook_mmcreatepeb( void* cpu, void* cur_ctx ) {
 
 }
 
-// get kernel base, find it if it's not found yet
+// get kernel base, find it if it's not get yet
 target_ulong get_kernel_address_base( void ) {
     target_ulong kernel_base_address;
     CPUState *cpu;
@@ -175,7 +195,8 @@ target_ulong get_kernel_address_base( void ) {
     kernel_base_address = memfrs_get_nt_kernel_base();
     if( kernel_base_address != 0 )
         return kernel_base_address;
-
+    
+    // try and error
     cpu = first_cpu;
     if( cpu == NULL ) {
         return 0;
@@ -201,7 +222,7 @@ int get_gvar_addr( const char *var_name, target_ulong *out ) {
     return 0;
 }
 
-// Setup 
+// Setup hook on the mmcreatepeb so as to get the needed information of sample
 int set_obhook_on_mmcreatepeb( dba_context* ctx ) {
 
     target_ulong mmcreatepeb;
@@ -219,12 +240,13 @@ int set_obhook_on_mmcreatepeb( dba_context* ctx ) {
     }
     
     // register MmCreatePeb obhook, for process creation hooking
-    ret_val = obhook_add_universal( mmcreatepeb, DBA_HOOK_PROC_CREATE_TAG, cb_hook_mmcreatepeb, (void*)ctx );
+    ret_val = obhook_add_universal( mmcreatepeb, DBA_CALL_BACK_TAG, cb_hook_mmcreatepeb, (void*)ctx );
     if( ret_val == -1 ) {
         monitor_printf( ctx->mon, "Task %d failed to hook process creation\n", ctx->task_id );
         return 1;
     }
 
+    // Record the callback function ID.
     ctx->instr_tracer.mmcreatepeb_hook_id = ret_val;
 
     return 0;

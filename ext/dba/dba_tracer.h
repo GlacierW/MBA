@@ -1,5 +1,4 @@
 /*
- *
  *  Tracer abilities of DBA
  *
  *  Copyright (c)    2017 JuiChien Jao
@@ -22,12 +21,12 @@
 
 #include "dba.h"
 
-#define DBA_HOOK_PROC_CREATE_TAG    "dba"
-#define DBA_INSTRUCTION_TRACER_TAG  "dba"
-#define DBA_BLOCK_TRACER_TAG        "dba_block_tracer"
-#define DBA_MAX_SZ_IMG_NAME         14
+#define DBA_CALL_BACK_TAG    "DBA_TASK"
+#define DBA_MAX_SZ_IMG_NAME  14         // The 15th character is '\0'
 
 /// Get Kernel Base Address In-guest
+///
+///     \param None
 /// 
 /// Return a non-zero value for success, 0 for fail 
 extern target_ulong get_kernel_address_base( void );
