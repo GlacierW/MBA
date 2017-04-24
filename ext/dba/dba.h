@@ -29,6 +29,7 @@
 #include "ext/agent/agent.h"
 #include "ext/nettramon/nettramon.h"
 #include "ext/tracer/tracer.h"
+#include "ext/obhook/obhook.h"
 #include "monitor/monitor.h"
 
 #define DBA_MAX_TASKS               0x1000
@@ -36,6 +37,7 @@
 #define DBA_GUEST_SAMPLE_DIR        "/Users/dsns/Desktop/"
 #define DBA_MAX_TAINT_PACKET_LENGTH 1024
 
+// DBA result json tag
 #define DBA_JSON_KEY_TAINT          "TAINT"
 #define DBA_JSON_KEY_SYSCALL        "SYSCALL"
 #define DBA_JSON_KEY_TRACER         "TRACER"
@@ -66,11 +68,15 @@ typedef enum DBA_TASK_STATE DBA_TASK_STATE;
 struct dba_context {
 
     int          task_id;
+    // CR3 od sample, and should not be directly used without hooking on MmCreatePeb
     target_ulong task_cr3;
 
+    // Record of taint ability setting
     struct {
+        // Swithch of TAINT ability and taint tag
         bool                    is_enabled;
         CONTAMINATION_RECORD    tag;
+        // Switch of Taint packet and the callback function id of NTM
         bool                    ntm_is_enabled;
         int                     ntm_cb_id;
     } taint;
@@ -80,12 +86,19 @@ struct dba_context {
     } syscall;
 
     struct {
+        // Switch of TRACER ability in instructions 
         bool instr_enabled;
+        // Flag for choosing in what level while tracing
         bool instr_is_kernel;
+        // Callback function ID of instruction tracer
         int  instr_tracer_cb_id;
+        // Switch of TRACER ability in block instructions 
         bool block_enabled;
+        // Flag for choosing in what level while tracing
         bool block_is_kernel;
+        // Callback function ID of block instruction tracer
         int  block_tracer_cb_id;
+        // Callback function ID of obhook in hooking MmCreatePeb 
         int  mmcreatepeb_hook_id;
     } instr_tracer;
 
@@ -93,6 +106,7 @@ struct dba_context {
     char   sample_gpath[ DBA_MAX_FILENAME + sizeof(DBA_GUEST_SAMPLE_DIR) ];
     size_t sample_timer;
 
+    // Sample name that will used to identify whather the created process is the sample we put into
     char   sample_name[ DBA_MAX_FILENAME + 1 ];
 
     json_object* result;
@@ -170,8 +184,8 @@ extern int dba_set_sample( DBA_TID tid, const char* path );
 extern int dba_enable_block_tracer_is_kernel( DBA_TID tid );
 
 /// Disable block tracer in kernel address for the DBA task speicified by ID
-///
 /// Note that the task must be IDLE to be configurable
+///
 ///     \param  tid     DBA task ID
 ///
 /// Return 0 on success, otherwise -1 is returned and the dba_errno is set
@@ -186,8 +200,8 @@ extern int dba_disable_block_tracer_is_kernel( DBA_TID tid );
 extern int dba_enable_block_tracer( DBA_TID tid );
 
 /// Disable block tracer for the DBA task speicified by ID
-///
 /// Note that the task must be IDLE to be configurable
+///
 ///     \param  tid     DBA task ID
 ///
 /// Return 0 on success, otherwise -1 is returned and the dba_errno is set
@@ -202,8 +216,8 @@ extern int dba_disable_block_tracer( DBA_TID tid );
 extern int dba_enable_instr_tracer_is_kernel( DBA_TID tid );
 
 /// Disable instruction tracer in kernel address for the DBA task speicified by ID
-///
 /// Note that the task must be IDLE to be configurable
+///
 ///     \param  tid     DBA task ID
 ///
 /// Return 0 on success, otherwise -1 is returned and the dba_errno is set
@@ -218,12 +232,30 @@ extern int dba_disable_instr_tracer_is_kernel( DBA_TID tid );
 extern int dba_enable_instr_tracer( DBA_TID tid );
 
 /// Disable instruction tracer for the DBA task speicified by ID
-///
 /// Note that the task must be IDLE to be configurable
+///
 ///     \param  tid     DBA task ID
 ///
 /// Return 0 on success, otherwise -1 is returned and the dba_errno is set
 extern int dba_disable_instr_tracer( DBA_TID tid );
+
+/// Set the global variable
+/// Note that the task must be IDLE to be configurable
+///
+///     \param  tid     DBA task ID
+///     \param  path    path to the global variable json file
+///
+/// Return 0 on success, otherwise -1 is returned 
+extern int dba_set_global( DBA_TID tid, const char* path );
+
+/// Set the structure definition
+/// Note that the task must be IDLE to be configurable
+///
+///     \param  tid     DBA task ID
+///     \param  path    path to the struction definition json file
+///
+/// Return 0 on success, otherwise -1 is returned 
+extern int dba_set_structure( DBA_TID tid, const char* path );
 
 /// Enable system call tracer for the DBA task speicified by ID
 /// Note that the task must be IDLE to be configurable
@@ -234,12 +266,29 @@ extern int dba_disable_instr_tracer( DBA_TID tid );
 extern int dba_enable_syscall_trace( DBA_TID tid );
 
 /// Disable system call tracer for the DBA task speicified by ID
-///
 /// Note that the task must be IDLE to be configurable
+///
 ///     \param  tid     DBA task ID
 ///
 /// Return 0 on success, otherwise -1 is returned and the dba_errno is set
 extern int dba_disable_syscall_trace( DBA_TID tid );
+
+/// Enable taint analysis of packets for the DBA task speicified by ID
+/// Note that the task must be IDLE to be configurable
+///
+///     \param  tid     DBA task ID
+///     \param  tag     taint tag for the taint analysis
+///
+/// Return 0 on success, otherwise -1 is returned and the dba_errno is set
+extern int dba_enable_taint_packet( DBA_TID tid );
+
+/// Disable taint analysis of packets for the DBA task speicified by ID
+/// Note that the task must be IDLE to be configurable
+///
+///     \param  tid     DBA task ID
+///
+/// Return 0 on success, otherwise -1 is returned and the dba_errno is set
+extern int dba_disable_taint_packet( DBA_TID tid );
 
 /// Enable taint analysis for the DBA task speicified by ID
 /// Note that the task must be IDLE to be configurable
