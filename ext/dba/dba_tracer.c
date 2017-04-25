@@ -43,11 +43,6 @@ static void* cb_instr_tracer( void* env_state, uint64_t start_addr, uint64_t use
     json_object*    jo_instr;
    
     target_disas_inst_count( instr_fp, env, start_addr, 100, 1, 2);
-    fprintf( instr_fp, "\teax %08lx\t", env->regs[R_EAX]);
-    fprintf( instr_fp, "ebx %08lx\t", env->regs[R_EBX]);
-    fprintf( instr_fp, "ecx %08lx\t", env->regs[R_ECX]);
-    fprintf( instr_fp, "edx %08lx\n", env->regs[R_EDX]);
-    fprintf( instr_fp, "\tcr3 %08lx\n", env->cr[3]);
     fprintf( instr_fp, "\n");
     fclose( instr_fp );
 
@@ -93,11 +88,6 @@ static void* cb_block_tracer( void* env_state, uint64_t start_addr, uint64_t end
     
     while ( tmp_addr <= end_addr ) {
         tmp_addr += target_disas_inst_count( instr_fp, env, tmp_addr, 100, 1, 2);
-        fprintf( instr_fp, "\teax %08lx\t", env->regs[R_EAX]);
-        fprintf( instr_fp, "ebx %08lx\t", env->regs[R_EBX]);
-        fprintf( instr_fp, "ecx %08lx\t", env->regs[R_ECX]);
-        fprintf( instr_fp, "edx %08lx\n", env->regs[R_EDX]);
-        fprintf( instr_fp, "\tcr3 %08lx\n", env->cr[3]);
         fprintf( instr_fp, "\n");
     }
     fclose(instr_fp);
@@ -222,28 +212,24 @@ int get_gvar_addr( const char *var_name, target_ulong *out ) {
     return 0;
 }
 
-// Setup hook on the mmcreatepeb so as to get the needed information of sample
+// Setup hook on the MmCreatePeb so as to get the information of sample
 int set_obhook_on_mmcreatepeb( dba_context* ctx ) {
 
     target_ulong mmcreatepeb;
-    json_object *jo_out;
     int ret_val;
 
-    // get JSON object for syscall result
-    json_object_object_get_ex( ctx->result, DBA_JSON_KEY_SYSCALL, &jo_out );
-    
     // get MmCreatePeb function address
     ret_val = get_gvar_addr( "MmCreatePeb", &mmcreatepeb );
     if( ret_val == -1 ) {
         monitor_printf( ctx->mon, "Task %d failed to get MmCreatePeb function address\n", ctx->task_id );
-        return 1;
+        return -1;
     }
     
-    // register MmCreatePeb obhook, for process creation hooking
+    // register MmCreatePeb in obhook, for process creation hooking
     ret_val = obhook_add_universal( mmcreatepeb, DBA_CALL_BACK_TAG, cb_hook_mmcreatepeb, (void*)ctx );
     if( ret_val == -1 ) {
         monitor_printf( ctx->mon, "Task %d failed to hook process creation\n", ctx->task_id );
-        return 1;
+        return -1;
     }
 
     // Record the callback function ID.

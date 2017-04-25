@@ -205,7 +205,7 @@ static DBA_TID get_available_tid( void ) {
 // NTM    : If the taint ability is turned on, add a callback function to NTM to get packets and start the NTM
 //
 // Return 0 for success, -1 for fail
-static int do_preparation( dba_context* ctx ) {
+static int set_up_tasks( dba_context* ctx ) {
 
     // Hook Create Peb to Get CR3 of sample if tracer is turned on
     if ( ctx->instr_tracer.instr_enabled == true || ctx->instr_tracer.block_enabled == true ) {
@@ -244,7 +244,7 @@ static int do_preparation( dba_context* ctx ) {
     while( (aret = x) == AGENT_RET_EBUSY ) { asm volatile("pause"); } \
     while( !agent_is_idle() ) { asm volatile( "pause" ); }
 
-// Wrpper of invoking sample and doing sync
+// Wrapper of invoking sample and doing sync
 // Return none
 static void* invoke_sample( dba_context* ctx ) {
 
@@ -262,50 +262,56 @@ static void* invoke_sample( dba_context* ctx ) {
     return NULL;
 }
 
-// After invoking the task for certain time, all the used objects should be cleaned
+// After invoking the task for a certain time, all the used objects should be cleaned
 // 
-// Obhook : Disable and delete call back
-// Tracer : Disable call back
-// NTM    : Turn off the monitor and delete the call back
+// Obhook : Disable and delete callback function
+// Tracer : Disable callback function
+// NTM    : Delete the callback function and do not turn off NTM
 // TAINT  : Enumerate tainted files
 //
 // Return 0 for success, -1 for fail
-static int finish_task( dba_context* ctx ) {
+static int finish_tasks( dba_context* ctx ) {
 
+    // Detect whether the Tracer ability is on
     if ( ctx->instr_tracer.instr_enabled || ctx->instr_tracer.block_enabled ) {
 
+        // Disable the callback function if we have registered
         if ( ctx->instr_tracer.instr_enabled )
             if ( tracer_disable_tracer( ctx->instr_tracer.instr_tracer_cb_id ) != 0  ) 
                 return -1;
 
+        // Disable the callback function if we have registered
         if ( ctx->instr_tracer.block_enabled )
             if ( tracer_disable_tracer( ctx->instr_tracer.block_tracer_cb_id ) != 0 )
                 return -1;
 
+        // Disable and delete the callback function if we have registered
         if ( obhook_disable( ctx->instr_tracer.mmcreatepeb_hook_id ) != 0 )
             return -1;
         if ( obhook_delete ( ctx->instr_tracer.mmcreatepeb_hook_id ) != 0 )
             return -1;
     }
 
-    if ( ctx->taint.ntm_is_enabled ) {
-        // ---------- Delete the ntm call back funciton ---------- //
-        if ( nettramon_stop() != 0 ) 
-            return -1;
-        if ( nettramon_delete_cb( ctx->taint.ntm_cb_id ) != 0 )
-            return -1;
-    }
-
+    // Detect whether the Taint ability is on
     if ( ctx->taint.is_enabled ) {
+
+        // Find the tainted files
         enum_tainted_file( ctx );
+
+        // Check whether tainted packet ability is on
+        if ( ctx->taint.ntm_is_enabled ) {
+            // Consider that many tasks may executing at the same time, we do not turn off the NTM
+            // Delete the callback function
+            if ( nettramon_delete_cb( ctx->taint.ntm_cb_id ) != 0 )
+                return -1;
+        }
     }
 
     return 0;
-
 }
 
 // dba task thread main
-// retirn none
+// return none
 static void* dba_main_internal( void* ctx_arg ) {
 
     dba_context* ctx = ctx_arg;
@@ -318,13 +324,13 @@ static void* dba_main_internal( void* ctx_arg ) {
     AGENT_ACT( agent_sync() );
 
     // Do the required work
-    do_preparation( ctx );
+    set_up_tasks( ctx );
 
     // Start to execute sample in certain time given by user
     invoke_sample( ctx );
 
-    // Do the finish work
-    finish_task( ctx );
+    // Do the finishing work
+    finish_tasks( ctx );
 
     ctx->state = DBA_TASK_DONE;
 
@@ -436,7 +442,7 @@ int dba_set_sample( DBA_TID tid, const char* path ) {
     bzero( ctx->sample_gpath, DBA_MAX_FILENAME + sizeof(DBA_GUEST_SAMPLE_DIR) );
     sprintf( ctx->sample_gpath, "%s%s", DBA_GUEST_SAMPLE_DIR, basename(ctx->sample_hpath) );
 
-    // setup sample name according to guest path
+    // setup sample name according to "guest path"
     bzero( ctx->sample_name, DBA_MAX_FILENAME + 1 );
     sprintf( ctx->sample_name, "%s", basename(ctx->sample_hpath) );
 

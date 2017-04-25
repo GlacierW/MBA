@@ -46,8 +46,6 @@ static void cb_dba_set_syscall( void* mon, const char* yn, void* opaque );
 static void cb_dba_set_taint_tag( void* mon, const char* yn, void* opaque );
 static void cb_dba_set_taint( void* mon, const char* yn, void* opaque );
 
-bool use_config_file = FALSE;
-
 static void show_dba_context_info( Monitor* mon, FILE* fp, const dba_context* ctx ) {
 
     if( (fp == NULL && mon == NULL) || ctx == NULL )
@@ -162,7 +160,7 @@ static void cb_dba_confirm( void* mon, const char* yn, void* opaque ) {
 // DBA - instruction tracer ?
 static void cb_dba_set_block_is_kernel( void* mon, const char* yn, void* opaque ) {
 
-    // goto block tracer
+    // goto confirm
     if( strcasecmp( "y", yn ) == 0 || strcasecmp( "yes", yn ) == 0 ) {
         dba_enable_block_tracer_is_kernel( (DBA_TID)opaque );
         mba_readline_start( (Monitor*)mon, PROMPT_DBA_Q12, 0, cb_dba_confirm, opaque );
@@ -170,7 +168,7 @@ static void cb_dba_set_block_is_kernel( void* mon, const char* yn, void* opaque 
         return;
     }
 
-    // goto block tracer
+    // goto confirm
     if( strcasecmp( "n", yn ) == 0 || strcasecmp( "no", yn ) == 0 ) {
         dba_disable_block_tracer_is_kernel( (DBA_TID)opaque );
         mba_readline_start( (Monitor*)mon, PROMPT_DBA_Q12, 0, cb_dba_confirm, opaque );
@@ -178,7 +176,7 @@ static void cb_dba_set_block_is_kernel( void* mon, const char* yn, void* opaque 
         return;
     }
 
-    // stay instruction tracer
+    // stay set in kernel
     mba_readline_start( (Monitor*)mon, PROMPT_DBA_Q11, 0, cb_dba_set_block_is_kernel, opaque );
     mba_readline_show_prompt( mon );
 }
@@ -186,7 +184,7 @@ static void cb_dba_set_block_is_kernel( void* mon, const char* yn, void* opaque 
 // DBA - block tracer ?
 static void cb_dba_set_block( void* mon, const char* yn, void* opaque ) {
 
-    // goto confirm
+    // goto set in kernel 
     if( strcasecmp( "y", yn ) == 0 || strcasecmp( "yes", yn ) == 0 ) {
         dba_enable_block_tracer( (DBA_TID)opaque );
         mba_readline_start( (Monitor*)mon, PROMPT_DBA_Q11, 0, cb_dba_set_block_is_kernel, opaque );
@@ -203,7 +201,7 @@ static void cb_dba_set_block( void* mon, const char* yn, void* opaque ) {
         return;
     }
 
-    // stay syscall
+    // stay set block
     mba_readline_start( (Monitor*)mon, PROMPT_DBA_Q10, 0, cb_dba_set_block, opaque );
     mba_readline_show_prompt( mon );
 }
@@ -211,7 +209,7 @@ static void cb_dba_set_block( void* mon, const char* yn, void* opaque ) {
 // DBA - instruction tracer ?
 static void cb_dba_set_instr_is_kernel( void* mon, const char* yn, void* opaque ) {
 
-    // goto block tracer
+    // goto set block
     if( strcasecmp( "y", yn ) == 0 || strcasecmp( "yes", yn ) == 0 ) {
         dba_enable_instr_tracer_is_kernel( (DBA_TID)opaque );
         mba_readline_start( (Monitor*)mon, PROMPT_DBA_Q10, 0, cb_dba_set_block, opaque );
@@ -219,7 +217,7 @@ static void cb_dba_set_instr_is_kernel( void* mon, const char* yn, void* opaque 
         return;
     }
 
-    // goto block tracer
+    // goto set block
     if( strcasecmp( "n", yn ) == 0 || strcasecmp( "no", yn ) == 0 ) {
         dba_disable_instr_tracer_is_kernel( (DBA_TID)opaque );
         mba_readline_start( (Monitor*)mon, PROMPT_DBA_Q10, 0, cb_dba_set_block, opaque );
@@ -227,7 +225,7 @@ static void cb_dba_set_instr_is_kernel( void* mon, const char* yn, void* opaque 
         return;
     }
 
-    // stay instruction tracer
+    // stay set in kernel 
     mba_readline_start( (Monitor*)mon, PROMPT_DBA_Q9, 0, cb_dba_set_instr_is_kernel, opaque );
     mba_readline_show_prompt( mon );
 }
@@ -235,7 +233,7 @@ static void cb_dba_set_instr_is_kernel( void* mon, const char* yn, void* opaque 
 // DBA - instruction tracer ?
 static void cb_dba_set_instr( void* mon, const char* yn, void* opaque ) {
 
-    // goto block tracer
+    // goto set in kernel
     if( strcasecmp( "y", yn ) == 0 || strcasecmp( "yes", yn ) == 0 ) {
         dba_enable_instr_tracer( (DBA_TID)opaque );
         mba_readline_start( (Monitor*)mon, PROMPT_DBA_Q9, 0, cb_dba_set_instr_is_kernel, opaque );
@@ -243,7 +241,7 @@ static void cb_dba_set_instr( void* mon, const char* yn, void* opaque ) {
         return;
     }
 
-    // goto block tracer
+    // goto set block
     if( strcasecmp( "n", yn ) == 0 || strcasecmp( "no", yn ) == 0 ) {
         dba_disable_instr_tracer( (DBA_TID)opaque );
         dba_disable_instr_tracer_is_kernel( (DBA_TID)opaque );
@@ -268,7 +266,7 @@ static void cb_dba_set_global( void* mon, const char* yn, void* opaque ) {
         return;
     }
 
-    // stay syscall
+    // stay set global 
     mba_readline_start( (Monitor*)mon, PROMPT_DBA_Q7, 0, cb_dba_set_global, opaque );
     mba_readline_show_prompt( mon );
 }
@@ -276,7 +274,7 @@ static void cb_dba_set_global( void* mon, const char* yn, void* opaque ) {
 // DBA - set structure ?
 static void cb_dba_set_structure( void* mon, const char* yn, void* opaque ) {
 
-    // goto next instruction tracer
+    // goto set global
     if( strlen( yn ) != 0 ) {
         dba_set_structure( (DBA_TID)opaque, yn );
         mba_readline_start( (Monitor*)mon, PROMPT_DBA_Q7, 0, cb_dba_set_global, opaque );
@@ -284,7 +282,7 @@ static void cb_dba_set_structure( void* mon, const char* yn, void* opaque ) {
         return;
     }
 
-    // stay syscall
+    // stay set structure
     mba_readline_start( (Monitor*)mon, PROMPT_DBA_Q6, 0, cb_dba_set_structure, opaque );
     mba_readline_show_prompt( mon );
 }
@@ -292,14 +290,14 @@ static void cb_dba_set_structure( void* mon, const char* yn, void* opaque ) {
 // DBA - tracer ?
 static void cb_dba_set_tracer( void* mon, const char* yn, void* opaque ) {
 
-    // goto instruction tracer
+    // goto set structure 
     if( strcasecmp( "y", yn ) == 0 || strcasecmp( "yes", yn ) == 0 ) {
         mba_readline_start( (Monitor*)mon, PROMPT_DBA_Q6, 0, cb_dba_set_structure, opaque );
         mba_readline_show_prompt( mon );
         return;
     }
 
-    // goto next instruction tracer
+    // goto confirm
     if( strcasecmp( "n", yn ) == 0 || strcasecmp( "no", yn ) == 0 ) {
         mba_readline_start( (Monitor*)mon, PROMPT_DBA_Q12, 0, cb_dba_confirm, opaque );
         mba_readline_show_prompt( mon );
@@ -388,7 +386,7 @@ static void cb_dba_set_taint_packet( void* mon, const char* yn, void* opaque ) {
 // DBA - taint ?
 static void cb_dba_set_taint( void* mon, const char* yn, void* opaque ) {
 
-    // goto taint tag
+    // goto taint packet
     if( strcasecmp( "y", yn ) == 0 || strcasecmp( "yes", yn ) == 0 ) {
         mba_readline_start( (Monitor*)mon, PROMPT_DBA_Q2, 0, cb_dba_set_taint_packet, opaque );
         mba_readline_show_prompt( mon );
@@ -410,7 +408,7 @@ static void cb_dba_set_taint( void* mon, const char* yn, void* opaque ) {
 
 // Set dba enviroment via config file
 // Return 0 for success, 1 for fail
-static int dba_set_by_config ( Monitor* mon, const char* config_file_path, void* opaque ) {
+static int dba_set_by_config ( Monitor* mon, const char* config_file_path, DBA_TID tid ) {
    
     json_object*    jo_config;
     json_object*    jo_object;
@@ -421,7 +419,9 @@ static int dba_set_by_config ( Monitor* mon, const char* config_file_path, void*
         return 1;
     }
 
-    monitor_printf( mon, "====== Start to Enable Modules ======\n\n" );
+    monitor_printf( mon, "=====================================\n" );
+    monitor_printf( mon, "====== Start to Enable Modules ======\n" );
+    monitor_printf( mon, "=====================================\n" );
 
     // Enable modules
     if ( json_object_object_get_ex( (json_object*)jo_config, CONFIG_TAG_MODULE, &jo_object ) ) {
@@ -430,10 +430,10 @@ static int dba_set_by_config ( Monitor* mon, const char* config_file_path, void*
         if ( json_object_object_get_ex( jo_object, CONFIG_TAG_AGENT, &jo_content ) ) {
             if ( strcmp( json_object_get_string( jo_content ), CONFIG_TAG_YES ) == 0 || strcmp( json_object_get_string( jo_content ), CONFIG_TAG_Y ) == 0 ) {
                 do_win_init( mon, NULL );
-                monitor_printf( mon, "Enable Agent Successfully\n\n");
+                monitor_printf( mon, "Enable Agent Successfully\n");
             }
             else {
-                monitor_printf( mon, "Do nothing to Agent\n\n");
+                monitor_printf( mon, "Do nothing to Agent\n");
             }
         }
         // Enable DIFT
@@ -442,7 +442,7 @@ static int dba_set_by_config ( Monitor* mon, const char* config_file_path, void*
                 //dift_enable();
             }
             else {
-                monitor_printf( mon, "Do nothing to Dift\n\n");
+                monitor_printf( mon, "Do nothing to Dift\n");
             }
         }
         // Enable Nettramon
@@ -498,17 +498,28 @@ static int dba_set_by_config ( Monitor* mon, const char* config_file_path, void*
                         monitor_printf( mon, "Cannot get all the NTM files' tags, set with printing on the monitor\n");
                     }
                     nettramon_start( NULL );
-                    monitor_printf( mon, "Enable Nettramon Successfully\n\n");
+                    monitor_printf( mon, "Enable Nettramon Successfully\n");
+                }
+                else {
+                    monitor_printf( mon, "Do nothing to NTM\n");
                 }
             }
             else {
-                monitor_printf( mon, "Do nothing to NTM\n\n");
+                monitor_printf( mon, "Cannot get enable tag of NTM\n");
+                return 1;
             }
         }
 
     }
-    monitor_printf( mon, "====== Finish Enabling Modules ======\n\n" );
+    monitor_printf( mon, "=====================================\n" );
+    monitor_printf( mon, "====== Finish Enabling Modules ======\n" );
+    monitor_printf( mon, "=====================================\n\n" );
     // Modules
+
+    // DBA Abilities
+    monitor_printf( mon, "=====================================\n" );
+    monitor_printf( mon, "====== Start to Set Up DBA ==========\n" );
+    monitor_printf( mon, "=====================================\n" );
 
     // Set Taint
     if ( json_object_object_get_ex( (json_object*)jo_config, CONFIG_TAG_TAINT, &jo_object ) ) {
@@ -517,7 +528,26 @@ static int dba_set_by_config ( Monitor* mon, const char* config_file_path, void*
             if ( ( strcmp( json_object_get_string( jo_content ), CONFIG_TAG_YES ) == 0 || strcmp( json_object_get_string( jo_content ), CONFIG_TAG_Y ) == 0 ) ) {
                 // Get the taint tag
                 if ( json_object_object_get_ex( jo_object, CONFIG_TAG_TAINT_TAG, &jo_content ) ) {
-                    cb_dba_set_taint_tag( mon, json_object_get_string( jo_content ), opaque );
+
+                    CONTAMINATION_RECORD tag;
+                    long int tmp;
+                    char* end;
+                    char tag_str[10];
+
+                    strcpy( tag_str, json_object_get_string( jo_content ) );
+
+                    // invalidate taint tag
+                    tmp = strtol( tag_str, &end, 10 );
+                    if( *end != '\0' || tmp < 0x1 || tmp > 0x7f ) {
+                        monitor_printf( mon, "Invalid taint tag\n" );
+                        return 1;
+                    }
+
+                    tag = (CONTAMINATION_RECORD)(tmp & 0x00000000000000ff);
+
+                    if ( dba_enable_taint_analysis( tid, tag )!= 0 ) {
+                        monitor_printf( mon, "Set taint tag failed\n" );   
+                    }
                     monitor_printf( mon, "Set taint tag %s successfully\n", json_object_get_string( jo_content ) );
                 }
                 else {
@@ -527,18 +557,18 @@ static int dba_set_by_config ( Monitor* mon, const char* config_file_path, void*
                 // Get the taint packet tag
                 if ( json_object_object_get_ex( jo_object, CONFIG_TAG_TAINT_PACKET, &jo_content ) ) {
                      if ( ( strcmp( json_object_get_string( jo_content ), CONFIG_TAG_YES ) == 0 || strcmp( json_object_get_string( jo_content ), CONFIG_TAG_Y ) == 0 ) ) {
-                        cb_dba_set_taint_packet( mon, json_object_get_string( jo_content ), opaque );
-                        monitor_printf( mon, "Set taint packet successfully\n\n" );
-                     }
-                     else {
-                        if ( strcmp( json_object_get_string( jo_content ), CONFIG_TAG_NO ) != 0 ) {
-                            monitor_printf( mon, "set taint packet failed\n");
+                        if ( dba_enable_taint_packet( tid ) != 0 ) {
+                            monitor_printf( mon, "Enable taint packet failed\n" );
                             return 1;
                         }
-                        else {
-                            cb_dba_set_taint_packet( mon, json_object_get_string( jo_content ), opaque );
-                            monitor_printf( mon, "no taint packet\n\n" );
-                        }   
+                        monitor_printf( mon, "Set taint packet successfully\n" );
+                     }
+                     else {
+                        if ( dba_disable_taint_packet( tid ) != 0 ) {
+                            monitor_printf( mon, "Disable taint packet failed\n" );
+                            return 1;
+                        }
+                        monitor_printf( mon, "No taint packet\n" );
                      }
                 }
                 else {
@@ -547,14 +577,11 @@ static int dba_set_by_config ( Monitor* mon, const char* config_file_path, void*
                 }
             }
             else {
-                if ( strcmp( json_object_get_string( jo_content ), CONFIG_TAG_NO ) != 0 ) {
-                    monitor_printf( mon, "set taint failed\n");
+                if ( dba_disable_taint_analysis( tid ) != 0 ) {
+                    monitor_printf( mon, "Disable Taint ablility failed\n" );
                     return 1;
                 }
-                else {
-                    cb_dba_set_taint( mon, "n", opaque );
-                    monitor_printf( mon, "No Taint ablility\n\n" );
-                }
+                monitor_printf( mon, "No Taint ablility\n" );
             }
         }
         else {
@@ -563,7 +590,7 @@ static int dba_set_by_config ( Monitor* mon, const char* config_file_path, void*
         }
     }
     else {
-        monitor_printf( mon, "Cannot get taint tag\n");
+        monitor_printf( mon, "Cannot get taint json tag\n");
         return 1;
     }
     // Taint
@@ -572,18 +599,18 @@ static int dba_set_by_config ( Monitor* mon, const char* config_file_path, void*
     if ( json_object_object_get_ex( (json_object*)jo_config, CONFIG_TAG_SYSCALL_TRACER, &jo_object ) ) {
         if ( json_object_object_get_ex( jo_object, CONFIG_TAG_ENABLE, &jo_content ) ) {
             if ( ( strcmp( json_object_get_string( jo_content ), CONFIG_TAG_YES ) == 0 || strcmp( json_object_get_string( jo_content ), CONFIG_TAG_Y ) == 0 ) ) {
-                cb_dba_set_syscall( NULL, json_object_get_string( jo_content ), opaque );
-                monitor_printf( mon, "Set Syscall ability successfully\n\n");
-            }
-            else {
-                if ( strcmp( json_object_get_string( jo_content ), CONFIG_TAG_NO ) != 0 ) {
-                    monitor_printf( mon, "Syscall set fail\n");
+                if ( dba_enable_syscall_trace( tid ) != 0 ) {
+                    monitor_printf( mon, "Enable Syscall ability Failed\n");
                     return 1;
                 }
-                else {
-                    cb_dba_set_syscall( NULL, "n", opaque );
-                    monitor_printf( mon, "No Syscall ability\n\n");
+                monitor_printf( mon, "Set Syscall ability successfully\n");
+            }
+            else {
+                if ( dba_disable_syscall_trace( tid ) != 0 ) {
+                    monitor_printf( mon, "Disable Syscall ability Failed\n");
+                    return 1;
                 }
+                monitor_printf( mon, "No Syscall ability\n");
             }
         }
         else {
@@ -602,138 +629,145 @@ static int dba_set_by_config ( Monitor* mon, const char* config_file_path, void*
 
         if ( json_object_object_get_ex( jo_object, CONFIG_TAG_ENABLE, &jo_content ) ) { 
             if ( ( strcmp( json_object_get_string( jo_content ), CONFIG_TAG_YES ) == 0 || strcmp( json_object_get_string( jo_content ), CONFIG_TAG_Y ) == 0 ) ) {
+                
                 // Load structure
                 if ( json_object_object_get_ex( jo_object, CONFIG_TAG_STRUC, &jo_content ) ) {
-                    cb_dba_set_structure( NULL, json_object_get_string( jo_content ), opaque );
-                    monitor_printf( mon, "set tracer with given structure\n");
+                    if ( dba_set_structure( tid, json_object_get_string( jo_content ) ) != 0 ) {
+                        monitor_printf( mon, "Set with given structure json file failed\n");
+                        return 1;
+                    }
+                    monitor_printf( mon, "Set tracer with given structure json file successfully\n");
                 }
                 else {
-                    monitor_printf( mon, "set tracer without giving structure\n");
+                    monitor_printf( mon, "Set tracer without giving structure json file\n");
                     return 1;
                 }
 
                 // Load global variable
                 if ( json_object_object_get_ex( jo_object, CONFIG_TAG_GLOBV, &jo_content ) ) {
-                    cb_dba_set_global( NULL, json_object_get_string( jo_content ), opaque );
-                    monitor_printf( mon, "set tracer with given global variable\n");
+                    if ( dba_set_global( tid, json_object_get_string( jo_content ) ) != 0 ) {
+                        monitor_printf( mon, "Set with given global variable json file failed\n");
+                        return 1;
+                    }
+                    monitor_printf( mon, "Set tracer with given global variable json file successfully\n");
                 }
                 else {
-                    monitor_printf( mon, "set tracer without giving global variable\n");
+                    monitor_printf( mon, "set tracer without giving global variable json file\n");
                     return 1;
                 }
-            }
-
-            // instruction
-            if ( json_object_object_get_ex( jo_object, CONFIG_TAG_INSTR, &jo_content ) ) {
                 
-                json_object* jo_enable;
-                json_object* jo_is_kernel;
+                // instruction
+                if ( json_object_object_get_ex( jo_object, CONFIG_TAG_INSTR, &jo_content ) ) {
+                    
+                    json_object* jo_enable;
+                    json_object* jo_is_kernel;
 
-                // Make sure the "enable" and "is_kernel" tag in the json object
-                if ( json_object_object_get_ex( jo_content, CONFIG_TAG_ENABLE, &jo_enable ) && json_object_object_get_ex( jo_content, CONFIG_TAG_IS_KERNEL, &jo_is_kernel ) ) {
-                    // Deal with the enable tag
-                    if ( ( strcmp( json_object_get_string( jo_enable ), CONFIG_TAG_YES ) == 0 || strcmp( json_object_get_string( jo_enable ), CONFIG_TAG_Y ) == 0 ) ) {
-                        cb_dba_set_instr( NULL, json_object_get_string( jo_enable ), opaque );
-                        monitor_printf( mon, "set instruction tracer successfully\n");
-                        // Deal with the is_kernel tag
-                        if ( ( strcmp( json_object_get_string( jo_is_kernel ), CONFIG_TAG_YES ) == 0 || strcmp( json_object_get_string( jo_is_kernel ), CONFIG_TAG_Y ) == 0 ) ) {
-                            cb_dba_set_instr_is_kernel( NULL, json_object_get_string( jo_is_kernel ), opaque );
-                            monitor_printf( mon, "set in kernel level successfully\n\n");
-                        }
-                        else {
-                            if ( strcmp( json_object_get_string( jo_is_kernel ), CONFIG_TAG_NO ) != 0 ) {
-                                monitor_printf( mon, "set in kernel level failed\n");
+                    // Make sure the "enable" and "is_kernel" tag in the json object
+                    if ( json_object_object_get_ex( jo_content, CONFIG_TAG_ENABLE, &jo_enable ) && json_object_object_get_ex( jo_content, CONFIG_TAG_IS_KERNEL, &jo_is_kernel ) ) {
+                        // Deal with the enable tag
+                        if ( ( strcmp( json_object_get_string( jo_enable ), CONFIG_TAG_YES ) == 0 || strcmp( json_object_get_string( jo_enable ), CONFIG_TAG_Y ) == 0 ) ) {
+                            if ( dba_enable_instr_tracer( tid ) != 0 ) {
+                                monitor_printf( mon, "set instruction tracer failed\n");
                                 return 1;
                             }
-                            else {
-                                cb_dba_set_instr_is_kernel( NULL, json_object_get_string( jo_is_kernel ), opaque );
-                                monitor_printf( mon, "set in user level successfully\n\n");
+                            monitor_printf( mon, "set instruction tracer successfully\n");
+                            // Deal with the is_kernel tag
+                            if ( ( strcmp( json_object_get_string( jo_is_kernel ), CONFIG_TAG_YES ) == 0 || strcmp( json_object_get_string( jo_is_kernel ), CONFIG_TAG_Y ) == 0 ) ) {
+                                if ( dba_enable_instr_tracer_is_kernel( tid ) != 0 ) {
+                                    monitor_printf( mon, "set instruction tracer in kernel level failed\n");
+                                    return 1;
+                                }
+                                monitor_printf( mon, "set instruction tracer in kernel level successfully\n");
                             }
+                            else {
+                                if ( dba_disable_instr_tracer_is_kernel( tid ) != 0 ) {
+                                    monitor_printf( mon, "set instruction tracer in user level failed\n");
+                                    return 1;
+                                }
+                                monitor_printf( mon, "set instruction tracer in user level successfully\n");
+                            }
+                        }
+                        else {
+                            if ( dba_disable_instr_tracer( tid ) != 0 ) {
+                                monitor_printf( mon, "Disable instruction tracer ability failed\n");
+                                return 1;
+                            }
+                            monitor_printf( mon, "No instruction tracer ability\n");
                         }
                     }
                     else {
-                        if ( strcmp( json_object_get_string( jo_enable ), CONFIG_TAG_NO ) != 0 ) {
-                            monitor_printf( mon, "set instruction tracer failed\n");
-                            return 1;
-                        }
-                        else {
-                            cb_dba_set_instr( NULL, json_object_get_string( jo_enable ), opaque );
-                            monitor_printf( mon, "no instruction tracer ablility\n\n");
-                        }
+                        monitor_printf( mon, "Instruction Tracer cannot get \"enable\" or \"is_kernel\" tag\n");
+                        return 1;
                     }
                 }
                 else {
-                    monitor_printf( mon, "Instruction Tracer cannot get \"enable\" or \"is_kernel\" tag\n");
+                    monitor_printf( mon, "Cannot get instruction tracer tag\n");
                     return 1;
                 }
-            }
-            else {
-                monitor_printf( mon, "Cannot get instruction tracer tag\n");
-                return 1;
-            }
-            // instruction
-            // block
-            if ( json_object_object_get_ex( jo_object, CONFIG_TAG_BLOCK, &jo_content ) ) {
-                
-                json_object* jo_enable;
-                json_object* jo_is_kernel;
-
-                // Make sure the "enable" and "is_kernel" tag in the json object
-                if ( json_object_object_get_ex( jo_content, CONFIG_TAG_ENABLE, &jo_enable ) && json_object_object_get_ex( jo_content, CONFIG_TAG_IS_KERNEL, &jo_is_kernel ) ) {
-                    // Deal with the enable tag
-                    if ( ( strcmp( json_object_get_string( jo_enable ), CONFIG_TAG_YES ) == 0 || strcmp( json_object_get_string( jo_enable ), CONFIG_TAG_Y ) == 0 ) ) {
-                        cb_dba_set_block( NULL, json_object_get_string( jo_enable ), opaque );
-                        monitor_printf( mon, "set block tracer successfully\n");
-                        // Deal with the is_kernel tag
-                        if ( ( strcmp( json_object_get_string( jo_is_kernel ), CONFIG_TAG_YES ) == 0 || strcmp( json_object_get_string( jo_is_kernel ), CONFIG_TAG_Y ) == 0 ) ) {
-                            cb_dba_set_block_is_kernel( NULL, json_object_get_string( jo_is_kernel ), opaque );
-                            monitor_printf( mon, "set in kernel level successfully\n\n");
-                        }
-                        else {
-                            if ( strcmp( json_object_get_string( jo_is_kernel ), CONFIG_TAG_NO ) != 0 ) {
-                                monitor_printf( mon, "set in kernel level failed\n");
+                // instruction
+                // block
+                if ( json_object_object_get_ex( jo_object, CONFIG_TAG_BLOCK, &jo_content ) ) {
+                    
+                    json_object* jo_enable;
+                    json_object* jo_is_kernel;
+                    
+                    // Make sure the "enable" and "is_kernel" tag in the json object
+                    if ( json_object_object_get_ex( jo_content, CONFIG_TAG_ENABLE, &jo_enable ) && json_object_object_get_ex( jo_content, CONFIG_TAG_IS_KERNEL, &jo_is_kernel ) ) {
+                        // Deal with the enable tag
+                        if ( ( strcmp( json_object_get_string( jo_enable ), CONFIG_TAG_YES ) == 0 || strcmp( json_object_get_string( jo_enable ), CONFIG_TAG_Y ) == 0 ) ) {
+                            if ( dba_enable_block_tracer( tid ) != 0 ) {
+                                monitor_printf( mon, "Enable block tracer ablility failed\n");
                                 return 1;
                             }
-                            else {
-                                cb_dba_set_block_is_kernel( NULL, json_object_get_string( jo_is_kernel ), opaque );
-                                monitor_printf( mon, "set in user level successfully\n\n");
+                            monitor_printf( mon, "Enable block tracer successfully\n");
+                            // Deal with the is_kernel tag
+                            if ( ( strcmp( json_object_get_string( jo_is_kernel ), CONFIG_TAG_YES ) == 0 || strcmp( json_object_get_string( jo_is_kernel ), CONFIG_TAG_Y ) == 0 ) ) {
+                                if ( dba_enable_block_tracer_is_kernel( tid ) != 0 ) {
+                                    monitor_printf( mon, "Set block tracer in kernel level failed\n");
+                                    return 1;
+                                }
+                                monitor_printf( mon, "Set block tracer in kernel level successfully\n\n");
                             }
+                            else {
+                                if ( dba_disable_block_tracer_is_kernel( tid ) != 0 ) {
+                                    monitor_printf( mon, "Set block tracer in user level failed\n");
+                                    return 1;
+                                }
+                                monitor_printf( mon, "Set block tracer in user level successfully\n");
+                            }
+                        }
+                        else {
+                            if ( dba_disable_block_tracer( tid ) != 0 ) {
+                                monitor_printf( mon, "Disable block tracer ability failed\n");
+                                return 1;
+                            }
+                            monitor_printf( mon, "No block tracer ability\n");
                         }
                     }
                     else {
-                        if ( strcmp( json_object_get_string( jo_enable ), CONFIG_TAG_NO ) != 0 ) {
-                         monitor_printf( mon, "set block tracer failed\n");
-                         return 1;
-                        }
-                        else {
-                            cb_dba_set_block( NULL, json_object_get_string( jo_enable ), opaque );
-                            monitor_printf( mon, "no block tracer ablilty\n\n");
-                        }
+                        monitor_printf( mon, "Block Tracer cannot get \"enable\" or \"is_kernel\" tag\n");
+                        return 1;
                     }
                 }
                 else {
-                    monitor_printf( mon, "Block Tracer cannot get \"enable\" or \"is_kernel\" tag\n");
+                    monitor_printf( mon, "Cannot get block tracer tag\n");
                     return 1;
                 }
+                // block
             }
             else {
-                monitor_printf( mon, "Cannot get block tracer tag\n");
-                return 1;
+                // Disable all the Tracer ability
+                if ( dba_disable_instr_tracer( tid ) != 0 || dba_disable_instr_tracer_is_kernel( tid ) != 0 ||
+                     dba_disable_block_tracer( tid ) != 0 || dba_disable_block_tracer_is_kernel( tid ) != 0   ){
+                     monitor_printf( mon, "Set without tracer ability failed\n");
+                     return 1;
+                }
+                monitor_printf( mon, "Set without tracer ability\n");
             }
-            // block
         }
         else {
-            if ( strcmp( json_object_get_string( jo_content ), CONFIG_TAG_NO ) != 0 ) {
-                monitor_printf( mon, "set tracer failed\n");
-                return 1;
-            }
-            else {
-                cb_dba_set_instr( NULL, "no", opaque );
-                cb_dba_set_instr_is_kernel( NULL, "no", opaque );
-                cb_dba_set_block( NULL, "no", opaque );
-                cb_dba_set_block_is_kernel( NULL, "no", opaque );
-                monitor_printf( mon, "set without tracer ability\n");
-            }
+            monitor_printf( mon, "Cannot get tracer enable tag\n");
+            return 1;
         }
     }
     else {
@@ -741,6 +775,11 @@ static int dba_set_by_config ( Monitor* mon, const char* config_file_path, void*
         return 1;
     }
     // Instrution Tracer
+
+    monitor_printf( mon, "=====================================\n" );
+    monitor_printf( mon, "====== Finishing Setting Up DBA =====\n" );
+    monitor_printf( mon, "=====================================\n\n" );
+    // DBA Abilities
 
     return 0;
 }
@@ -815,27 +854,40 @@ void do_start_dba_task( Monitor* mon, const QDict* qdict ) {
     // Set monitor pointer to the task in order to print out the finish message
     if ( dba_set_monitor( tid, mon ) != 0 ) {
         monitor_printf( mon, "Set monitor pointer fail\n");
+        switch( dba_errno ) {
+            case DBA_ERR_INVALID_TID:
+                monitor_printf( mon, "Invalid task ID\n" );
+                break;
+            case DBA_ERR_INVALID_TSTATE:
+                monitor_printf( mon, "Task unconfigurable\n" );
+                break;
+            default:
+                monitor_printf( mon, "General failure\n" );
+                break;
+        }
+        dba_delete_task( tid );
         return;
     }
 
     // Set by the config file
     if ( config_file_path != NULL ) {
 
-        use_config_file = TRUE;
-        monitor_printf( mon, "Set with config file\n" );
-        if ( dba_set_by_config( mon, config_file_path, (void*)tid ) != 0 ) {
+        monitor_printf( mon, "* * * * * * * * * * * * * *\n" );
+        monitor_printf( mon, "* Set up with config file *\n" );
+        monitor_printf( mon, "* * * * * * * * * * * * * *\n" );
+
+        if ( dba_set_by_config( mon, config_file_path, tid ) != 0 ) {
             monitor_printf( mon, "Set task by config file fail\n");
-            use_config_file = FALSE;
         }
         else {
-            use_config_file = FALSE;
             cb_dba_confirm( mon, "yes", (void*)tid );
         }
     }
     else {
 
-        use_config_file = FALSE;
-        monitor_printf( mon, "Set without config file\n" );
+        monitor_printf( mon, "* * * * * * * * * * * * *\n" );
+        monitor_printf( mon, "* Set up with interface *\n" );
+        monitor_printf( mon, "* * * * * * * * * * * * *\n" );
 
         // callback chain as questions to setup DBA context
         //  1. ask user for taint option
@@ -1008,12 +1060,4 @@ void do_show_dba_result( Monitor* mon, const QDict* qdict ) {
         fclose( fp );
         monitor_printf( mon, "Finished writing result to targeted file\n" );
     }
-}
-
-// Used to check which setting mode is now
-// Return TRUE for setting by config file, FALSE for command line setting
-bool do_dba_config_file_setting ( void ) {
-
-    return use_config_file ;
-
 }

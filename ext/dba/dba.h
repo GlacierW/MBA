@@ -68,12 +68,12 @@ typedef enum DBA_TASK_STATE DBA_TASK_STATE;
 struct dba_context {
 
     int          task_id;
-    // CR3 od sample, and should not be directly used without hooking on MmCreatePeb
+    // CR3 of sample should not be directly used without hooking on MmCreatePeb
     target_ulong task_cr3;
 
-    // Record of taint ability setting
+    // Record of Taint ability setting
     struct {
-        // Swithch of TAINT ability and taint tag
+        // Switch of Taint ability and taint tag
         bool                    is_enabled;
         CONTAMINATION_RECORD    tag;
         // Switch of Taint packet and the callback function id of NTM
@@ -86,13 +86,13 @@ struct dba_context {
     } syscall;
 
     struct {
-        // Switch of TRACER ability in instructions 
+        // Switch of Tracer ability in instructions 
         bool instr_enabled;
         // Flag for choosing in what level while tracing
         bool instr_is_kernel;
         // Callback function ID of instruction tracer
         int  instr_tracer_cb_id;
-        // Switch of TRACER ability in block instructions 
+        // Switch of Tracer ability in block instructions 
         bool block_enabled;
         // Flag for choosing in what level while tracing
         bool block_is_kernel;
@@ -106,7 +106,7 @@ struct dba_context {
     char   sample_gpath[ DBA_MAX_FILENAME + sizeof(DBA_GUEST_SAMPLE_DIR) ];
     size_t sample_timer;
 
-    // Sample name that will used to identify whather the created process is the sample we put into
+    // Sample name that will be used to identify whether the created process is the sample we put
     char   sample_name[ DBA_MAX_FILENAME + 1 ];
 
     json_object* result;
