@@ -50,6 +50,15 @@ typedef enum MEMFRS_ERRNO{
 extern MEMFRS_ERRNO memfrs_errno;
 
 
+// current thread datas
+typedef struct current_thread
+{
+    uint64_t unique_thread;
+    uint64_t unique_process;
+    char* image_file_name;
+} current_thread;
+
+
 
 // represent the field in the data structure
 typedef struct field_info
@@ -70,9 +79,14 @@ typedef struct reverse_symbol {
 
 
 
-//public API 
+// public API 
 extern bool memfrs_check_struct_info(void);
 extern bool memfrs_kpcr_self_check( uint64_t seg_gs_cpl0 );
+
+/// get current thread
+/// rteturn structure current_thread stored the thread datas
+extern current_thread *memfrs_get_current_thread( CPUState *cpu );
+
 extern bool memfrs_check_network_struct_info(void);
 extern int memfrs_load_structs( const char* type_filename);
 extern json_object* memfrs_q_struct(const char* ds_name);

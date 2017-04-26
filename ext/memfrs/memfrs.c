@@ -260,6 +260,69 @@ bool memfrs_kpcr_self_check( uint64_t kpcr_ptr ) {
 
 
 
+/*******************************************************************
+current_thread *memfrs_get_current_thread(void)
+
+Get current thread datas
+
+INPUT:    CPUState *cpu
+OUTPUT:   current_thread*           current_thread
+*******************************************************************/
+current_thread *memfrs_get_current_thread( CPUState *cpu)
+{
+    current_thread *thread_data=NULL;
+    uint64_t thread_ptr,
+             _CLIENT_ID_ptr,
+             eprocess_ptr,
+             pid_ptr,
+             tid_ptr;
+    uint64_t pid, tid;
+    uint8_t image_file_name[16];        // Max size of image name in _EPROCESS is 16
+
+    json_object *struct_type;
+    field_info *info = NULL;
+
+    if(g_kpcr_ptr){
+        // Get Current thread address
+        memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&thread_ptr, sizeof(thread_ptr), g_kpcr_ptr, false, "_KPCR", 2, "*CurrentPrcb", "*CurrentThread");
+
+        // Get address of PID and TID
+        struct_type = memfrs_q_struct("_ETHREAD");
+        if (struct_type == NULL)
+            return NULL;
+        info = memfrs_q_field(struct_type, "Cid");
+        _CLIENT_ID_ptr = thread_ptr + info->offset;
+
+        struct_type = memfrs_q_struct("_CLIENT_ID");
+        if (struct_type == NULL)
+            return NULL;
+        info = memfrs_q_field(struct_type, "UniqueProcess");
+        pid_ptr = _CLIENT_ID_ptr + info->offset;
+        info = memfrs_q_field(struct_type, "UniqueThread");
+        tid_ptr = _CLIENT_ID_ptr + info->offset;
+
+        // Get PID and TID
+        memfrs_get_virmem_content(cpu, 0, pid_ptr, sizeof(pid), (uint8_t*)&pid);
+        memfrs_get_virmem_content(cpu, 0, tid_ptr, sizeof(tid), (uint8_t*)&tid);
+
+        // Get current image name
+        memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&eprocess_ptr, sizeof(eprocess_ptr), thread_ptr, false, "_KTHREAD", 1, "*Process");
+        memfrs_get_mem_struct_content( cpu, 0, (uint8_t*)&image_file_name, sizeof(image_file_name), eprocess_ptr, false, "_EPROCESS", 1, "*ImageFileName");
+        image_file_name[15]='\0';
+
+        // Set values in return structure
+        thread_data = (current_thread*)malloc(sizeof(current_thread));
+        thread_data->image_file_name = (char*)malloc(16);
+        thread_data->unique_thread = tid;
+        thread_data->unique_process = pid;
+        sprintf(thread_data->image_file_name, "%s", image_file_name);
+    }
+
+    return thread_data;
+}
+
+
+
 UT_icd adr_icd = {sizeof(uint64_t), NULL, NULL, NULL };
 /*******************************************************************
 UT_array* memfrs_scan_virmem( CPUState *cpu, uint64_t start_addr, uint64_t end_addr, const char* pattern, int length ) {
