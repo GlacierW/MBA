@@ -1,4 +1,5 @@
 /*
+    //$LogFile
  *  MBA System Call Tracer QEMU command specification 
  *
  *  Copyright (c)   2016 Chiawei Wang
@@ -17,3 +18,19 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
  // TODO: add some commands
+
+{
+        .name      = "mba_add_systrace",
+        .args_type = "label:s,cr3:l,sycall_num:i",
+        .params    = "label cr3 sycall_num",
+        .help      = "Trace `sycall_num` system call for process with `cr3`",
+        .mhandler.cmd = do_add_systrace,
+},
+{
+        .name      = "mba_delete_systrace",
+        .args_type = "id:i",
+        .params    = "id",
+        .help      = "Delete the syscall tracer with given id",
+        .mhandler.cmd = do_delete_systrace,
+},
+

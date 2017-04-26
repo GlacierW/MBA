@@ -154,3 +154,18 @@ extern void systrace_on_syscall( CPUX86State *env ) {
 extern void systrace_on_sysret( CPUX86State *env ) {
     return event_callret( env, false );
 }
+
+// callback of systrace for dumping general syscall info
+void cb_log_syscall_info( X86CPU *x86cpu, bool is_invoke, void *args ) {
+    int errcode = 0;
+
+    // write invocation log to 'jo_out'
+    if( is_invoke ) {
+        printf( "syscall #%04lx invoked\n", x86cpu->env.regs[R_EAX] & 0xffff );
+    }
+
+    if( errcode == -1 ) {
+        printf( "syscall hook routine error\n" );
+    }
+}
+

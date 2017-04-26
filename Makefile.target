@@ -233,6 +233,7 @@ all-obj-y += ../ext/tracer/tracer.o
 endif
 
 ifdef CONFIG_SYSTRACE
+all-obj-y += ../ext/systrace/systrace-commands.o
 all-obj-y += ../ext/systrace/systrace.o
 endif
 
