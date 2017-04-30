@@ -38,7 +38,6 @@
         .mhandler.cmd = do_show_virmem_content,
 },
 {
-
         .name = "mba_show_phymem_content",
         .args_type  = "addr:l,len:l",
         .params     = "addr len",
@@ -79,6 +78,13 @@
         .params     = "",
         .help       = "scan for the kernel",
         .mhandler.cmd = do_scan_kernel,
+},
+{
+        .name = "mba_get_windows_version",
+        .args_type  = "",
+        .params     = "",
+        .help       = "get windows version",
+        .mhandler.cmd = do_get_windows_version,
 },
 {
         .name = "mba_scan_module",

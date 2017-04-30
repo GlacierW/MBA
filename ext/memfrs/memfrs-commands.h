@@ -33,6 +33,7 @@ void do_scan_virmem(Monitor *mon, const QDict *qdict);
 void do_scan_phymem(Monitor *mon, const QDict *qdict);
 void do_traverse_vad(Monitor *mon, const QDict *qdict);
 void do_scan_kernel(Monitor *mon, const QDict *qdict);
+void do_get_windows_version(Monitor *mon, const QDict *qdict);
 void do_module_list(Monitor *mon, const QDict *qdict);
 void do_load_global_variable(Monitor *mon, const QDict *qdict);
 void do_get_gvar_vmem(Monitor *mon, const QDict *qdict);

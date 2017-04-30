@@ -260,6 +260,107 @@ bool memfrs_kpcr_self_check( uint64_t kpcr_ptr ) {
 
 
 
+/*****************************************************************
+float memfrs_get_windows_version( uint64_t kpcr_ptr, CPUState *cpu )
+
+Guess windows version
+
+INPUT:     uint64_t kpcr_ptr,        the address of _KPCR struct
+           CPUState *cpu,            the pointer to current cpu
+OUTPUT:    float                     windows version
+*******************************************************************/
+float memfrs_get_windows_version( uint64_t kpcr_ptr, CPUState *cpu )
+{
+    float version;
+    json_object *struct_type;
+    json_object *gvar = NULL;
+    field_info *info = NULL;
+
+
+    // Check if the data structure information is loaded
+    if(g_struct_info == NULL)
+    {
+        memfrs_errno = MEMFRS_ERR_NOT_LOADED_STRUCTURE;
+        return -1.0;
+    }
+    //Check if the data structure information is loaded
+    if(g_struct_info == NULL)
+    {
+        memfrs_errno = MEMFRS_ERR_NOT_LOADED_GLOBAL_STRUCTURE;
+        return -1.0;
+    }
+
+    //Check if kpcr is already found
+    if(kpcr_ptr == 0)
+    {
+        memfrs_errno = MEMFRS_ERR_NOT_FOUND_KPCR;
+        return -1.0;
+    }
+
+    //Check the cpu pointer valid
+    if(cpu == NULL)
+    {
+        memfrs_errno = MEMFRS_ERR_INVALID_CPU;
+        return -1.0;
+    }
+
+
+    version = 5.2;
+
+
+    /* Followed Rekall "https://github.com/google/rekall/blob/master/rekall-core/rekall/plugins/overlays/windows/windows.py#L57"
+     * Rekall is moving away from having features keyed by version, rather we
+     * use the profile to dictate the algorithms to use. In future we will
+     * remove all requirement to know the windows version, but for now we
+     * just guess the version based on structures which are known to exist in
+     * the profile.
+     */
+
+
+    // Windows 7 introduces TypeIndex into the object header.
+    if( (struct_type = memfrs_q_struct("_OBJECT_HEADER")) != NULL && (info = memfrs_q_field(struct_type, "TypeIndex")) != NULL ){
+
+        // Windows 10 introduces a cookie for object types.
+        gvar = memfrs_q_globalvar("ObHeaderCookie");
+        if( gvar != NULL )
+            version = 10.0;
+
+        // Windows 7
+        else if( (struct_type = memfrs_q_struct("_EPROCESS")) != NULL &&
+                 (info = memfrs_q_field(struct_type, "VadRoot.BalancedRoot")) != NULL &&
+                 (strcmp(info->type_name, "_MMADDRESS_NODE")==0) )
+            version = 6.1;
+
+        // Windows 8 uses _MM_AVL_NODE as the VAD traversor struct.
+        else if( (struct_type = memfrs_q_struct("_EPROCESS")) != NULL &&
+                 (info = memfrs_q_field(struct_type, "VadRoot")) != NULL &&
+                 (strcmp(info->type_name, "_MM_AVL_TABLE")==0) )
+            version = 6.2;
+
+        // Windows 8.1 and on uses _RTL_AVL_TREE
+        else if( (struct_type = memfrs_q_struct("_EPROCESS")) != NULL &&
+                 (info = memfrs_q_field(struct_type, "VadRoot")) != NULL &&
+                 (strcmp(info->type_name, "_RTL_AVL_TREE")==0) )
+            version = 6.3;
+
+        // Unknown windows version
+        else
+            version = 0.0;
+    }
+
+    // Windows XP did not use a BalancedRoot for VADs.
+    else if( (struct_type = memfrs_q_struct("_MM_AVL_TABLE")) != NULL && (info = memfrs_q_field(struct_type, "BalancedRoot")) == NULL )
+        version = 5.1;
+
+    else
+        version = 0.0;
+
+
+    return version;
+}
+
+
+
 /*******************************************************************
 current_thread *memfrs_get_current_thread(void)
 

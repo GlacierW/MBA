@@ -76,6 +76,33 @@ void do_scan_kernel(Monitor *mon, const QDict *qdict)
 
 
 /******************************************************************
+* PURPOSE : Get windows version
+******************************************************************/
+void do_get_windows_version(Monitor *mon, const QDict *qdict)
+{
+    float version;
+    CPUState *cpu, *thiscpu=NULL;
+
+    // Find the first CPU
+    CPU_FOREACH(cpu)
+    {
+        monitor_printf(mon, "%p\n", cpu);
+        thiscpu = cpu;
+        break;
+    }
+
+    version = memfrs_get_windows_version(g_kpcr_ptr, thiscpu);
+    if( version == -1.0 )
+        monitor_printf(mon, "Something is wrong, please check error number\n");
+    else if( version == 0.0 )
+        monitor_printf(mon, "Unknown Windows version\n");
+    else
+        monitor_printf(mon, "Windows version number : %.1lf\n", version);
+}
+
+
+
+/******************************************************************
 * PURPOSE : Scan the virmem for the specific pattern
 ******************************************************************/
 // TODO: Fix ir, possible cr3 problem
