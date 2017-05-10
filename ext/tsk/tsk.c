@@ -40,6 +40,9 @@
 
 #define OPEN_FAIL(x) (x == NULL)
 
+hive_log logEntry[30]; 
+int log_index = 0;
+
 typedef struct{
     int find_fs_stat;
     uint64_t target_offset;
@@ -47,6 +50,7 @@ typedef struct{
 } find_fs_struct;
 
 static UT_icd ut_tsk_daddr_tuple_icd = {sizeof(TSK_DADDR_T)*2, NULL, NULL,NULL};
+
 
 typedef struct {
     TSK_INUM_T inode;
@@ -655,20 +659,7 @@ UT_array* tsk_find_haddr_by_filename(const char* img_path, const char* file_path
     return ret;
 }
 
-/*
-Public API for disk forensic
-*/
-
-// Get the file of the specified harddisk byte offset
-// 
-// \param imgname           path of target image
-// \param haddr_img_offset  the target harddisk byte address
-// \param file_path         get file by the path from the image
-// \param destination       store file into the given path 
-// 
-// Return NULL if error, otherwise a UT_array of filename 
-
-void tsk_get_file(const char* imgname,uint64_t haddr_img_offset, const char* file_path, const char* destination )
+void tsk_get_file(const char* imgname,uint64_t haddr_img_offset, const char* file_path, const char* destination, uint64_t start_offset, int read_file_len )
 {
     TSK_IMG_INFO *img;
     TSK_VS_INFO *vs;
@@ -737,13 +728,11 @@ void tsk_get_file(const char* imgname,uint64_t haddr_img_offset, const char* fil
     if ( OPEN_FAIL(file) ) 
         printf("open file fail\n\n");
 
-    TSK_OFF_T readFileOff = 0;
-    size_t fileSize = 150000000;
-    temp = calloc( fileSize, sizeof(char));
+    temp = calloc( read_file_len, sizeof(char));
     int size = tsk_fs_file_read( file,
-                                 readFileOff,
+                                 start_offset,
                                  temp,
-                                 fileSize,
+                                 read_file_len,
                                  TSK_FS_FILE_READ_FLAG_NONE );
     tsk_fs_file_close(file);
     writeHive = fopen( destination, "w" );
@@ -783,6 +772,98 @@ void tsk_get_file(const char* imgname,uint64_t haddr_img_offset, const char* fil
     free(ifind_data);
     return;
 }
-
+int recovery_registry_log( const char* log_path, const char* hive_path ) {
+  FILE *fp;
+  int filesize, write_log_index = 0, sequence1 = 0, sequence2 = 0, has_next_log = -1, position = 0;
+  unsigned char buff[3];
+  unsigned char HvLE[] = "HvLE";
+  
+  // ----------------LOG1-----------------------------------
+  fp = fopen(log_path, "rb+");
+  if (!fp) {
+    fclose(fp);
+    return -1;
+  }
+  
+  fseek(fp, 0x0000204, SEEK_SET);  // Move to first HvLE
+  while ( has_next_log == -1 ) {	 
+	  filesize = fread( &logEntry[log_index].size, sizeof(unsigned char), 4, fp ); // size
+	   
+	  fseek(fp, 0x4, SEEK_CUR);  // 8 -> 12
+	  filesize = fread( &logEntry[log_index].sequence_Number, sizeof(unsigned char), 4, fp ); // Sequence number
+	  
+	  fseek(fp, 0x4, SEEK_CUR);  // 16 -> 20
+	  filesize = fread( &logEntry[log_index].dirtyPage_count, sizeof(unsigned char), 4, fp ); // Sequence number
+	  
+	  fseek(fp, 0x10, SEEK_CUR);  // 24 -> 40
+	  
+	  int run = 0, totalSize = 0;
+	  for ( ; run < logEntry[log_index].dirtyPage_count ; run++ ) {
+	  	  filesize = fread( &logEntry[log_index].page[run].offset, sizeof(unsigned char), 4, fp ); // Offset
+	  	  filesize = fread( &logEntry[log_index].page[run].size, sizeof(unsigned char), 4, fp ); // Size
+	  	  
+	  	  totalSize += logEntry[log_index].page[run].size;
+	  	  logEntry[log_index].page[run].text = (unsigned char*)calloc( logEntry[log_index].page[run].size, sizeof(unsigned char) ); 
+	  } // for
+	  
+	  for ( run = 0 ; run < logEntry[log_index].dirtyPage_count ; run++ ) {	  
+	      position = ftell(fp);
+	      logEntry[log_index].page[run].position_begin = position;
+	      logEntry[log_index].page[run].position_end = position + logEntry[log_index].page[run].size;
+	      
+	  	  filesize = fread( logEntry[log_index].page[run].text, sizeof(unsigned char), logEntry[log_index].page[run].size, fp ); // text
+	  } // for
+	  	  
+	  while ( 1 ) { 
+	  	  filesize = fread( buff, sizeof(unsigned char), 1, fp );
+	  	  if ( buff[0] ==  HvLE[0] ) {
+			  filesize = fread( buff, sizeof(unsigned char), 3, fp );		
+			  if ( buff[0] == HvLE[1] && buff[1] == HvLE[2] && buff[2] == HvLE[3] ) {	
+		  	      break;		  	      
+		  	  } // if		  	  
+          } // if
+	  	  else if ( filesize != 1 ) {
+	  	  	  has_next_log = 0;
+	  	  	  break;
+		  }	// else if	  		  	  
+		      
+	  } // while
+	  
+	  
+	  log_index++;
+  } // while
+  
+  fclose(fp);
+  
+  // ------------------WRITING INTO SOFTWARE---------------------------------
+  
+  fp = fopen(hive_path, "rb+");
+  if (!fp) {
+    fclose(fp);
+    return -1;
+  }
+  
+  fseek(fp, 0x4, SEEK_SET);  // 0 -> 4 for read sequence number in hive.
+  filesize = fread( &sequence1, sizeof(unsigned char), 4, fp );	 
+  filesize = fread( &sequence2, sizeof(unsigned char), 4, fp );	
+  
+  for ( ; write_log_index < log_index ; write_log_index++ ) {
+      int write_dirtypage_index = 0;     
+      if ( sequence1 > logEntry[write_log_index].sequence_Number || sequence2 > logEntry[write_log_index].sequence_Number ) {
+      	continue;      	
+	  }
+          
+      for ( ; write_dirtypage_index < logEntry[write_log_index].dirtyPage_count ; write_dirtypage_index++ ) {
+      	  fseek( fp, logEntry[write_log_index].page[write_dirtypage_index].offset + 0x1000, SEEK_SET ); // Move to first hbin.
+          fwrite( logEntry[write_log_index].page[write_dirtypage_index].text, 
+		          sizeof(unsigned char), 
+				  logEntry[write_log_index].page[write_dirtypage_index].size, 
+				  fp );	
+      } // for
+  } // for
+           
+  fclose(fp);    
+  return 0;
+}
 
 

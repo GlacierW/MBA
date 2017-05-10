@@ -33,11 +33,15 @@
 #define RFT_TAINTED_PACKET     "Tainted Packet"
 
 extern QemuMutex qemu_global_mutex;
+extern hive_log logEntry[];  
+extern int log_index;
 
 UT_array* UT_SOFTWARE = NULL;
 UT_array* UT_SAM      = NULL;
 UT_array* UT_SYSTEM   = NULL;
 UT_array* UT_SECURITY = NULL;
+UT_array* UT_SOFTWARE_LOG1 = NULL;
+
 
 // XXX: currently use hardcoded block size & static function
 // to get the device image file, These should be fixed by 
@@ -303,6 +307,8 @@ int enum_tainted_file( dba_context* ctx ) {
 
         if( fname_prev != NULL && strcmp( *fname_prev, *fname ) != 0 ) 
             json_object_array_add( jo_tainted_farr, json_object_new_string(*fname) );
+        if ( fname_prev == NULL )
+            json_object_array_add( jo_tainted_farr, json_object_new_string(*fname) );
 
         fname_prev = fname;
     }
@@ -323,7 +329,93 @@ static void get_registry_address(const char* img) {
     merge_continuous_address(UT_SECURITY);
 
     UT_SYSTEM = tsk_find_haddr_by_filename( img, "/Windows/System32/config/SYSTEM");     
-    merge_continuous_address(UT_SYSTEM);
+    merge_continuous_address(UT_SYSTEM); 
+
+    UT_SOFTWARE_LOG1 = tsk_find_haddr_by_filename( img, "/Windows/System32/config/SOFTWARE.LOG1");     
+    merge_continuous_address(UT_SOFTWARE_LOG1); 
+} 
+
+static UT_array* search_registry_log( int hive_type, UT_array* UT_registry, UT_array* UT_log, dba_context* ctx ) {
+    TSK_DADDR_T *p, *hive_haddr;
+    UT_array* fnames      = NULL;
+    UT_array* fnames_part = NULL;
+
+    uint64_t haddr, offset_total = 0;
+
+    tsk_parse_registry(hive_type); 
+    for ( p=(TSK_DADDR_T*)utarray_front(UT_log);
+          p != NULL;
+          p=(TSK_DADDR_T*)utarray_next(UT_log, p)) {
+          // printf( "%"PRIu64" ~ %"PRIu64"  index:%d\n", p[0], p[1], log_index );
+          for( haddr = p[0] ; haddr < p[1]; haddr += 1 ) {
+            // check disk address is tainted
+            if( (dift_get_disk_dirty(haddr) & ctx->taint.tag) == 0 )
+                continue;
+            
+            uint64_t log_offset = haddr - p[0] + offset_total, taint_registry_haddr = 0;
+            int search_address = 0, log_entry_index = 0, dirty_page_index = 0;
+            // printf( "log_offset:%"PRIu64"  haddr:%"PRIu64"\n", log_offset, haddr );
+            for ( log_entry_index = 0 ; log_entry_index < log_index ; log_entry_index++ ) {
+                for ( dirty_page_index = 0 ; dirty_page_index < logEntry[log_entry_index].dirtyPage_count ; dirty_page_index++ ) {
+                    // printf( "log_offset:%"PRIu64"  begin:%d\n", log_offset,logEntry[log_entry_index].page[dirty_page_index].position_begin );       
+                    if ( log_offset >= logEntry[log_entry_index].page[dirty_page_index].position_begin && 
+                         log_offset < logEntry[log_entry_index].page[dirty_page_index].position_end ) {
+                        uint64_t cal_hive_offset = 0;
+                        // printf("haddr:%"PRIu64"  log_offset:%"PRIu64"\n", haddr, log_offset ); 
+                        for ( hive_haddr = (TSK_DADDR_T*)utarray_front(UT_registry); 
+                              hive_haddr != NULL;
+                              hive_haddr = (TSK_DADDR_T*)utarray_next(UT_registry, hive_haddr )) { 
+                                                         
+                             if ( cal_hive_offset + hive_haddr[1] - hive_haddr[0]
+                                  >= 
+                                  logEntry[log_entry_index].page[dirty_page_index].offset ) { 
+                                 // printf( "hive_haddr[0]:%"PRIu64"\n", hive_haddr[0] );
+                                 // printf( "offset:%"PRIu64"\n", logEntry[log_entry_index].page[dirty_page_index].offset );
+                                 // printf( "cal_hive_offset:%"PRIu64"\n", cal_hive_offset );
+                                 // printf( "hive_haddr[0]:%"PRIu64"\n", hive_haddr[0] );
+                                 // printf( "log_offset:%"PRIu64"\n", log_offset ); 
+                                 // printf( "position_begin:%d\n\n", logEntry[log_entry_index].page[dirty_page_index].position_begin ); 
+
+                                 taint_registry_haddr = hive_haddr[0] 
+                                                      + logEntry[log_entry_index].page[dirty_page_index].offset
+                                                      - cal_hive_offset 
+                                                      + log_offset
+                                                      - logEntry[log_entry_index].page[dirty_page_index].position_begin                      
+                                                      + 0x1000;
+                                 break; 
+                             } // if
+
+                             cal_hive_offset += hive_haddr[1] - hive_haddr[0];
+                        } // for
+
+                        // check if tainted address corresponds to a file
+                        // printf("taint_registry_haddr:%"PRIu64"\n", taint_registry_haddr );
+                        char *temp_to_uint64;
+                        temp_to_uint64 = calloc( TEMP_SIZE, sizeof(char) );
+                        sprintf( temp_to_uint64, "%"PRIu64, taint_registry_haddr );
+                        fnames_part = tsk_get_registry_value_by_address( temp_to_uint64, UT_registry, &search_address, &haddr, hive_type );
+                        // printf( "taint_find_value:%s\n", (char*)utarray_front(fnames_part) );
+
+                        if( fnames_part == NULL ) {
+                            continue;
+                        } // if
+
+                        if( fnames == NULL ) {
+                            fnames = fnames_part;
+                            continue;
+                        }
+        
+                        utarray_concat( fnames, fnames_part );
+                        utarray_free( fnames_part );    
+                    } // if
+                } // for
+            } // for
+        } // for   
+
+        offset_total = offset_total + p[1] - p[0];
+    } // for    
+
+    return fnames;
 } 
 
 static UT_array* search_registry( int hive_type, UT_array* UT_registry, dba_context* ctx ) {
@@ -345,9 +437,7 @@ static UT_array* search_registry( int hive_type, UT_array* UT_registry, dba_cont
             char *temp_to_uint64;
             temp_to_uint64 = calloc( TEMP_SIZE, sizeof(char) );
             sprintf( temp_to_uint64, "%"PRIu64, haddr );
-            printf("origin haddr:%"PRIu64"\n", haddr );
-            fnames_part = tsk_get_registry_value_by_address( temp_to_uint64, UT_registry, &search_address, &haddr );
-            printf("haddr:%"PRIu64"\n\n", haddr );
+            fnames_part = tsk_get_registry_value_by_address( temp_to_uint64, UT_registry, &search_address, &haddr , hive_type );
             if( fnames_part == NULL ) {
                 continue;
             } // if
@@ -394,21 +484,44 @@ int enum_tainted_registry( dba_context* ctx ) {
         printf( "Download SECURITY failed\n");
     if ( get_hive_file( "/Windows/System32/config/SOFTWARE", "./SOFTWARE") < 0 )
         printf( "Download SOFTWARE failed\n");
-    // for( haddr = 0 ; haddr < HD_MAX_SIZE; haddr += GUEST_FS_BLOCKSIZE ) {
+
+    // For LOG1 
+    if ( get_hive_file( "/Windows/System32/config/SOFTWARE.LOG1", "./SOFTWARE.LOG1") < 0 )
+        printf( "Download SOFTWARE.LOG1 failed\n");
+    else 
+        recovery_registry_log("./SOFTWARE.LOG1", "./SOFTWARE" );    
    
     get_registry_address(img);
-    fnames = search_registry( SOFTWARE, UT_SOFTWARE, ctx );
+    fnames = search_registry_log( SOFTWARE, UT_SOFTWARE, UT_SOFTWARE_LOG1, ctx );
+         
+    fnames_part = search_registry( SOFTWARE, UT_SOFTWARE, ctx );
+    if ( fnames == NULL )
+        fnames = fnames_part;
+    else if ( fnames_part != NULL ) {
+        utarray_concat( fnames, fnames_part ); 
+        utarray_free( fnames_part );  
+    } // else if
 
     fnames_part = search_registry( SAM, UT_SAM, ctx );
-    if ( fnames_part != NULL )
+    if ( fnames == NULL )
+        fnames = fnames_part;
+    else if ( fnames_part != NULL ) {   
         utarray_concat( fnames, fnames_part );
+        utarray_free( fnames_part );
+    } // else if
 
     fnames_part = search_registry( SYSTEM, UT_SYSTEM, ctx );
-    if ( fnames_part != NULL )
+    if ( fnames == NULL )
+        fnames = fnames_part;
+    else if ( fnames_part != NULL ) {         
         utarray_concat( fnames, fnames_part );
+        utarray_free( fnames_part );
+    } // else if
 
     fnames_part = search_registry( SECURITY, UT_SECURITY, ctx );
-    if ( fnames_part != NULL ) {
+    if ( fnames == NULL )
+        fnames = fnames_part;
+    else if ( fnames_part != NULL ) {
         utarray_concat( fnames, fnames_part );        
         utarray_free( fnames_part );
     } // if
@@ -429,7 +542,8 @@ int enum_tainted_registry( dba_context* ctx ) {
 
         if( fname_prev != NULL && strcmp( *fname_prev, *fname ) != 0 ) 
             json_object_array_add( jo_tainted_farr, json_object_new_string(*fname) );
-
+        if ( fname_prev == NULL )
+            json_object_array_add( jo_tainted_farr, json_object_new_string(*fname) );
         fname_prev = fname;
     }
 

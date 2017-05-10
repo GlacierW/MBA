@@ -57,4 +57,16 @@
         .params     = "address",
         .help       = "Print registry by address",
         .mhandler.cmd = do_print_registry_by_address,
-}, 
+},{
+        .name = "mba_get_part_file",
+        .args_type  = "dev:B,filename:s,destination:F,offset:s,len:s",
+        .params     = "dev filename destination offset len",
+        .help       = "Get the part file from the image throught low level disk forensics",
+        .mhandler.cmd = do_get_part_file,
+},{
+        .name = "mba_print_log",
+        .args_type  = "dev:B,filename:s,destination:F,offset:s,len:s",
+        .params     = "dev filename destination offset len",
+        .help       = "Get the part file from the image throught low level disk forensics",
+        .mhandler.cmd = do_get_part_file,
+},

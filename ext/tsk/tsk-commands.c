@@ -149,8 +149,9 @@ void do_get_file(Monitor *mon, const QDict *qdict)
     {
         monitor_printf(mon, "Cannot get file path\n");
     }
- 
-    tsk_get_file(imgname, haddr_img_offset, file_path, destiation );
+    
+    size_t default_file_size = 150000000;
+    tsk_get_file(imgname, haddr_img_offset, file_path, destiation, 0, default_file_size );
 }
 
 int get_hive_file( const char* sourcePath, const char* destination) {
@@ -158,6 +159,7 @@ int get_hive_file( const char* sourcePath, const char* destination) {
     UT_array* blocks;
     int cnt = 0;
     TSK_DADDR_T *p = NULL;
+    size_t default_file_size = 150000000;
     uint64_t haddr_img_offset = 0;
     //temporary hardcode image path   
     device_id = calloc( 10, sizeof(char*));
@@ -187,10 +189,54 @@ int get_hive_file( const char* sourcePath, const char* destination) {
         return -2;
     }
  
-    tsk_get_file(imgname, haddr_img_offset, sourcePath, destination );
+    tsk_get_file(imgname, haddr_img_offset, sourcePath, destination, 0, default_file_size );
     return 1;
 }
 
+void do_get_part_file(Monitor *mon, const QDict *qdict)
+{
+    const char* device_id = qdict_get_str(qdict, "dev");
+    const char* file_path = qdict_get_str(qdict, "filename");
+    const char* destiation = qdict_get_str(qdict, "destination");
+    const char* offset = qdict_get_str(qdict, "offset");
+    const char* len = qdict_get_str(qdict, "len");
+
+    UT_array* blocks;
+    int cnt = 0;
+    TSK_DADDR_T *p = NULL;
+    uint64_t haddr_img_offset = 0;
+
+
+    //temporary hardcode image path
+    const char* imgname = get_imagepath_by_block_id(device_id);;
+
+    blocks = tsk_find_haddr_by_filename(imgname, file_path);
+    if(blocks==NULL)
+    {
+        monitor_printf(mon, "No such file found\n");
+        return;
+    }
+
+    sort_and_merge_continuous_address(blocks);
+    for (p=(TSK_DADDR_T*)utarray_front(blocks);
+            p != NULL;
+            p=(TSK_DADDR_T*)utarray_next(blocks, p), cnt++ )
+    {
+        haddr_img_offset = p[0];
+    }
+
+    //temporary hardcode image path
+    imgname = get_imagepath_by_block_id(device_id);
+
+    if(imgname == NULL)
+    {
+        monitor_printf(mon, "Cannot get file path\n");
+    }
+    
+    size_t file_size = strtol( len, NULL, 10 );
+    uint64_t i_offset = strtol(offset, NULL, 10 );
+    tsk_get_file(imgname, haddr_img_offset, file_path, destiation, i_offset, file_size );
+}
 static char* get_imagepath_by_block_id(const char* dev_id)
 {
     BlockInfoList *block_list, *info;
@@ -923,8 +969,25 @@ void tsk_parse_registry(int hive_file_type) {
 
         return;   
 }
-
-UT_array* tsk_get_registry_value_by_address(const char* address, UT_array* blocks, int* search_address, uint64_t* haddr ) {
+static void hive_header_to_path( int hive_type, int* search_address, char* path ) {
+    if ( hive_type == 0 ) {
+        strcpy( path, "HKLM\\SOFTWARE" ); 
+        strcat( path, key_list[*search_address].key );
+    } // if
+    else if ( hive_type == 1 ) {
+        strcpy( path, "HKLM\\SYSTEM" ); 
+        strcat( path, key_list[*search_address].key );
+    } // else if                    
+    else if ( hive_type == 2 ) {
+        strcpy( path, "HKLM\\SECURITY" ); 
+        strcat( path, key_list[*search_address].key ); 
+    } // else if              
+    else if ( hive_type == 3 ) {
+        strcpy( path, "HKLM\\SAM" ); 
+        strcat( path, key_list[*search_address].key ); 
+    } // else if
+}
+UT_array* tsk_get_registry_value_by_address(const char* address, UT_array* blocks, int* search_address, uint64_t* haddr, int hive_type ) {
     uint64_t input_address = char_convert_uint64(address), offset_total = 0;
     TSK_DADDR_T *p = NULL;
     UT_array* ret;
@@ -935,28 +998,15 @@ UT_array* tsk_get_registry_value_by_address(const char* address, UT_array* block
          p=(TSK_DADDR_T*)utarray_next(blocks, p)) {
         
         if ( input_address >= p[0] && input_address < p[1] ) {
-            /*
-            for ( ; *search_address < key_list_index ; (*search_address)++ ) {
-                if ( offset_total + ( input_address - p[0] ) >= key_list[*search_address].offset 
-                  && offset_total + ( input_address - p[0] ) < key_list[*search_address].offset + key_list[*search_address].name_size + key_list[*search_address].data_size + 20 ) {
-                    const char *temp_to_push = key_list[*search_address].key;
-                    utarray_push_back( ret, &temp_to_push ); 
-                    //printf( "search key%s  key_list_index:%d\n", key_list[*search_address].key, key_list_index );
-                    *haddr += 20 + key_list[*search_address].name_size + key_list[*search_address].data_size;
-                    if ( *haddr >= p[1] )
-                        *haddr = p[1];
-                    return ret;
-                } // if
-            } // for 
-            */
-
             int low = 0, high = key_list_index - 1;
             while ( low <= high ) {
                 *search_address = (low + high) / 2;
                 if ( offset_total + ( input_address - p[0] ) >= key_list[*search_address].offset 
-                  && offset_total + ( input_address - p[0] ) < key_list[*search_address].offset + key_list[*search_address].name_size + key_list[*search_address].data_size + 20 ) {
-                    const char *temp_to_push = key_list[*search_address].key;
-                    utarray_push_back( ret, &temp_to_push ); 
+                  && offset_total + ( input_address - p[0] ) < key_list[*search_address].offset + key_list[*search_address].name_size + key_list[*search_address].data_size + REGISTRY_VALUE_LEN ) {
+                    char *temp_to_push = (char*)calloc( REGISTRY_PATH_MAX_LENGTH, sizeof(char) );
+                    hive_header_to_path( hive_type, search_address, temp_to_push );
+                    if ( temp_to_push != NULL )
+                        utarray_push_back( ret, &temp_to_push ); 
                     //printf( "search key%s  key_list_index:%d\n", key_list[*search_address].key, key_list_index );
                     *haddr += 20 + key_list[*search_address].name_size + key_list[*search_address].data_size;
                     if ( *haddr >= p[1] )
