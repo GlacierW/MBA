@@ -83,6 +83,31 @@ typedef struct reverse_symbol {
 extern bool memfrs_check_struct_info(void);
 extern bool memfrs_kpcr_self_check( uint64_t seg_gs_cpl0 );
 
+
+/// get windows version
+/// requirement : structure, global_structure
+///
+/// Version number  Operating system
+///    -1.0         [ERROR] Need to check error code
+///     0.0         [Unknown] Unknown version
+///    10.0         Windows 10
+///    10.0         Windows Server 2016
+///     6.3         Windows 8.1
+///     6.3         Windows Server 2012 R2
+///     6.2         Windows 8
+///     6.2         Windows Server 2012
+///     6.1         Windows 7
+///     6.1         Windows Server 2008 R2
+///     6.0         Windows Server 2008
+///     6.0         Windows Vista
+///     5.2         Windows Server 2003 R2
+///     5.2         Windows Server 2003
+///     5.2         Windows XP 64-Bit Edition
+///     5.1         Windows XP
+///     5.0         Windows 2000
+extern float memfrs_get_windows_version( uint64_t kpcr_ptr, CPUState *cpu );
+
+
 /// get current thread
 /// rteturn structure current_thread stored the thread datas
 extern current_thread *memfrs_get_current_thread( CPUState *cpu );
