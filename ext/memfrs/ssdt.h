@@ -23,6 +23,7 @@ typedef struct ssdt_list_st{
     int      index;             // system call index, from 0 to number of system call
     uint64_t address;           // the system call actually virtual address
     char *system_call_name;     // system call name
+    int      argnum_on_stack;   // number of argument of stack
 }ssdt_list_st;
 
 
