@@ -58,6 +58,7 @@ UT_array* memfrs_enum_ssdt_list( uint64_t kpcr_ptr, CPUState *cpu )
     int32_t  syscall_tmp_addr;
     char    *syscall_name;
     size_t   syscall_len;
+    int      argnum_on_stack;
 
     // Check if the data structure information is loaded
     if(g_struct_info ==NULL)
@@ -123,6 +124,7 @@ UT_array* memfrs_enum_ssdt_list( uint64_t kpcr_ptr, CPUState *cpu )
         //if( cpu_memory_rw_debug((CPUState *)&copied_cpu, addr_KiServiceTable + i*0x4 , (uint8_t*)&syscall_tmp_addr, sizeof(syscall_tmp_addr), 0) == 0 ){
         if( cpu_memory_rw_debug(cpu, addr_KiServiceTable + i*0x4 , (uint8_t*)&syscall_tmp_addr, sizeof(syscall_tmp_addr), 0) == 0 ){
             syscall_addr = (syscall_tmp_addr>>4) + addr_KiServiceTable;
+            argnum_on_stack = syscall_tmp_addr & 0xf;
 
             // Get system call name
             reverse_symbol* sym_rev_hash = NULL;
@@ -137,6 +139,8 @@ UT_array* memfrs_enum_ssdt_list( uint64_t kpcr_ptr, CPUState *cpu )
             // Insert datas to ssdt structure
             ssdt_list.index = i;
             ssdt_list.address = syscall_addr;
+            ssdt_list.argnum_on_stack = argnum_on_stack;
+
             syscall_len = strlen(syscall_name);
             ssdt_list.system_call_name = (char*)malloc(syscall_len+1);
             for(j=0;j<syscall_len;j=j+1)
