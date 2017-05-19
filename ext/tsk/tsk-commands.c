@@ -305,21 +305,23 @@ void merge_continuous_address(UT_array *arr){
         }
     }
 }
-void download_hive_to_tmp(Monitor *mon) {
+void download_hive_to_MBA(Monitor *mon) {
     if ( get_hive_file( "/Windows/System32/config/SAM", "./SAM") < 0 )
-        monitor_printf(mon, "Download SAM failed\n"); 
+        monitor_printf( mon, "Download SAM failed\n"); 
     if ( get_hive_file( "/Windows/System32/config/SYSTEM", "./SYSTEM") < 0 )
-        monitor_printf(mon, "Download SYSTEM failed\n");
+        monitor_printf( mon, "Download SYSTEM failed\n");
     if ( get_hive_file( "/Windows/System32/config/SECURITY", "./SECURITY") < 0 )
-        monitor_printf(mon, "Download SECURITY failed\n");
+        monitor_printf( mon, "Download SECURITY failed\n");
     if ( get_hive_file( "/Windows/System32/config/SOFTWARE", "./SOFTWARE") < 0 )
-        monitor_printf(mon, "Download SOFTWARE failed\n");
+        monitor_printf( mon, "Download SOFTWARE failed\n");
+    if ( get_hive_file( "/Users/dsns/NTUSER.DAT", "./NTUSER.DAT") < 0 )
+        monitor_printf( mon, "Download NTUSER.DAT failed\n");
 }
 void do_search_registry_by_key(Monitor *mon, const QDict *qdict) {
     const char* key = qdict_get_str(qdict, "key"); 
-    download_hive_to_tmp(mon);
+    download_hive_to_MBA(mon);
     if( search_registry_by_key(key) != 0 )
-        printf("print hive fail\n");
+        monitor_printf( mon, "print hive fail\n");
 }  
 int search_registry_by_key(const char* key) {
     info_handle_t *regfinfo_info_handle = NULL;
@@ -361,7 +363,7 @@ int search_registry_by_key(const char* key) {
         goto on_error;
     }
     strcpy( keyName, key);
-    for ( ; runRegistry < 4 ; runRegistry++ ) {
+    for ( ; runRegistry < 5 ; runRegistry++ ) {
         if ( runRegistry == 0 ) {
             strcpy(source, "./SYSTEM");
         }
@@ -374,6 +376,10 @@ int search_registry_by_key(const char* key) {
         else if ( runRegistry == 3 ) {
             strcpy( source, "./SECURITY");
         }
+        else if ( runRegistry == 4 ) {
+            strcpy( source, "./NTUSER.DAT");
+        }
+
 
         libcnotify_verbose_set(
                 verbose);
@@ -461,19 +467,24 @@ void pathHandle(const char* path) {
     strcpy( registrySource[1], "" );
     for ( ; run < len ; run++ ) {
         if ( *(path+run) != '\\' ) {
-           Str temp;
-           sprintf( temp, "%c", *(path+run) );
-           if ( counter <= 1 ) 
- 	         strcat( registrySource[counter], temp );     
-           else {
- 	         strcat( registryPath[registryPathLen], temp );
-               hasLast = 1;
-           } // else
-	} // if
-	else if ( run != 0 && counter <= 1 )
+            Str temp;
+            sprintf( temp, "%c", *(path+run) );
+            if ( counter <= 1 ) 
+ 	            strcat( registrySource[counter], temp );     
+            else {
+ 	            strcat( registryPath[registryPathLen], temp );
+                hasLast = 1;
+            } // else
+	    } // if
+	    else if ( run != 0 && counter <= 1 ) {
+            if ( strcmp( registrySource[counter], "HKCU" ) == 0 ) {
+                counter++;
+            } // if
+
             counter++;
+        } // else if
         else if ( run != 0 && run != len - 1 )
-	    registryPathLen++;
+	        registryPathLen++;
     } // for
  
     if ( hasLast == 1 )
@@ -482,9 +493,9 @@ void pathHandle(const char* path) {
 
 void do_print_registry_by_path(Monitor *mon, const QDict *qdict) {
     const char* path = qdict_get_str(qdict, "path");
-    download_hive_to_tmp(mon);
+    download_hive_to_MBA(mon);
     if( print_registry_by_path(path) != 0 )
-        printf("print hive fail\n");
+        monitor_printf( mon, "print hive fail\n");
 }  
 int print_registry_by_path(const char* path) {
     libcerror_error_t *error                             = NULL;
@@ -492,6 +503,7 @@ int print_registry_by_path(const char* path) {
     int verbose                                          = 0;
     int runPrint                                         = 3;
     int multPrint                                        = 0;
+    int run_time                                         = 4;
     registryPathLen = 0;
     source = calloc( StringLength, sizeof(char*) );
 
@@ -538,6 +550,9 @@ int print_registry_by_path(const char* path) {
     else if ( strcmp( registrySource[0], "HKLM" ) == 0 &&  strcmp( registrySource[1], "" ) == 0  ) {
         multPrint = 1, runPrint = 0;
     } // else if
+    else if (  strcmp( registrySource[0], "HKCU" ) == 0 ) {
+        strcpy( source, "./NTUSER.DAT" ); 
+    } // else if
     else {
         fprintf(
                 stderr,
@@ -545,7 +560,7 @@ int print_registry_by_path(const char* path) {
 
         return (EXIT_FAILURE);
     } // else
-    for ( ; runPrint < 4 ; runPrint++ ) {
+    for ( ; runPrint < run_time ; runPrint++ ) {
         if ( multPrint == 1 ) {
             if ( runPrint == 0 )
                 strcpy( source, "./SYSTEM" );
@@ -647,9 +662,9 @@ static uint64_t char_convert_uint64(const char *text)
 }
 void do_print_registry_by_address(Monitor *mon, const QDict *qdict) {
     const char* address = qdict_get_str(qdict, "address");
-    download_hive_to_tmp(mon);
+    download_hive_to_MBA(mon);
     if( print_registry_by_address(address) == NULL )
-        printf("print hive fail\n");
+        monitor_printf( mon,"print hive fail\n");
 }  
 UT_array* print_registry_by_address(const char* address) {
     const char* device_id = "ide0-hd0";
@@ -663,7 +678,7 @@ UT_array* print_registry_by_address(const char* address) {
     source = calloc( StringLength, sizeof(char*) );
     utarray_new( ret, &ut_str_icd );
 
-    for ( ; runPrint < 4 ; runPrint++ ) {
+    for ( ; runPrint < 5 ; runPrint++ ) {
         if ( runPrint == 0 ) {
             strcpy( filename, "/Windows/System32/config/SOFTWARE" );
             strcpy( source, "./SOFTWARE" );
@@ -679,6 +694,10 @@ UT_array* print_registry_by_address(const char* address) {
         else if ( runPrint == 3 ) {            
             strcpy( filename, "/Windows/System32/config/SAM" );
             strcpy( source, "./SAM" );
+        } // else if
+        else if ( runPrint == 4 ) {
+            strcpy( filename, "/Users/dsns/NTUSER.DAT" );
+            strcpy( source, "./NTUSER.DAT" );      
         } // else if
         
 
@@ -813,7 +832,7 @@ UT_array* print_registry_by_address(const char* address) {
                          && offset_total + ( input_address - p[0] ) < key_list[search_address].offset + key_list[search_address].name_size + key_list[search_address].data_size + 20 ) {
                            const char *temp_to_push = key_list[search_address].key;
                            utarray_push_back( ret, &temp_to_push ); 
-                           printf( "search key%s  key_list_index:%d\n", key_list[search_address].key, key_list_index );
+                           // printf( "search key%s  key_list_index:%d\n", key_list[search_address].key, key_list_index );
                            break;
                        } // if
                     } // for 
@@ -866,8 +885,12 @@ void tsk_parse_registry(int hive_file_type) {
     else if ( hive_file_type == 3 ) {            
         strcpy( filename, "/Windows/System32/config/SAM" );
         strcpy( source, "./SAM" );
+    } // else if    
+    else if ( hive_file_type == 4 ) {    
+        strcpy( filename, "/Users/dsns/NTUSER.DAT" );
+        strcpy( source, "./NTUSER.DAT" );      
     } // else if
-        
+  
 
     //temporary hardcode image path
     key_list_index = 0;
@@ -984,6 +1007,10 @@ static void hive_header_to_path( int hive_type, int* search_address, char* path 
     } // else if              
     else if ( hive_type == 3 ) {
         strcpy( path, "HKLM\\SAM" ); 
+        strcat( path, key_list[*search_address].key ); 
+    } // else if
+    else if ( hive_type == 4 ) {
+        strcpy( path, "HKCU" ); 
         strcat( path, key_list[*search_address].key ); 
     } // else if
 }

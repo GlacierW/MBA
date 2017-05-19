@@ -36,12 +36,25 @@ extern QemuMutex qemu_global_mutex;
 extern hive_log logEntry[];  
 extern int log_index;
 
-UT_array* UT_SOFTWARE = NULL;
-UT_array* UT_SAM      = NULL;
-UT_array* UT_SYSTEM   = NULL;
-UT_array* UT_SECURITY = NULL;
+UT_array* UT_SOFTWARE      = NULL;
 UT_array* UT_SOFTWARE_LOG1 = NULL;
+UT_array* UT_SOFTWARE_LOG2 = NULL;
 
+UT_array* UT_SAM           = NULL;
+UT_array* UT_SAM_LOG1      = NULL;
+UT_array* UT_SAM_LOG2      = NULL;
+
+UT_array* UT_SYSTEM        = NULL;
+UT_array* UT_SYSTEM_LOG1   = NULL;
+UT_array* UT_SYSTEM_LOG2   = NULL;
+
+UT_array* UT_SECURITY      = NULL;
+UT_array* UT_SECURITY_LOG1 = NULL;
+UT_array* UT_SECURITY_LOG2 = NULL;
+
+UT_array* UT_NTUSER        = NULL;
+UT_array* UT_NTUSER_LOG1   = NULL;
+UT_array* UT_NTUSER_LOG2   = NULL;
 
 // XXX: currently use hardcoded block size & static function
 // to get the device image file, These should be fixed by 
@@ -273,7 +286,6 @@ int enum_tainted_file( dba_context* ctx ) {
         if ( tempPart == NULL )  
             continue;
 
-        // printf( "fileName:%s\n", *tempPart );
         UT_blocks = tsk_find_haddr_by_filename( img, *tempPart );
         if ( UT_blocks != NULL ) {
             for ( p=(TSK_DADDR_T*)utarray_front(UT_blocks);
@@ -319,21 +331,61 @@ int enum_tainted_file( dba_context* ctx ) {
 }
 
 static void get_registry_address(const char* img) {
+    // ----SOFTWARE----
+
     UT_SOFTWARE = tsk_find_haddr_by_filename( img, "/Windows/System32/config/SOFTWARE"); 
     merge_continuous_address(UT_SOFTWARE);
+
+    UT_SOFTWARE_LOG1 = tsk_find_haddr_by_filename( img, "/Windows/System32/config/SOFTWARE.LOG1");     
+    merge_continuous_address(UT_SOFTWARE_LOG1);
+
+    UT_SOFTWARE_LOG2 = tsk_find_haddr_by_filename( img, "/Windows/System32/config/SOFTWARE.LOG2");     
+    merge_continuous_address(UT_SOFTWARE_LOG2);  
+
+    // ------SAM-------
 
     UT_SAM = tsk_find_haddr_by_filename( img, "/Windows/System32/config/SAM");   
     merge_continuous_address(UT_SAM);
 
+    UT_SAM_LOG1 = tsk_find_haddr_by_filename( img, "/Windows/System32/config/SAM.LOG1");   
+    merge_continuous_address(UT_SAM_LOG1);
+
+    UT_SAM_LOG2 = tsk_find_haddr_by_filename( img, "/Windows/System32/config/SAM.LOG2");   
+    merge_continuous_address(UT_SAM_LOG2);
+
+    // ----SECURITY----
+
     UT_SECURITY = tsk_find_haddr_by_filename( img, "/Windows/System32/config/SECURITY");
     merge_continuous_address(UT_SECURITY);
+   
+    UT_SECURITY_LOG1 = tsk_find_haddr_by_filename( img, "/Windows/System32/config/SECURITY.LOG1");
+    merge_continuous_address(UT_SECURITY_LOG1);
+
+    UT_SECURITY_LOG2 = tsk_find_haddr_by_filename( img, "/Windows/System32/config/SECURITY.LOG2");
+    merge_continuous_address(UT_SECURITY_LOG2);
+
+    // ----SYSTEM------
 
     UT_SYSTEM = tsk_find_haddr_by_filename( img, "/Windows/System32/config/SYSTEM");     
     merge_continuous_address(UT_SYSTEM); 
 
-    UT_SOFTWARE_LOG1 = tsk_find_haddr_by_filename( img, "/Windows/System32/config/SOFTWARE.LOG1");     
-    merge_continuous_address(UT_SOFTWARE_LOG1); 
-} 
+    UT_SYSTEM_LOG1 = tsk_find_haddr_by_filename( img, "/Windows/System32/config/SYSTEM.LOG1");     
+    merge_continuous_address(UT_SYSTEM_LOG1);
+ 
+    UT_SYSTEM_LOG2 = tsk_find_haddr_by_filename( img, "/Windows/System32/config/SYSTEM.LOG2");     
+    merge_continuous_address(UT_SYSTEM_LOG2);
+
+    // ----NTUSER------
+   
+    UT_NTUSER = tsk_find_haddr_by_filename( img, "/Users/dsns/NTUSER.DAT");     
+    merge_continuous_address(UT_SYSTEM); 
+
+    UT_NTUSER_LOG1 = tsk_find_haddr_by_filename( img, "/Users/dsns/NTUSER.DAT.LOG1");     
+    merge_continuous_address(UT_SYSTEM_LOG1);
+ 
+    UT_NTUSER_LOG2 = tsk_find_haddr_by_filename( img, "/Users/dsns/NTUSER.DAT.LOG2");     
+    merge_continuous_address(UT_SYSTEM_LOG2);    
+}
 
 static UT_array* search_registry_log( int hive_type, UT_array* UT_registry, UT_array* UT_log, dba_context* ctx ) {
     TSK_DADDR_T *p, *hive_haddr;
@@ -453,6 +505,70 @@ static UT_array* search_registry( int hive_type, UT_array* UT_registry, dba_cont
     } // for    
 
     return fnames;
+}
+static void dba_download_registry_and_recovery( dba_context* ctx ) {
+    if ( get_hive_file( "/Windows/System32/config/SAM", "./SAM") < 0 )    
+        monitor_printf( ctx->mon, "Download SAM failed\n");
+    if ( get_hive_file( "/Windows/System32/config/SYSTEM", "./SYSTEM") < 0 )
+        monitor_printf( ctx->mon, "Download SYSTEM failed\n");
+    if ( get_hive_file( "/Windows/System32/config/SECURITY", "./SECURITY") < 0 )
+        monitor_printf( ctx->mon, "Download SECURITY failed\n");
+    if ( get_hive_file( "/Windows/System32/config/SOFTWARE", "./SOFTWARE") < 0 )
+        monitor_printf( ctx->mon, "Download SOFTWARE failed\n");
+    if ( get_hive_file( "/Users/dsns/NTUSER.DAT", "./NTUSER.DAT") < 0 )
+        monitor_printf( ctx->mon, "Download NTUSER.DAT failed\n");
+
+    // For SAM.LOG
+    if ( get_hive_file( "/Windows/System32/config/SAM.LOG1", "./SAM.LOG1") < 0 )
+        monitor_printf( ctx->mon, "Download SAM.LOG1 failed\n");
+    else 
+        recovery_registry_log("./SAM.LOG1", "./SAM" );
+    if ( get_hive_file( "/Windows/System32/config/SAM.LOG2", "./SAM.LOG2") < 0 )
+        monitor_printf( ctx->mon, "Download SAM.LOG2 failed\n");
+    else 
+        recovery_registry_log("./SAM.LOG2", "./SAM" ); 
+
+    // For SYSTEM.LOG
+    if ( get_hive_file( "/Windows/System32/config/SYSTEM.LOG1", "./SYSTEM.LOG1") < 0 )
+        monitor_printf( ctx->mon, "Download SYSTEM.LOG1 failed\n");
+    else 
+        recovery_registry_log("./SYSTEM.LOG1", "./SYSTEM" );
+    if ( get_hive_file( "/Windows/System32/config/SYSTEM.LOG2", "./SYSTEM.LOG2") < 0 )
+        monitor_printf( ctx->mon, "Download SYSTEM.LOG2 failed\n");
+    else 
+        recovery_registry_log("./SYSTEM.LOG2", "./SYSTEM" ); 
+
+    // For SECURITY.LOG
+    if ( get_hive_file( "/Windows/System32/config/SECURITY.LOG1", "./SECURITY.LOG1") < 0 )
+        monitor_printf( ctx->mon, "Download SECURITY.LOG1 failed\n");
+    else 
+        recovery_registry_log("./SECURITY.LOG1", "./SECURITY" );
+    if ( get_hive_file( "/Windows/System32/config/SECURITY.LOG2", "./SECURITY.LOG2") < 0 )
+        monitor_printf( ctx->mon, "Download SECURITY.LOG2 failed\n");
+    else 
+        recovery_registry_log("./SECURITY.LOG2", "./SECURITY" ); 
+
+    // For SOFTWARE.LOG
+    if ( get_hive_file( "/Windows/System32/config/SOFTWARE.LOG1", "./SOFTWARE.LOG1") < 0 )
+        monitor_printf( ctx->mon, "Download SOFTWARE.LOG1 failed\n");
+    else 
+        recovery_registry_log("./SOFTWARE.LOG1", "./SOFTWARE" );
+    if ( get_hive_file( "/Windows/System32/config/SOFTWARE.LOG2", "./SOFTWARE.LOG2") < 0 )
+        monitor_printf( ctx->mon, "Download SOFTWARE.LOG2 failed\n");
+    else 
+        recovery_registry_log("./SOFTWARE.LOG2", "./SOFTWARE" );
+    /*
+    // if recovery HKCU\NTUSER.DAT will fail. 
+    // For NTUSER.LOG
+    if ( get_hive_file( "/Users/dsns/NTUSER.DAT.LOG1", "./NTUSER.DAT.LOG1") < 0 )
+        monitor_printf( ctx->mon, "Download NTUSER.DAT.LOG1 failed\n");
+    else 
+        recovery_registry_log("./NTUSER.DAT.LOG1", "./NTUSER.DAT" );
+    if ( get_hive_file( "/Users/dsns/NTUSER.DAT.LOG2", "./NTUSER.DAT.LOG2") < 0 )
+        monitor_printf( ctx->mon, "Download NTUSER.DAT.LOG2 failed\n");
+    else 
+        recovery_registry_log("./NTUSER.DAT.LOG2", "./NTUSER.DAT" ); 
+    */
 } 
 int enum_tainted_registry( dba_context* ctx ) {
     const char* img;
@@ -476,21 +592,8 @@ int enum_tainted_registry( dba_context* ctx ) {
     /// enumerate each disk blocks to search tainted blocks
     /// and recover the blocks to high-level file information
     img = get_device_image( "ide0-hd0" );
-    if ( get_hive_file( "/Windows/System32/config/SAM", "./SAM") < 0 )    
-        printf("Download SAM failed\n");
-    if ( get_hive_file( "/Windows/System32/config/SYSTEM", "./SYSTEM") < 0 )
-        printf( "Download SYSTEM failed\n");
-    if ( get_hive_file( "/Windows/System32/config/SECURITY", "./SECURITY") < 0 )
-        printf( "Download SECURITY failed\n");
-    if ( get_hive_file( "/Windows/System32/config/SOFTWARE", "./SOFTWARE") < 0 )
-        printf( "Download SOFTWARE failed\n");
-
-    // For LOG1 
-    if ( get_hive_file( "/Windows/System32/config/SOFTWARE.LOG1", "./SOFTWARE.LOG1") < 0 )
-        printf( "Download SOFTWARE.LOG1 failed\n");
-    else 
-        recovery_registry_log("./SOFTWARE.LOG1", "./SOFTWARE" );    
-   
+       
+    dba_download_registry_and_recovery( ctx );
     get_registry_address(img);
     fnames = search_registry_log( SOFTWARE, UT_SOFTWARE, UT_SOFTWARE_LOG1, ctx );
          
@@ -525,7 +628,16 @@ int enum_tainted_registry( dba_context* ctx ) {
         utarray_concat( fnames, fnames_part );        
         utarray_free( fnames_part );
     } // if
-   
+
+    printf("NTUSER begin\n");
+    fnames_part = search_registry( NTUSER, UT_NTUSER, ctx );
+    if ( fnames == NULL )
+        fnames = fnames_part;
+    else if ( fnames_part != NULL ) {
+        utarray_concat( fnames, fnames_part );        
+        utarray_free( fnames_part );
+    } // if    
+    printf("NTUSER end\n");
     // empty record, return
     if( fnames == NULL ) {
         printf( "empty record\n");

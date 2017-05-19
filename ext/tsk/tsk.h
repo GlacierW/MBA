@@ -26,8 +26,9 @@
 #define SYSTEM   1
 #define SECURITY 2
 #define SAM      3
+#define NTUSER   4
 
-#define REGISTRY_PATH_MAX_LENGTH 200
+#define REGISTRY_PATH_MAX_LENGTH 500
 #define REGISTRY_VALUE_LEN 20
 
 #include "utarray.h"
@@ -50,7 +51,6 @@ typedef struct logEntry {
 }hive_log;
 
 // --------------------
-
 
 // find hard disk byte addresses of a file given its full path
 // free the utarray after return value is no more used
@@ -119,7 +119,7 @@ extern UT_array* print_registry_by_address(const char* address);
 Public API for disk forensic
 */
 
-// Get the registry hive file to MBA folder.
+// Use the registry log file to recovery registry hive file.
 // 
 // \param log_path        transaction log file path on guest.
 // \param hive_path       hive file path on host.

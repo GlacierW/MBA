@@ -849,7 +849,7 @@ int recovery_registry_log( const char* log_path, const char* hive_path ) {
   
   for ( ; write_log_index < log_index ; write_log_index++ ) {
       int write_dirtypage_index = 0;     
-      if ( sequence1 > logEntry[write_log_index].sequence_Number || sequence2 > logEntry[write_log_index].sequence_Number ) {
+      if ( sequence1 >= logEntry[write_log_index].sequence_Number || sequence2 >= logEntry[write_log_index].sequence_Number ) {
       	continue;      	
 	  }
           
