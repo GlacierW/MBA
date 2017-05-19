@@ -246,7 +246,7 @@ extern int dba_disable_instr_tracer( DBA_TID tid );
 ///     \param  path    path to the global variable json file
 ///
 /// Return 0 on success, otherwise -1 is returned 
-extern int dba_set_global( DBA_TID tid, const char* path );
+extern int dba_set_globalvar_json( DBA_TID tid, const char* json_fpath );
 
 /// Set the structure definition
 /// Note that the task must be IDLE to be configurable
@@ -255,7 +255,7 @@ extern int dba_set_global( DBA_TID tid, const char* path );
 ///     \param  path    path to the struction definition json file
 ///
 /// Return 0 on success, otherwise -1 is returned 
-extern int dba_set_structure( DBA_TID tid, const char* path );
+extern int dba_set_structure_json( DBA_TID tid, const char* json_fpath );
 
 /// Enable system call tracer for the DBA task speicified by ID
 /// Note that the task must be IDLE to be configurable

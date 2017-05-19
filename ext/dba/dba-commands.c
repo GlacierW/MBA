@@ -260,7 +260,7 @@ static void cb_dba_set_global( void* mon, const char* yn, void* opaque ) {
 
     // goto instruction tracer
     if( strlen(yn) != 0 ) {
-        dba_set_global( (DBA_TID)opaque, yn );
+        dba_set_globalvar_json( (DBA_TID)opaque, yn );
         mba_readline_start( (Monitor*)mon, PROMPT_DBA_Q8, 0, cb_dba_set_instr, opaque );
         mba_readline_show_prompt( mon );
         return;
@@ -276,7 +276,7 @@ static void cb_dba_set_structure( void* mon, const char* yn, void* opaque ) {
 
     // goto set global
     if( strlen( yn ) != 0 ) {
-        dba_set_structure( (DBA_TID)opaque, yn );
+        dba_set_structure_json( (DBA_TID)opaque, yn );
         mba_readline_start( (Monitor*)mon, PROMPT_DBA_Q7, 0, cb_dba_set_global, opaque );
         mba_readline_show_prompt( mon );
         return;
@@ -636,7 +636,7 @@ static int dba_set_by_config ( Monitor* mon, const char* config_file_path, DBA_T
                 
                 // Load structure
                 if ( json_object_object_get_ex( jo_object, CONFIG_TAG_STRUC, &jo_content ) ) {
-                    if ( dba_set_structure( tid, json_object_get_string( jo_content ) ) != 0 ) {
+                    if ( dba_set_structure_json( tid, json_object_get_string( jo_content ) ) != 0 ) {
                         monitor_printf( mon, "Set with given structure json file failed\n");
                         return 1;
                     }
@@ -649,7 +649,7 @@ static int dba_set_by_config ( Monitor* mon, const char* config_file_path, DBA_T
 
                 // Load global variable
                 if ( json_object_object_get_ex( jo_object, CONFIG_TAG_GLOBV, &jo_content ) ) {
-                    if ( dba_set_global( tid, json_object_get_string( jo_content ) ) != 0 ) {
+                    if ( dba_set_globalvar_json( tid, json_object_get_string( jo_content ) ) != 0 ) {
                         monitor_printf( mon, "Set with given global variable json file failed\n");
                         return 1;
                     }

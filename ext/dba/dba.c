@@ -482,12 +482,12 @@ int dba_disable_instr_tracer( DBA_TID tid ) {
     return toggle_instr_tracer( tid, false );
 }
 
-int dba_set_global( DBA_TID tid, const char* path ) {
-    return toggle_set_global( tid, path );
+int dba_set_globalvar_json( DBA_TID tid, const char* json_fpath ) {
+    return toggle_set_global( tid, json_fpath );
 }
 
-int dba_set_structure( DBA_TID tid, const char* path ) {
-    return toggle_set_structure( tid, path );
+int dba_set_structure_json( DBA_TID tid, const char* json_fpath ) {
+    return toggle_set_structure( tid, json_fpath );
 }
 
 int dba_enable_syscall_trace( DBA_TID tid ) {
