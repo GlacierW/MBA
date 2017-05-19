@@ -300,6 +300,10 @@ static void cb_dba_set_tracer( void* mon, const char* yn, void* opaque ) {
     // goto confirm
     if( strcasecmp( "n", yn ) == 0 || strcasecmp( "no", yn ) == 0 ) {
         mba_readline_start( (Monitor*)mon, PROMPT_DBA_Q12, 0, cb_dba_confirm, opaque );
+        dba_disable_instr_tracer( (DBA_TID)opaque );
+        dba_disable_instr_tracer_is_kernel( (DBA_TID)opaque );
+        dba_disable_block_tracer( (DBA_TID)opaque );
+        dba_disable_block_tracer_is_kernel( (DBA_TID)opaque );
         mba_readline_show_prompt( mon );
         return;
     }
