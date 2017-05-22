@@ -378,13 +378,13 @@ static void get_registry_address(const char* img) {
     // ----NTUSER------
    
     UT_NTUSER = tsk_find_haddr_by_filename( img, "/Users/dsns/NTUSER.DAT");     
-    merge_continuous_address(UT_SYSTEM); 
+    merge_continuous_address(UT_NTUSER); 
 
     UT_NTUSER_LOG1 = tsk_find_haddr_by_filename( img, "/Users/dsns/NTUSER.DAT.LOG1");     
-    merge_continuous_address(UT_SYSTEM_LOG1);
+    merge_continuous_address(UT_NTUSER_LOG1);
  
     UT_NTUSER_LOG2 = tsk_find_haddr_by_filename( img, "/Users/dsns/NTUSER.DAT.LOG2");     
-    merge_continuous_address(UT_SYSTEM_LOG2);    
+    merge_continuous_address(UT_NTUSER_LOG2);    
 }
 
 static UT_array* search_registry_log( int hive_type, UT_array* UT_registry, UT_array* UT_log, dba_context* ctx ) {
@@ -398,67 +398,51 @@ static UT_array* search_registry_log( int hive_type, UT_array* UT_registry, UT_a
     for ( p=(TSK_DADDR_T*)utarray_front(UT_log);
           p != NULL;
           p=(TSK_DADDR_T*)utarray_next(UT_log, p)) {
-          // printf( "%"PRIu64" ~ %"PRIu64"  index:%d\n", p[0], p[1], log_index );
           for( haddr = p[0] ; haddr < p[1]; haddr += 1 ) {
             // check disk address is tainted
             if( (dift_get_disk_dirty(haddr) & ctx->taint.tag) == 0 )
                 continue;
-            
             uint64_t log_offset = haddr - p[0] + offset_total, taint_registry_haddr = 0;
             int search_address = 0, log_entry_index = 0, dirty_page_index = 0;
-            // printf( "log_offset:%"PRIu64"  haddr:%"PRIu64"\n", log_offset, haddr );
             for ( log_entry_index = 0 ; log_entry_index < log_index ; log_entry_index++ ) {
                 for ( dirty_page_index = 0 ; dirty_page_index < logEntry[log_entry_index].dirtyPage_count ; dirty_page_index++ ) {
-                    // printf( "log_offset:%"PRIu64"  begin:%d\n", log_offset,logEntry[log_entry_index].page[dirty_page_index].position_begin );       
                     if ( log_offset >= logEntry[log_entry_index].page[dirty_page_index].position_begin && 
                          log_offset < logEntry[log_entry_index].page[dirty_page_index].position_end ) {
                         uint64_t cal_hive_offset = 0;
-                        // printf("haddr:%"PRIu64"  log_offset:%"PRIu64"\n", haddr, log_offset ); 
                         for ( hive_haddr = (TSK_DADDR_T*)utarray_front(UT_registry); 
                               hive_haddr != NULL;
                               hive_haddr = (TSK_DADDR_T*)utarray_next(UT_registry, hive_haddr )) { 
-                                                         
                              if ( cal_hive_offset + hive_haddr[1] - hive_haddr[0]
                                   >= 
                                   logEntry[log_entry_index].page[dirty_page_index].offset ) { 
-                                 // printf( "hive_haddr[0]:%"PRIu64"\n", hive_haddr[0] );
-                                 // printf( "offset:%"PRIu64"\n", logEntry[log_entry_index].page[dirty_page_index].offset );
-                                 // printf( "cal_hive_offset:%"PRIu64"\n", cal_hive_offset );
-                                 // printf( "hive_haddr[0]:%"PRIu64"\n", hive_haddr[0] );
-                                 // printf( "log_offset:%"PRIu64"\n", log_offset ); 
-                                 // printf( "position_begin:%d\n\n", logEntry[log_entry_index].page[dirty_page_index].position_begin ); 
 
-                                 taint_registry_haddr = hive_haddr[0] 
-                                                      + logEntry[log_entry_index].page[dirty_page_index].offset
-                                                      - cal_hive_offset 
-                                                      + log_offset
-                                                      - logEntry[log_entry_index].page[dirty_page_index].position_begin                      
-                                                      + 0x1000;
-                                 break; 
+                                taint_registry_haddr = hive_haddr[0] 
+                                                     + logEntry[log_entry_index].page[dirty_page_index].offset
+                                                     - cal_hive_offset 
+                                                     + log_offset
+                                                     - logEntry[log_entry_index].page[dirty_page_index].position_begin                      
+                                                     + 0x1000;
+                                uint64_t temp_haddr = haddr;
+                                char *temp_to_uint64;
+                                temp_to_uint64 = calloc( TEMP_SIZE, sizeof(char) );
+                                sprintf( temp_to_uint64, "%"PRIu64, taint_registry_haddr );
+                                fnames_part = tsk_get_registry_value_by_address( temp_to_uint64, UT_registry, &search_address, &temp_haddr, hive_type );
+
+                                if( fnames_part == NULL ) {
+                                    continue;
+                                } // if
+
+                                if( fnames == NULL ) {
+                                    fnames = fnames_part;
+                                    continue;
+                                }
+        
+                                utarray_concat( fnames, fnames_part );
+                                utarray_free( fnames_part ); 
                              } // if
 
                              cal_hive_offset += hive_haddr[1] - hive_haddr[0];
                         } // for
-
-                        // check if tainted address corresponds to a file
-                        // printf("taint_registry_haddr:%"PRIu64"\n", taint_registry_haddr );
-                        char *temp_to_uint64;
-                        temp_to_uint64 = calloc( TEMP_SIZE, sizeof(char) );
-                        sprintf( temp_to_uint64, "%"PRIu64, taint_registry_haddr );
-                        fnames_part = tsk_get_registry_value_by_address( temp_to_uint64, UT_registry, &search_address, &haddr, hive_type );
-                        // printf( "taint_find_value:%s\n", (char*)utarray_front(fnames_part) );
-
-                        if( fnames_part == NULL ) {
-                            continue;
-                        } // if
-
-                        if( fnames == NULL ) {
-                            fnames = fnames_part;
-                            continue;
-                        }
-        
-                        utarray_concat( fnames, fnames_part );
-                        utarray_free( fnames_part );    
                     } // if
                 } // for
             } // for
@@ -506,18 +490,7 @@ static UT_array* search_registry( int hive_type, UT_array* UT_registry, dba_cont
 
     return fnames;
 }
-static void dba_download_registry_and_recovery( dba_context* ctx ) {
-    if ( get_hive_file( "/Windows/System32/config/SAM", "./SAM") < 0 )    
-        monitor_printf( ctx->mon, "Download SAM failed\n");
-    if ( get_hive_file( "/Windows/System32/config/SYSTEM", "./SYSTEM") < 0 )
-        monitor_printf( ctx->mon, "Download SYSTEM failed\n");
-    if ( get_hive_file( "/Windows/System32/config/SECURITY", "./SECURITY") < 0 )
-        monitor_printf( ctx->mon, "Download SECURITY failed\n");
-    if ( get_hive_file( "/Windows/System32/config/SOFTWARE", "./SOFTWARE") < 0 )
-        monitor_printf( ctx->mon, "Download SOFTWARE failed\n");
-    if ( get_hive_file( "/Users/dsns/NTUSER.DAT", "./NTUSER.DAT") < 0 )
-        monitor_printf( ctx->mon, "Download NTUSER.DAT failed\n");
-
+static void recovery_registry_by_log(dba_context* ctx ) {
     // For SAM.LOG
     if ( get_hive_file( "/Windows/System32/config/SAM.LOG1", "./SAM.LOG1") < 0 )
         monitor_printf( ctx->mon, "Download SAM.LOG1 failed\n");
@@ -569,6 +542,18 @@ static void dba_download_registry_and_recovery( dba_context* ctx ) {
     else 
         recovery_registry_log("./NTUSER.DAT.LOG2", "./NTUSER.DAT" ); 
     */
+}
+static void dba_download_registry( dba_context* ctx ) {
+    if ( get_hive_file( "/Windows/System32/config/SAM", "./SAM") < 0 )    
+        monitor_printf( ctx->mon, "Download SAM failed\n");
+    if ( get_hive_file( "/Windows/System32/config/SYSTEM", "./SYSTEM") < 0 )
+        monitor_printf( ctx->mon, "Download SYSTEM failed\n");
+    if ( get_hive_file( "/Windows/System32/config/SECURITY", "./SECURITY") < 0 )
+        monitor_printf( ctx->mon, "Download SECURITY failed\n");
+    if ( get_hive_file( "/Windows/System32/config/SOFTWARE", "./SOFTWARE") < 0 )
+        monitor_printf( ctx->mon, "Download SOFTWARE failed\n");
+    if ( get_hive_file( "/Users/dsns/NTUSER.DAT", "./NTUSER.DAT") < 0 )
+        monitor_printf( ctx->mon, "Download NTUSER.DAT failed\n");
 } 
 int enum_tainted_registry( dba_context* ctx ) {
     const char* img;
@@ -593,18 +578,13 @@ int enum_tainted_registry( dba_context* ctx ) {
     /// and recover the blocks to high-level file information
     img = get_device_image( "ide0-hd0" );
        
-    dba_download_registry_and_recovery( ctx );
+    dba_download_registry(ctx);
     get_registry_address(img);
-    fnames = search_registry_log( SOFTWARE, UT_SOFTWARE, UT_SOFTWARE_LOG1, ctx );
-         
-    fnames_part = search_registry( SOFTWARE, UT_SOFTWARE, ctx );
-    if ( fnames == NULL )
-        fnames = fnames_part;
-    else if ( fnames_part != NULL ) {
-        utarray_concat( fnames, fnames_part ); 
-        utarray_free( fnames_part );  
-    } // else if
 
+    // printf("find SOFTWARE\n");
+    fnames = search_registry( SOFTWARE, UT_SOFTWARE, ctx );
+
+    // printf("find SAM\n");
     fnames_part = search_registry( SAM, UT_SAM, ctx );
     if ( fnames == NULL )
         fnames = fnames_part;
@@ -613,6 +593,8 @@ int enum_tainted_registry( dba_context* ctx ) {
         utarray_free( fnames_part );
     } // else if
 
+    
+    // printf("find SYSTEM\n");
     fnames_part = search_registry( SYSTEM, UT_SYSTEM, ctx );
     if ( fnames == NULL )
         fnames = fnames_part;
@@ -621,6 +603,8 @@ int enum_tainted_registry( dba_context* ctx ) {
         utarray_free( fnames_part );
     } // else if
 
+    
+    // printf("find SECURITY\n");
     fnames_part = search_registry( SECURITY, UT_SECURITY, ctx );
     if ( fnames == NULL )
         fnames = fnames_part;
@@ -629,7 +613,7 @@ int enum_tainted_registry( dba_context* ctx ) {
         utarray_free( fnames_part );
     } // if
 
-    printf("NTUSER begin\n");
+    // printf("find NTUSER\n");
     fnames_part = search_registry( NTUSER, UT_NTUSER, ctx );
     if ( fnames == NULL )
         fnames = fnames_part;
@@ -637,7 +621,80 @@ int enum_tainted_registry( dba_context* ctx ) {
         utarray_concat( fnames, fnames_part );        
         utarray_free( fnames_part );
     } // if    
-    printf("NTUSER end\n");
+
+    recovery_registry_by_log(ctx);
+    // printf("find SOFTWARE.LOG1\n");
+    fnames_part = search_registry_log( SOFTWARE, UT_SOFTWARE, UT_SOFTWARE_LOG1, ctx );
+    if ( fnames == NULL )
+        fnames = fnames_part;
+    else if ( fnames_part != NULL ) {
+        utarray_concat( fnames, fnames_part ); 
+        utarray_free( fnames_part );  
+    } // else if
+
+    // printf("find SOFTWARE.LOG2\n");
+    fnames_part = search_registry_log( SOFTWARE, UT_SOFTWARE, UT_SOFTWARE_LOG2, ctx );
+    if ( fnames == NULL )
+        fnames = fnames_part;
+    else if ( fnames_part != NULL ) {
+        utarray_concat( fnames, fnames_part ); 
+        utarray_free( fnames_part );  
+    } // else if
+
+    // printf("find SAM.LOG1\n");
+    fnames_part = search_registry_log( SAM, UT_SAM, UT_SAM_LOG1, ctx );
+    if ( fnames == NULL )
+        fnames = fnames_part;
+    else if ( fnames_part != NULL ) {
+        utarray_concat( fnames, fnames_part ); 
+        utarray_free( fnames_part );  
+    } // else if
+
+    // printf("find SAM.LOG2\n");
+    fnames_part = search_registry_log( SAM, UT_SAM, UT_SAM_LOG2, ctx );
+    if ( fnames == NULL )
+        fnames = fnames_part;
+    else if ( fnames_part != NULL ) {
+        utarray_concat( fnames, fnames_part ); 
+        utarray_free( fnames_part );  
+    } // else if
+
+    // printf("find SYSTEM.LOG1\n");
+    fnames_part = search_registry_log( SYSTEM, UT_SYSTEM, UT_SYSTEM_LOG1, ctx );
+    if ( fnames == NULL )
+        fnames = fnames_part;
+    else if ( fnames_part != NULL ) {
+        utarray_concat( fnames, fnames_part ); 
+        utarray_free( fnames_part );  
+    } // else if
+
+    // printf("find SYSTEM.LOG2\n");
+    fnames_part = search_registry_log( SYSTEM, UT_SYSTEM, UT_SYSTEM_LOG2, ctx );
+    if ( fnames == NULL )
+        fnames = fnames_part;
+    else if ( fnames_part != NULL ) {
+        utarray_concat( fnames, fnames_part ); 
+        utarray_free( fnames_part );  
+    } // else if
+
+    // printf("find SECURITY.LOG1\n");
+    fnames_part = search_registry_log( SECURITY, UT_SECURITY, UT_SECURITY_LOG1, ctx );
+    if ( fnames == NULL )
+        fnames = fnames_part;
+    else if ( fnames_part != NULL ) {
+        utarray_concat( fnames, fnames_part ); 
+        utarray_free( fnames_part );  
+    } // else if
+
+    // printf("find SECURITY.LOG2\n");
+    fnames_part = search_registry_log( SECURITY, UT_SECURITY, UT_SECURITY_LOG2, ctx );
+    if ( fnames == NULL )
+        fnames = fnames_part;
+    else if ( fnames_part != NULL ) {
+        utarray_concat( fnames, fnames_part ); 
+        utarray_free( fnames_part );  
+    } // else if
+
     // empty record, return
     if( fnames == NULL ) {
         printf( "empty record\n");
