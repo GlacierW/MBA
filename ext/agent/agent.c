@@ -140,7 +140,7 @@ static ssize_t _MOCKABLE(as_write)( int sock_fd, void* buf, size_t count ) {
 /// Return bytes read, <= 0 if any error occured
 static ssize_t _MOCKABLE(as_read)( int sock_fd, void* buf, size_t count ) {
 
-    socklen_t length;
+    socklen_t length = sizeof(ac->serveraddr);
     ssize_t n_rbytes = recvfrom( sock_fd, buf, count, 0, (struct sockaddr*)&ac->serveraddr, &length );
 
     // 0: connection orderly closed, -1: error
