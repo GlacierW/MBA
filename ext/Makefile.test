@@ -7,9 +7,9 @@ GTEST_DIR   = $(GTEST_ROOT)/googletest
 GMOCK_DIR   = $(GTEST_ROOT)/googlemock
 GTEST_LIB   = $(EXT_DIR)/libgmock.a
 
-.PHONY: all dift tsk memfrs agent obhook
+.PHONY: all dift tsk memfrs agent obhook tracer
 
-all: $(GTEST_LIB) dift tsk memfrs agent obhook
+all: $(GTEST_LIB) dift tsk memfrs agent obhook tracer
 
 
 dift: $(GTEST_LIB)

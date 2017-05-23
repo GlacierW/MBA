@@ -3,6 +3,7 @@
  *
  *  Copyright (c)   2016 Chiawei Wang
  *                  2016 ChongKuan Chen
+ *                  2017 JuiChien Jao
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -152,7 +153,7 @@ int tracer_enable_tracer(int uid)
     return 1;
 }
 
-void* default_callback(void* env_state, uint64_t pc_start, uint64_t pc_end)
+void* default_callback(void* env_state, uint64_t pc_start, uint64_t pc_end, void* arg)
 {
     X86CPU *cpu = X86_CPU(env_state);
     CPUX86State *env = &cpu->env;
@@ -166,7 +167,7 @@ void* default_callback(void* env_state, uint64_t pc_start, uint64_t pc_end)
     return NULL;
 }
 
-static int add_tracer_internal( target_ulong cr3, const char* label, bool is_kernel, int trace_granularity, void*(*cb) (void*, uint64_t, uint64_t) ) {
+static int add_tracer_internal( target_ulong cr3, const char* label, bool is_kernel, int trace_granularity, void*(*cb) (void*, uint64_t, uint64_t, void*), void* usr_cb_arg ) {
 
     if(trace_granularity!=TRACER_GRANULARITY_INSTR && trace_granularity!=TRACER_GRANULARITY_CODEBLOCK)
     {
@@ -190,6 +191,7 @@ static int add_tracer_internal( target_ulong cr3, const char* label, bool is_ker
     tracer_rec->trace_granularity = trace_granularity;
     tracer_rec->is_universal = (tracer_rec->cr3 == 0)? true : false;
     tracer_rec->cb_func = cb ;
+    tracer_rec->cb_arg  = usr_cb_arg;
 
     // Add tracer to instruction list
     if(tracer_rec->trace_granularity == TRACER_GRANULARITY_INSTR)
@@ -231,31 +233,31 @@ static int add_tracer_internal( target_ulong cr3, const char* label, bool is_ker
 }
 
 
-int tracer_add_inst_tracer( target_ulong cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) ) {
+int tracer_add_inst_tracer( target_ulong cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t, void*), void* usr_cb_arg ) {
     int tracer_id = -1;
     if(cb == NULL){ 
         pthread_rwlock_wrlock( &tracer_ctx.rwlock );
-        tracer_id = add_tracer_internal(cr3, label, is_kernel, TRACER_GRANULARITY_INSTR, &default_callback);
+        tracer_id = add_tracer_internal(cr3, label, is_kernel, TRACER_GRANULARITY_INSTR, &default_callback, NULL);
         pthread_rwlock_unlock( &tracer_ctx.rwlock );
     }
     else{
         pthread_rwlock_wrlock( &tracer_ctx.rwlock );
-        tracer_id = add_tracer_internal(cr3, label, is_kernel, TRACER_GRANULARITY_INSTR, cb);
+        tracer_id = add_tracer_internal(cr3, label, is_kernel, TRACER_GRANULARITY_INSTR, cb, usr_cb_arg);
         pthread_rwlock_unlock( &tracer_ctx.rwlock );
     }
     return tracer_id;
 }
 
-int tracer_add_block_tracer( target_ulong cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t) ) { 
+int tracer_add_block_tracer( target_ulong cr3, const char* label, bool is_kernel, void*(*cb) (void*, uint64_t, uint64_t, void*), void* usr_cb_arg ) { 
     int tracer_id = -1;
     if(cb == NULL){ 
         pthread_rwlock_wrlock( &tracer_ctx.rwlock );
-        tracer_id = add_tracer_internal(cr3, label, is_kernel, TRACER_GRANULARITY_CODEBLOCK, &default_callback);
+        tracer_id = add_tracer_internal(cr3, label, is_kernel, TRACER_GRANULARITY_CODEBLOCK, &default_callback, NULL);
         pthread_rwlock_unlock( &tracer_ctx.rwlock );
     }
     else{
         pthread_rwlock_wrlock( &tracer_ctx.rwlock );
-        tracer_id = add_tracer_internal(cr3, label, is_kernel, TRACER_GRANULARITY_CODEBLOCK, cb);
+        tracer_id = add_tracer_internal(cr3, label, is_kernel, TRACER_GRANULARITY_CODEBLOCK, cb, usr_cb_arg);
         pthread_rwlock_unlock( &tracer_ctx.rwlock );
     }
     return tracer_id;

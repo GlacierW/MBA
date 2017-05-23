@@ -23,6 +23,9 @@
 #include "exec/helper-proto.h"
 #include "exec/cpu_ldst.h"
 
+#ifdef CONFIG_SYSTRACE
+#include "ext/systrace/systrace_priv.h"
+#endif
 //#define DEBUG_PCALL
 
 #ifdef DEBUG_PCALL
@@ -956,9 +959,14 @@ void helper_syscall(CPUX86State *env, int next_eip_addend)
     cpu_loop_exit(cs);
 }
 #else
+
 void helper_syscall(CPUX86State *env, int next_eip_addend)
 {
     int selector;
+
+#ifdef CONFIG_SYSTRACE
+    systrace_on_syscall(env);
+#endif
 
     if (!(env->efer & MSR_EFER_SCE)) {
         raise_exception_err(env, EXCP06_ILLOP, 0);
@@ -1014,6 +1022,10 @@ void helper_syscall(CPUX86State *env, int next_eip_addend)
 void helper_sysret(CPUX86State *env, int dflag)
 {
     int cpl, selector;
+
+#ifdef CONFIG_SYSTRACE
+    systrace_on_sysret(env);
+#endif
 
     if (!(env->efer & MSR_EFER_SCE)) {
         raise_exception_err(env, EXCP06_ILLOP, 0);

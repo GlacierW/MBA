@@ -2,6 +2,7 @@
  *  MBA Mmemory Forensic unit testing
  *
  *  Copyright (c) 2016 Chong-kuan, Chen
+ *                2017 Jui-Chien, Jao
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -75,7 +76,7 @@ TEST( TRACER_NOTEST, NormalCondition ) {
 
 class TRACER_INST_TRACER : public TracerContextInitialized{}; 
 TEST( TRACER_INST_TRACER, ADD_PROC_TRACER ){
-    int ret = tracer_add_inst_tracer( 0x331d0000, "test", false, NULL);
+    int ret = tracer_add_inst_tracer( 0x331d0000, "test", false, NULL, NULL);
     ASSERT_EQ( ret, 1);
     //tracer_list_callback();
     ASSERT_FALSE( tracer_ctx.process_tracer_head == NULL );
@@ -90,7 +91,7 @@ TEST( TRACER_INST_TRACER, ADD_PROC_TRACER ){
 }
 
 TEST( TRACER_INST_TRACER, ADD_PROC_TRACER2 ){
-    int ret = tracer_add_inst_tracer( 0x331d0000, "test", true, NULL);
+    int ret = tracer_add_inst_tracer( 0x331d0000, "test", true, NULL, NULL);
     ASSERT_EQ( ret, 1);
     //tracer_list_callback();
     ASSERT_FALSE( tracer_ctx.process_tracer_head == NULL );
@@ -106,7 +107,7 @@ TEST( TRACER_INST_TRACER, ADD_PROC_TRACER2 ){
 
 
 TEST( TRACER_INST_TRACER, ADD_UNIV_TRACER ){
-    int ret = tracer_add_inst_tracer( 0, "test", false, NULL);
+    int ret = tracer_add_inst_tracer( 0, "test", false, NULL, NULL);
     ASSERT_EQ( ret, 1);
     //tracer_list_callback();
     ASSERT_TRUE( tracer_ctx.process_tracer_head == NULL );
@@ -121,7 +122,7 @@ TEST( TRACER_INST_TRACER, ADD_UNIV_TRACER ){
 }
 
 TEST( TRACER_INST_TRACER, ADD_NERNEL_UNIV_TRACER ){
-    int ret = tracer_add_inst_tracer( 0, "test", true, NULL);
+    int ret = tracer_add_inst_tracer( 0, "test", true, NULL, NULL);
     ASSERT_EQ( ret, 1);
     //tracer_list_callback();
     ASSERT_TRUE( tracer_ctx.process_tracer_head == NULL );
@@ -139,11 +140,11 @@ TEST( TRACER_INST_TRACER, ADD_MAXMUN_TRACER ){
     int ret;
     for(int i = 0; i< UINT16_MAX ; i++)
     {
-        ret = tracer_add_inst_tracer( 0, "test", true, NULL);
+        ret = tracer_add_inst_tracer( 0, "test", true, NULL, NULL);
         ASSERT_EQ( ret, i+1);
         //printf("%d\n", i);
     }
-    ret = tracer_add_inst_tracer( 0, "test", true, NULL);
+    ret = tracer_add_inst_tracer( 0, "test", true, NULL, NULL);
     ASSERT_EQ(ret, -1);
     ASSERT_EQ(g_error_no, TRACER_MAX_TRACER_ID);
 
@@ -151,10 +152,10 @@ TEST( TRACER_INST_TRACER, ADD_MAXMUN_TRACER ){
 }
 
 TEST( TRACER_INST_TRACER, ENABLE_TRACER ){
-    int ret = tracer_add_inst_tracer( 0, "test", true, NULL);
+    int ret = tracer_add_inst_tracer( 0, "test", true, NULL, NULL);
     int status;    
 
-    ASSERT_TRUE( ret != NULL);
+    ASSERT_TRUE( ret != -1 );
 
     status = tracer_get_tracer_status(ret);
     ASSERT_EQ(status, 0);
@@ -167,10 +168,10 @@ TEST( TRACER_INST_TRACER, ENABLE_TRACER ){
 }
 
 TEST( TRACER_INST_TRACER, DISABLE_TRACER ){
-    int ret = tracer_add_inst_tracer( 0, "test", true, NULL);
+    int ret = tracer_add_inst_tracer( 0, "test", true, NULL, NULL);
     int status;
 
-    ASSERT_TRUE( ret != NULL);
+    ASSERT_TRUE( ret != -1 );
 
     status = tracer_get_tracer_status(ret);
     ASSERT_EQ(status, 0);
@@ -188,7 +189,7 @@ TEST( TRACER_INST_TRACER, DISABLE_TRACER ){
 
 TEST( TRACER_INST_TRACER, GET_TRACER_LABEL ){
     const char* label_string = "test"; 
-    int ret = tracer_add_inst_tracer( 0, label_string, true, NULL);
+    int ret = tracer_add_inst_tracer( 0, label_string, true, NULL, NULL);
     char* label = tracer_get_tracer_label(ret);
     ASSERT_EQ( strcmp(label_string, label) , 0);
 
@@ -197,7 +198,7 @@ TEST( TRACER_INST_TRACER, GET_TRACER_LABEL ){
 
 TEST( TRACER_INST_TRACER, LONG_TRACER_LABEL ){
     const char* label_string = "testtesttestetsetestestestsetsestsetsestestsestsestestsetsest";
-    int ret = tracer_add_inst_tracer( 0, label_string, true, NULL);
+    int ret = tracer_add_inst_tracer( 0, label_string, true, NULL, NULL);
     char* label = tracer_get_tracer_label(ret);
     ASSERT_NE( strcmp(label_string, label) , 0);
     tracer_clean_up();
@@ -206,7 +207,7 @@ TEST( TRACER_INST_TRACER, LONG_TRACER_LABEL ){
 /****************************************************************************/
 class TRACER_BLOCK_TRACER : public TracerContextInitialized{};
 TEST( TRACER_BLOCK_TRACER, ADD_BLOCK_TRACER ){
-    int ret = tracer_add_block_tracer( 0x331d0000, "test", false, NULL);
+    int ret = tracer_add_block_tracer( 0x331d0000, "test", false, NULL, NULL);
     ASSERT_EQ( ret, 1);
     //tracer_list_callback();
     ASSERT_TRUE( tracer_ctx.process_tracer_head == NULL );
@@ -221,7 +222,7 @@ TEST( TRACER_BLOCK_TRACER, ADD_BLOCK_TRACER ){
 }
 
 TEST( TRACER_BLOCK_TRACER, ADD_BLOCK_TRACER2 ){
-    int ret = tracer_add_block_tracer( 0x331d0000, "test", true, NULL);
+    int ret = tracer_add_block_tracer( 0x331d0000, "test", true, NULL, NULL);
     ASSERT_EQ( ret, 1);
     //tracer_list_callback();
     ASSERT_TRUE( tracer_ctx.process_tracer_head == NULL );
@@ -237,7 +238,7 @@ TEST( TRACER_BLOCK_TRACER, ADD_BLOCK_TRACER2 ){
 
 
 TEST( TRACER_BLOCK_TRACER, ADD_UNIV_TRACER ){
-    int ret = tracer_add_block_tracer( 0, "test", false, NULL);
+    int ret = tracer_add_block_tracer( 0, "test", false, NULL, NULL);
     ASSERT_EQ( ret, 1);
     //tracer_list_callback();
     ASSERT_TRUE( tracer_ctx.process_tracer_head == NULL );
@@ -252,7 +253,7 @@ TEST( TRACER_BLOCK_TRACER, ADD_UNIV_TRACER ){
 }
 
 TEST( TRACER_BLOCK_TRACER, ADD_NERNEL_UNIV_TRACER ){
-    int ret = tracer_add_block_tracer( 0, "test", true, NULL);
+    int ret = tracer_add_block_tracer( 0, "test", true, NULL, NULL);
     ASSERT_EQ( ret, 1);
     //tracer_list_callback();
     ASSERT_TRUE( tracer_ctx.process_tracer_head == NULL );

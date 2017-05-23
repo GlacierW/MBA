@@ -2,6 +2,7 @@
  *  Out-of-Box Hook header
  *
  *  Copyright (c)   2016 Chiawei Wang
+ *                  2017 JuiChien Jao
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -78,7 +79,9 @@ struct obhk_cb_record {
     // user-friendly label string
     char label[MAX_SZ_OBHOOK_LABEL];
 
-    void* (*cb_func) (void*);
+    // cb_arg is the user-defined argument and it will be passed as the second parameter of callbaclk function.
+    void* (*cb_func) (void*, void*);
+    void* cb_arg;
 
     struct obhk_cb_record* next;
 };
@@ -118,15 +121,16 @@ extern bool obhook_pending_hooks;
 
 /// Add a process-aware, out-of-box hook at the given address
 ///
-///     \param  cr3     CR3 value of the targeted process, should not be zero
-///     \param  addr    address to implant the hook
-///     \param  label   user-friendly name for the hook (optional, can be NULL)
-///     \param  cb      callback routine to be invoked when the hook is triggered
-///                     Note that each callback routine will be invoked and given
-///                     a pointer to the current CPU state structure (CPUState*)
+///     \param  cr3         CR3 value of the targeted process, should not be zero
+///     \param  addr        address to implant the hook
+///     \param  label       user-friendly name for the hook (optional, can be NULL)
+///     \param  cb          callback routine to be invoked when the hook is triggered
+///                         Note that each callback routine will be invoked and given
+///                         a pointer to the current CPU state structure (CPUState*)
+///     \param  usr_cb_argu User-defined argument that will be transmitted as the "second" parameter of callback function
 ///
 /// Return a new obhook descriptor on success, otherwise -1 is returned and the obhook_errno is set
-extern int obhook_add_process( target_ulong cr3, target_ulong addr, const char* label, void*(*cb) (void *) );
+extern int obhook_add_process( target_ulong cr3, target_ulong addr, const char* label, void*(*cb) (void *, void *), void* usr_cb_arg );
 
 /// Add an universal, out-of-box hook at the given kernel-space address
 ///
@@ -139,9 +143,10 @@ extern int obhook_add_process( target_ulong cr3, target_ulong addr, const char* 
 ///     \param  cb          callback routine to be invoked when the hook is triggered
 ///                         Note that each callback routine will be invoked and given
 ///                         a pointer to the current CPU state structure (CPUState*)
+///     \param  usr_cb_argu User-defined argument that will be transmitted as the "second" parameter of callback function
 ///
 /// Return a new obhook descriptor on success, otherwise -1 is returned and the obhook_errno is set
-extern int obhook_add_universal( target_ulong kern_addr, const char* label, void*(*cb) (void *) );
+extern int obhook_add_universal( target_ulong kern_addr, const char* label, void*(*cb) (void *, void *), void* usr_cb_arg );
 
 /// Delete a out-of-box hook by the given descriptor
 ///

@@ -22,6 +22,9 @@
 #include "obhook-commands.h"
 #include "obhook.h"
 
+#include "sysemu/sysemu.h"
+#include "qapi-types.h"
+
 void do_list_obhook( Monitor* mon, const QDict* qdict ) {
 
     obhk_ht_record* ht_rec;
