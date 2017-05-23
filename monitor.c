@@ -110,6 +110,10 @@
 #include "ext/nettramon/nettramon-commands.h"
 #endif
 
+#if defined(CONFIG_SYSTRACE)
+#include "ext/systrace/systrace-commands.h"
+#endif
+
 #if defined(CONFIG_DBA)
 #include "ext/dba/dba-commands.h"
 #endif
@@ -3006,6 +3010,10 @@ static mon_cmd_t mon_cmds[] = {
 #include "ext/nettramon/nettramon-commands-spec.h"
 #endif
 
+#if defined(CONFIG_SYSTRACE)
+#include "ext/systrace/systrace-commands-spec.h"
+#endif
+
 #if defined(CONFIG_DBA)
 #include "ext/dba/dba-commands-spec.h"
 #endif
@@ -5575,24 +5583,10 @@ void *mba_mon_get_cpu( void ) {
 // The following functions should check the setting mode by API
 void mba_readline_start( Monitor* mon, const char *prompt, int read_password,
                          ReadLineFunc *readline_func, void *opaque) {
-#if defined(CONFIG_DBA)
-    if ( !do_dba_config_file_setting() ) {
-        readline_start( mon->rs, prompt, read_password, readline_func, opaque );
-    }
-#endif
-#if !defined(CONFIG_DBA)
     readline_start( mon->rs, prompt, read_password, readline_func, opaque );
-#endif
 }
 
 void mba_readline_show_prompt( Monitor* mon ) {
-#if defined(CONFIG_DBA)
-    if ( !do_dba_config_file_setting() ) {
-        readline_show_prompt( mon->rs );
-    }
-#endif
-#if !defined(CONFIG_DBA)
     readline_show_prompt( mon->rs );
-#endif
 }
 

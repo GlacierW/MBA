@@ -2,6 +2,7 @@
  *  MBA Dynamic Behavior Analyzer, DBA implementation
  *
  *  Copyright (c)   2016 Chiawei Wang
+ *                  2017 JuiChien Jao
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -19,6 +20,7 @@
 
 #include "dba.h"
 #include "dba_taint.h"
+#include "dba_tracer.h"
 
 #include "net/slirp.h"
 #include "qmp-commands.h"
@@ -84,8 +86,17 @@ static int toggle_taint_analysis( DBA_TID tid, CONTAMINATION_RECORD tag, bool is
         return -1;
     }
 
-    dba_tasks[tid]->taint.is_enabled = is_enable;
-    dba_tasks[tid]->taint.tag        = tag;
+    dba_tasks[tid]->taint.is_enabled     = is_enable;
+    dba_tasks[tid]->taint.tag            = tag;
+    return 0;
+}
+
+static int toggle_taint_packet( DBA_TID tid, bool is_enable ) {
+    
+    if( !is_task_configurable(tid) )
+        return -1;
+
+    dba_tasks[tid]->taint.ntm_is_enabled = is_enable;
     return 0;
 }
 
@@ -95,6 +106,54 @@ static int toggle_syscall_tracer( DBA_TID tid, bool is_enable ) {
         return -1;
 
     dba_tasks[tid]->syscall.is_enabled = is_enable;
+    return 0;
+}
+
+static int toggle_set_structure( DBA_TID tid, const char* path ) {
+   
+    memfrs_load_structs( path );
+    return 0;
+}
+
+static int toggle_set_global( DBA_TID tid, const char* path ) {
+    
+    memfrs_load_globalvar( path );
+    return 0;
+}
+
+static int toggle_block_tracer_is_kernel( DBA_TID tid, bool is_enable ) {
+    
+    if( !is_task_configurable(tid) )
+        return -1;
+
+    dba_tasks[tid]->instr_tracer.block_is_kernel = is_enable;
+    return 0;
+}
+
+static int toggle_block_tracer( DBA_TID tid, bool is_enable ) {
+    
+    if( !is_task_configurable(tid) )
+        return -1;
+
+    dba_tasks[tid]->instr_tracer.block_enabled = is_enable;
+    return 0;
+}
+
+static int toggle_instr_tracer_is_kernel( DBA_TID tid, bool is_enable ) {
+    
+    if( !is_task_configurable(tid) )
+        return -1;
+
+    dba_tasks[tid]->instr_tracer.instr_is_kernel = is_enable;
+    return 0;
+}
+
+static int toggle_instr_tracer( DBA_TID tid, bool is_enable ) {
+    
+    if( !is_task_configurable(tid) )
+        return -1;
+
+    dba_tasks[tid]->instr_tracer.instr_enabled = is_enable;
     return 0;
 }
 
@@ -139,12 +198,53 @@ static DBA_TID get_available_tid( void ) {
     return next_tid;
 }
 
+// Do the needed work before the task starts
+//
+// Tracer : Hook on the MmCreatePeb to get the information of the sample so as to enable tracer
+// Taint  : Taint the sample
+// NTM    : If the taint ability is turned on, add a callback function to NTM to get packets and start the NTM
+//
+// Return 0 for success, -1 for fail
+static int set_up_tasks( dba_context* ctx ) {
+
+    // Hook Create Peb to Get CR3 of sample if tracer is turned on
+    if ( ctx->instr_tracer.instr_enabled == true || ctx->instr_tracer.block_enabled == true ) {
+
+        // Add tag in result json
+        json_object_object_add( ctx->result, DBA_JSON_KEY_TRACER, json_object_new_object() );
+        if ( set_obhook_on_mmcreatepeb( ctx ) != 0 ) {
+            return -1;
+        }
+    }
+
+    // Taint smaple and check whether NTM has to be turned on
+    if( ctx->taint.is_enabled ) {
+
+        // Add tag in result json
+        json_object_object_add( ctx->result, DBA_JSON_KEY_TAINT, json_object_new_object() );
+        
+        set_sample_tainted( ctx );
+
+        if ( ctx->taint.ntm_is_enabled ) {
+            // ---------- Add cb into nettramon ---------- //
+            ctx->taint.ntm_cb_id = nettramon_set_cb( &tainted_packet_cb, ctx );
+            if ( ctx->taint.ntm_cb_id == -1 )
+                return -1;
+            // ---------- Start to capture packets ---------- //
+            if ( nettramon_start( NULL ) != 0 )
+                return -1;
+        }
+    }
+
+    return 0;
+}
+
 // macro for agent action polling
 #define AGENT_ACT( x ) \
     while( (aret = x) == AGENT_RET_EBUSY ) { asm volatile("pause"); } \
     while( !agent_is_idle() ) { asm volatile( "pause" ); }
 
-// Wrpper of invoking sample and doing sync
+// Wrapper of invoking sample and doing sync
 // Return none
 static void* invoke_sample( dba_context* ctx ) {
 
@@ -162,13 +262,61 @@ static void* invoke_sample( dba_context* ctx ) {
     return NULL;
 }
 
+// After invoking the task for a certain time, all the used objects should be cleaned
+// 
+// Obhook : Disable and delete callback function
+// Tracer : Disable callback function
+// NTM    : Delete the callback function and do not turn off NTM
+// TAINT  : Enumerate tainted files
+//
+// Return 0 for success, -1 for fail
+static int finish_tasks( dba_context* ctx ) {
+
+    // Detect whether the Tracer ability is on
+    if ( ctx->instr_tracer.instr_enabled || ctx->instr_tracer.block_enabled ) {
+
+        // Disable the callback function if we have registered
+        if ( ctx->instr_tracer.instr_enabled )
+            if ( tracer_disable_tracer( ctx->instr_tracer.instr_tracer_cb_id ) != 0  ) 
+                return -1;
+
+        // Disable the callback function if we have registered
+        if ( ctx->instr_tracer.block_enabled )
+            if ( tracer_disable_tracer( ctx->instr_tracer.block_tracer_cb_id ) != 0 )
+                return -1;
+
+        // Disable and delete the callback function if we have registered
+        if ( obhook_disable( ctx->instr_tracer.mmcreatepeb_hook_id ) != 0 )
+            return -1;
+        if ( obhook_delete ( ctx->instr_tracer.mmcreatepeb_hook_id ) != 0 )
+            return -1;
+    }
+
+    // Detect whether the Taint ability is on
+    if ( ctx->taint.is_enabled ) {
+        // Find the tainted registry
+        enum_tainted_registry( ctx );
+        // Find the tainted files
+        enum_tainted_file( ctx );
+
+        // Check whether tainted packet ability is on
+        if ( ctx->taint.ntm_is_enabled ) {
+            // Consider that many tasks may executing at the same time, we do not turn off the NTM
+            // Delete the callback function
+            if ( nettramon_delete_cb( ctx->taint.ntm_cb_id ) != 0 )
+                return -1;
+        }
+    }
+
+    return 0;
+}
+
 // dba task thread main
-// retirn none
+// return none
 static void* dba_main_internal( void* ctx_arg ) {
 
-    MBA_AGENT_RETURN aret;
     dba_context* ctx = ctx_arg;
-    int ntm_cb_id;
+    MBA_AGENT_RETURN aret;
 
     ctx->state = DBA_TASK_BUSY;
 
@@ -176,28 +324,14 @@ static void* dba_main_internal( void* ctx_arg ) {
     AGENT_ACT( agent_import(ctx->sample_gpath, ctx->sample_hpath) );
     AGENT_ACT( agent_sync() );
 
-    if( ctx->taint.is_enabled ) {
+    // Do the required work
+    set_up_tasks( ctx );
 
-        json_object_object_add( ctx->result, DBA_JSON_KEY_TAINT, json_object_new_object() );
-        set_sample_tainted( ctx );
+    // Start to execute sample in certain time given by user
+    invoke_sample( ctx );
 
-        // ---------- Add cb into nettramon ---------- //
-        ntm_cb_id = nettramon_set_cb( &tainted_packet_cb, ctx_arg );
-        // ---------- Start to capture packets ---------- //
-        nettramon_start( NULL );
-
-        // Start to execute sample
-        invoke_sample( ctx );
-
-        // ---------- Delete the ntm call back funciton ---------- //
-        nettramon_stop();
-        nettramon_delete_cb( ntm_cb_id );
-
-        enum_tainted_file( ctx );
-    }
-    else {
-        invoke_sample( ctx );
-    }
+    // Do the finishing work
+    finish_tasks( ctx );
 
     ctx->state = DBA_TASK_DONE;
 
@@ -309,7 +443,51 @@ int dba_set_sample( DBA_TID tid, const char* path ) {
     bzero( ctx->sample_gpath, DBA_MAX_FILENAME + sizeof(DBA_GUEST_SAMPLE_DIR) );
     sprintf( ctx->sample_gpath, "%s%s", DBA_GUEST_SAMPLE_DIR, basename(ctx->sample_hpath) );
 
+    // setup sample name according to "guest path"
+    bzero( ctx->sample_name, DBA_MAX_FILENAME + 1 );
+    sprintf( ctx->sample_name, "%s", basename(ctx->sample_hpath) );
+
     return 0;
+}
+
+int dba_enable_block_tracer_is_kernel( DBA_TID tid ) {
+    return toggle_block_tracer_is_kernel( tid, true );
+}
+
+int dba_disable_block_tracer_is_kernel( DBA_TID tid ) {
+    return toggle_block_tracer_is_kernel( tid, false );
+}
+
+int dba_enable_block_tracer( DBA_TID tid ) {
+    return toggle_block_tracer( tid, true );
+}
+
+int dba_disable_block_tracer( DBA_TID tid ) {
+    return toggle_block_tracer( tid, false );
+}
+
+int dba_enable_instr_tracer_is_kernel( DBA_TID tid ) {
+    return toggle_instr_tracer_is_kernel( tid, true );
+}
+
+int dba_disable_instr_tracer_is_kernel( DBA_TID tid ) {
+    return toggle_instr_tracer_is_kernel( tid, false );
+}
+
+int dba_enable_instr_tracer( DBA_TID tid ) {
+    return toggle_instr_tracer( tid, true );
+}
+
+int dba_disable_instr_tracer( DBA_TID tid ) {
+    return toggle_instr_tracer( tid, false );
+}
+
+int dba_set_global( DBA_TID tid, const char* path ) {
+    return toggle_set_global( tid, path );
+}
+
+int dba_set_structure( DBA_TID tid, const char* path ) {
+    return toggle_set_structure( tid, path );
 }
 
 int dba_enable_syscall_trace( DBA_TID tid ) {
@@ -318,6 +496,14 @@ int dba_enable_syscall_trace( DBA_TID tid ) {
 
 int dba_disable_syscall_trace( DBA_TID tid ) {
     return toggle_syscall_tracer( tid, false );
+}
+
+int dba_enable_taint_packet( DBA_TID tid ) {
+    return toggle_taint_packet( tid, true );
+}
+
+int dba_disable_taint_packet( DBA_TID tid ) {
+    return toggle_taint_packet( tid, false );
 }
 
 int dba_enable_taint_analysis( DBA_TID tid, CONTAMINATION_RECORD tag ) {

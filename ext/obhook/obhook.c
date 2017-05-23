@@ -2,6 +2,7 @@
  *  Out-of-Box Hook implementation
  *
  *  Copyright (c)   2016 Chiawei Wang
+ *                  2017 JuiChien Jao
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -71,7 +72,7 @@ static int toggle_obhk( int obhook_d, bool enabled ) {
 
 /// Internal implementation of out-of-box hook registration
 /// Return 0 on success, -1 and errno is set otherwise.
-static int add_obhk_internal( target_ulong cr3, target_ulong addr, const char* label, void*(*cb) (void*) ) {
+static int add_obhk_internal( target_ulong cr3, target_ulong addr, const char* label, void*(*cb) (void*, void*), void* usr_cb_arg ) {
 
     obhk_ht_record* ht_rec;
     obhk_ht_record* ht_proc_rec;
@@ -155,6 +156,7 @@ static int add_obhk_internal( target_ulong cr3, target_ulong addr, const char* l
     cb_rec->enabled   = true;
     cb_rec->universal = (cb_rec->ht_rec->cr3 == 0)? true : false;
     cb_rec->cb_func   = cb;
+    cb_rec->cb_arg    = usr_cb_arg;
     strncpy( cb_rec->label, label, MAX_SZ_OBHOOK_LABEL );
 
     // add the callback record to the linked list & index table
@@ -200,7 +202,7 @@ get_obhk_cb_not_found:
 
 /// Public API of Out-of-Box hook
 /// Each API function should be named with the prefix 'obhook_'
-int obhook_add_process( target_ulong cr3, target_ulong addr, const char* label, void*(*cb) (void*) ) {
+int obhook_add_process( target_ulong cr3, target_ulong addr, const char* label, void*(*cb) (void*, void*), void* usr_cb_argu ) {
 
     int ret;
 
@@ -210,18 +212,18 @@ int obhook_add_process( target_ulong cr3, target_ulong addr, const char* label, 
     }
 
     pthread_rwlock_wrlock( &obhk_ctx->rwlock );
-    ret = add_obhk_internal( cr3, addr, label, cb );
+    ret = add_obhk_internal( cr3, addr, label, cb, usr_cb_argu );
     pthread_rwlock_unlock( &obhk_ctx->rwlock );
 
     return ret;
 }
 
-int obhook_add_universal( target_ulong kern_addr, const char* label, void*(*cb) (void*) ) {
+int obhook_add_universal( target_ulong kern_addr, const char* label, void*(*cb) (void*, void*), void* usr_cb_argu ) {
 
     int ret;
 
     pthread_rwlock_wrlock( &obhk_ctx->rwlock );
-    ret = add_obhk_internal( 0, kern_addr, label, cb );
+    ret = add_obhk_internal( 0, kern_addr, label, cb, usr_cb_argu );
     pthread_rwlock_unlock( &obhk_ctx->rwlock );
 
     return ret;

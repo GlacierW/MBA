@@ -33,6 +33,8 @@
 #include "regftools_libregf.h"
 
 #define INFO_HANDLE_NOTIFY_STREAM	stdout
+key_offset_list key_list[2000000];
+int key_list_index = 0;
 
 /* Creates an info handle
  * Make sure the value info_handle is referencing, is set to NULL
@@ -2022,3 +2024,693 @@ on_error:
 	}
 	return( -1 );
 }
+
+
+
+
+
+
+
+
+int info_handle_key_print_by_address(
+     info_handle_t *info_handle,
+     libregf_key_t *key,
+     int indentation_level,
+     Str key_full_path,
+     libregf_error_t **error )
+{
+        Str key_temp_path;
+	system_character_t *name = NULL;
+	libregf_key_t *sub_key              = NULL;
+	libregf_value_t *value              = NULL;
+	static char *function               = "info_handle_key_print_by_address";
+	size_t name_size                    = 0;
+	int indentation_level_iterator      = 0;
+	int number_of_sub_keys              = 0;
+	int number_of_values                = 0;
+	int result                          = 0;
+	int sub_key_index                   = 0;
+	int value_index                     = 0;
+
+	if( info_handle == NULL )
+	{
+		libcerror_error_set(
+		 error,
+		 LIBCERROR_ERROR_DOMAIN_ARGUMENTS,
+		 LIBCERROR_ARGUMENT_ERROR_INVALID_VALUE,
+		 "%s: invalid info handle.",
+		 function );
+
+		return( -1 );
+	}
+#if defined( HAVE_WIDE_SYSTEM_CHARACTER )
+	result = libregf_key_get_utf16_name_size(
+	          key,
+	          &name_size,
+	          error );
+#else
+	result = libregf_key_get_utf8_name_size(
+	          key,
+	          &name_size,
+	          error );
+#endif
+	if( result != 1 )
+	{
+		libcerror_error_set(
+		 error,
+		 LIBCERROR_ERROR_DOMAIN_RUNTIME,
+		 LIBCERROR_RUNTIME_ERROR_GET_FAILED,
+		 "%s: unable to retrieve key name size.",
+		 function );
+
+		goto on_error;
+	}
+	if( name_size > 0 )
+	{
+		if( ( name_size > (size_t) SSIZE_MAX )
+		 || ( ( sizeof( system_character_t ) * name_size ) > (size_t) SSIZE_MAX ) )
+		{
+			libcerror_error_set(
+			 error,
+			 LIBCERROR_ERROR_DOMAIN_RUNTIME,
+			 LIBCERROR_RUNTIME_ERROR_VALUE_EXCEEDS_MAXIMUM,
+			 "%s: invalid name size value exceeds maximum.",
+			 function );
+
+			goto on_error;
+		}
+		name = system_string_allocate(
+		        name_size );
+
+		if( name == NULL )
+		{
+			libcerror_error_set(
+			 error,
+			 LIBCERROR_ERROR_DOMAIN_MEMORY,
+			 LIBCERROR_MEMORY_ERROR_INSUFFICIENT,
+			 "%s: unable to create name string.",
+			 function );
+
+			goto on_error;
+		}
+#if defined( HAVE_WIDE_SYSTEM_CHARACTER )
+		result = libregf_key_get_utf16_name(
+		          key,
+		          (uint16_t *) name,
+		          name_size,
+		          error );
+#else     
+		result = libregf_key_get_utf8_name(
+		          key,
+		          (uint8_t *) name,
+		          name_size,
+		          error );
+#endif
+		if( result != 1 )
+		{
+			libcerror_error_set(
+			 error,
+			 LIBCERROR_ERROR_DOMAIN_RUNTIME,
+			 LIBCERROR_RUNTIME_ERROR_GET_FAILED,
+			 "%s: unable to retrieve key name.",
+			 function );
+
+			goto on_error;
+		}
+                /*
+		for( indentation_level_iterator = 0;
+		     indentation_level_iterator < indentation_level;
+		     indentation_level_iterator++ )
+		{
+			fprintf(
+			 info_handle->notify_stream,
+			 " " );
+		}
+                
+		fprintf(
+		 info_handle->notify_stream,
+		 "(key:) %" PRIs_LIBCSTRING_SYSTEM "\n",
+		 name);
+
+
+        	/* fatgle added */
+     	
+       		strcpy( key_temp_path, key_full_path );
+       		strcat( key_temp_path, "\\" );
+       		strcat( key_temp_path, name );
+
+		memory_free(
+		 name );
+
+		name = NULL;
+	}
+	if( libregf_key_get_number_of_values(
+	     key,
+	     &number_of_values,
+	     error ) != 1 )
+	{
+		libcerror_error_set(
+		 error,
+		 LIBCERROR_ERROR_DOMAIN_RUNTIME,
+		 LIBCERROR_RUNTIME_ERROR_GET_FAILED,
+		 "%s: unable to retrieve number of values.",
+		 function );
+
+		goto on_error;
+	}
+	for( value_index = 0;
+	     value_index < number_of_values;
+	     value_index++ )
+	{
+		if( libregf_key_get_value(
+		     key,
+		     value_index,
+		     &value,
+		     error ) != 1 )
+		{
+			libcerror_error_set(
+			 error,
+			 LIBCERROR_ERROR_DOMAIN_RUNTIME,
+			 LIBCERROR_RUNTIME_ERROR_GET_FAILED,
+			 "%s: unable to retrieve value: %d.",
+			 function,
+			 value_index );
+
+			goto on_error;
+		}
+#if defined( HAVE_WIDE_SYSTEM_CHARACTER )
+		result = libregf_value_get_utf16_name_size(
+		          value,
+		          &name_size,
+		          error );
+#else
+		result = libregf_value_get_utf8_name_size(
+		          value,
+		          &name_size,
+		          error );
+#endif
+		if( result != 1 )
+		{
+			libcerror_error_set(
+			 error,
+			 LIBCERROR_ERROR_DOMAIN_RUNTIME,
+			 LIBCERROR_RUNTIME_ERROR_GET_FAILED,
+			 "%s: unable to retrieve value name size.",
+			 function );
+
+			goto on_error;
+		}
+		if( name_size > 0 )
+		{
+			if( ( name_size > (size_t) SSIZE_MAX )
+			 || ( ( sizeof( system_character_t ) * name_size ) > (size_t) SSIZE_MAX ) )
+			{
+				libcerror_error_set(
+				 error,
+				 LIBCERROR_ERROR_DOMAIN_RUNTIME,
+				 LIBCERROR_RUNTIME_ERROR_VALUE_EXCEEDS_MAXIMUM,
+				 "%s: invalid name size value exceeds maximum.",
+				 function );
+
+				goto on_error;
+			}
+			name = system_string_allocate(
+			        name_size );
+
+			if( name == NULL )
+			{
+				libcerror_error_set(
+				 error,
+				 LIBCERROR_ERROR_DOMAIN_MEMORY,
+				 LIBCERROR_MEMORY_ERROR_INSUFFICIENT,
+				 "%s: unable to create name string.",
+				 function );
+
+				goto on_error;
+			}
+#if defined( HAVE_WIDE_SYSTEM_CHARACTER )
+			result = libregf_value_get_utf16_name(
+			          value,
+			          (uint16_t *) name,
+			          name_size,
+			          error );
+#else          
+			result = libregf_value_get_utf8_name(
+			          value,
+			          (uint8_t *) name,
+			          name_size,
+			          error );
+#endif
+			if( result != 1 )
+			{
+				libcerror_error_set(
+				 error,
+				 LIBCERROR_ERROR_DOMAIN_RUNTIME,
+				 LIBCERROR_RUNTIME_ERROR_GET_FAILED,
+				 "%s: unable to retrieve value name.",
+				 function );
+
+				goto on_error;
+			}
+                        /*
+			fprintf(
+			 info_handle->notify_stream,
+			 "(value: %d) %" PRIs_LIBCSTRING_SYSTEM "\n",
+			 value_index,
+			 name );
+                        */
+
+           		/*fatgle added*/
+	
+           		Str value_path;
+           		strcpy( value_path, key_temp_path );
+           		strcat( value_path, "\\" );
+           		strcat( value_path, name );
+                        uint64_t name_size = 0, data_size = 0;
+           		off64_t *offset = 0;
+
+          		libregf_value_get_offset(
+           		 value,
+           		 &offset,
+           		 error );
+                        libregf_value_get_name_size(
+                	 value,
+                 	 &name_size,
+                	 error );
+                        libregf_value_get_value_data_size(
+                	 value,
+                 	 &data_size,
+                	 error );
+
+
+           		key_list[key_list_index].offset = offset;
+                        key_list[key_list_index].name_size = name_size;
+                        key_list[key_list_index].data_size = data_size; 
+           		strcpy( key_list[key_list_index++].key, value_path );        
+           		// printf("index:%d", key_list_index );
+
+			memory_free(
+			 name );
+
+			name = NULL;
+		}
+		else
+		{       
+                        /*
+			fprintf(
+			 info_handle->notify_stream,
+			 "(value: %d) (default)\n",
+			 value_index );
+                        */
+                	/* fatgle added */
+                	Str value_path;
+                	strcpy( value_path, key_temp_path );
+                	strcat( value_path, "\\default" );
+                        uint64_t name_size = 0, data_size = 0;
+                	off64_t *offset = 0;
+                	libregf_value_get_offset(
+                	 value,
+                 	 &offset,
+                	 error );
+                        libregf_value_get_name_size(
+                	 value,
+                 	 &name_size,
+                	 error );
+                        libregf_value_get_value_data_size(
+                	 value,
+                 	 &data_size,
+                	 error );
+
+                	key_list[key_list_index].offset = offset;
+                        key_list[key_list_index].name_size = name_size;
+                        key_list[key_list_index].data_size = data_size;
+                	strcpy( key_list[key_list_index++].key, value_path );
+                	//printf("index:%d", key_list_index );
+		}
+		if( libregf_value_free(
+		     &value,
+		     error ) != 1 )
+		{
+			libcerror_error_set(
+			 error,
+			 LIBCERROR_ERROR_DOMAIN_RUNTIME,
+			 LIBCERROR_RUNTIME_ERROR_FINALIZE_FAILED,
+			 "%s: unable to free value: %d.",
+			 function,
+			 value_index );
+
+			goto on_error;
+		}
+	}
+	if( libregf_key_get_number_of_sub_keys(
+	     key,
+	     &number_of_sub_keys,
+	     error ) != 1 )
+	{
+		libcerror_error_set(
+		 error,
+		 LIBCERROR_ERROR_DOMAIN_RUNTIME,
+		 LIBCERROR_RUNTIME_ERROR_GET_FAILED,
+		 "%s: unable to retrieve number of sub keys.",
+		 function );
+
+		goto on_error;
+	}
+
+        Str path_temp;
+        strcpy( path_temp, key_temp_path ); 
+	for( sub_key_index = 0;
+	     sub_key_index < number_of_sub_keys;
+	     sub_key_index++ )
+	{ 
+		if( libregf_key_get_sub_key(
+		     key,
+		     sub_key_index,
+		     &sub_key,
+		     error ) != 1 )
+		{
+			libcerror_error_set(
+			 error,
+			 LIBCERROR_ERROR_DOMAIN_RUNTIME,
+			 LIBCERROR_RUNTIME_ERROR_GET_FAILED,
+			 "%s: unable to retrieve sub key: %d.",
+			 function,
+			 sub_key_index );
+
+			goto on_error;
+		}
+
+                strcpy( key_temp_path, path_temp );
+		if( info_handle_key_print_by_address(
+		     info_handle,
+		     sub_key,
+		     indentation_level + 1,
+                     path_temp,
+		     error ) != 1 )
+		{
+			libcerror_error_set(
+			 error,
+			 LIBCERROR_ERROR_DOMAIN_RUNTIME,
+			 LIBCERROR_RUNTIME_ERROR_PRINT_FAILED,
+			 "%s: unable to print sub key: %d info.",
+			 function,
+			 sub_key_index );
+
+			goto on_error;
+		}
+		if( libregf_key_free(
+		     &sub_key,
+		     error ) != 1 )
+		{
+			libcerror_error_set(
+			 error,
+			 LIBCERROR_ERROR_DOMAIN_RUNTIME,
+			 LIBCERROR_RUNTIME_ERROR_FINALIZE_FAILED,
+			 "%s: unable to free sub key: %d.",
+			 function,
+			 sub_key_index );
+
+			goto on_error;
+		}
+	}
+	return( 1 );
+
+on_error:
+	if( sub_key != NULL )
+	{
+		libregf_key_free(
+		 &sub_key,
+		 NULL );
+	}
+	if( value != NULL )
+	{
+		libregf_value_free(
+		 &value,
+		 NULL );
+	}
+	if( name != NULL )
+	{
+		memory_free(
+		 name );
+	}
+	return( -1 );
+}
+
+int info_handle_file_print_by_address(
+     info_handle_t *info_handle,
+     libcerror_error_t **error )
+{
+	libregf_key_t *root_key = NULL;
+	static char *function   = "info_handle_file_print_by_address";
+	uint32_t file_type      = 0;
+	uint32_t major_version  = 0;
+	uint32_t minor_version  = 0;
+	int is_corrupted        = 0;
+	int result              = 0;
+
+        int init_run = 0;
+        for ( ; init_run < 500 ; init_run++ ) {
+            key_list[init_run].offset = 0;
+            strcpy( key_list[init_run].key, "" ); 
+        } // for
+	if( info_handle == NULL )
+	{
+		libcerror_error_set(
+		 error,
+		 LIBCERROR_ERROR_DOMAIN_ARGUMENTS,
+		 LIBCERROR_ARGUMENT_ERROR_INVALID_VALUE,
+		 "%s: invalid info handle.",
+		 function );
+
+		return( -1 );
+	}
+	if( libregf_file_get_format_version(
+	     info_handle->input_file,
+	     &major_version,
+	     &minor_version,
+	     error ) != 1 )
+	{
+		libcerror_error_set(
+		 error,
+		 LIBCERROR_ERROR_DOMAIN_RUNTIME,
+		 LIBCERROR_RUNTIME_ERROR_GET_FAILED,
+		 "%s: unable to retrieve format version.",
+		 function );
+
+		goto on_error;
+	}
+	if( libregf_file_get_type(
+	     info_handle->input_file,
+	     &file_type,
+	     error ) != 1 )
+	{
+		libcerror_error_set(
+		 error,
+		 LIBCERROR_ERROR_DOMAIN_RUNTIME,
+		 LIBCERROR_RUNTIME_ERROR_GET_FAILED,
+		 "%s: unable to retrieve file type.",
+		 function );
+
+		goto on_error;
+	}
+/*
+	fprintf(
+	 info_handle->notify_stream,
+	 "Windows NT getPath File information:\n" );
+
+	fprintf(
+	 info_handle->notify_stream,
+	 "\tVersion:\t%" PRIu32 ".%" PRIu32 "\n",
+	 major_version,
+	 minor_version );
+
+	fprintf(
+	 info_handle->notify_stream,
+	 "\tFile type:\t" );
+
+	if( file_type == LIBREGF_FILE_TYPE_REGISTRY )
+	{
+		fprintf(
+		 info_handle->notify_stream,
+		 "Registry" );
+	}
+	else if( file_type == LIBREGF_FILE_TYPE_TRANSACTION_LOG )
+	{
+		fprintf(
+		 info_handle->notify_stream,
+		 "Transaction log" );
+	}
+	else
+	{
+		fprintf(
+		 info_handle->notify_stream,
+		 "Unknown: 0x%08" PRIx32 "",
+		 file_type );
+	}
+	fprintf(
+	 info_handle->notify_stream,
+	 "\n" );
+/* TODO calculate number of keys and values */
+/*
+	fprintf(
+	 info_handle->notify_stream,
+	 "\n" );
+*/
+	result = libregf_file_get_root_key(
+	          info_handle->input_file,
+	          &root_key,
+	          error );
+
+	if( result == -1 )
+	{
+		libcerror_error_set(
+		 error,
+		 LIBCERROR_ERROR_DOMAIN_RUNTIME,
+		 LIBCERROR_RUNTIME_ERROR_GET_FAILED,
+		 "%s: unable to retrieve root key.",
+		 function );
+
+		goto on_error;
+	}
+	else if( result != 0 )
+	{
+                Str key_full_path; 
+                strcpy( key_full_path, "" );
+		if( info_handle_key_print_by_address(
+		     info_handle,
+		     root_key,
+		     0,
+                     key_full_path,
+		     error ) != 1 )
+		{
+			libcerror_error_set(
+			 error,
+			 LIBCERROR_ERROR_DOMAIN_RUNTIME,
+			 LIBCERROR_RUNTIME_ERROR_PRINT_FAILED,
+			 "%s: unable to print root key info.",
+			 function );
+
+			goto on_error;
+		}
+
+		if( libregf_key_free(
+		     &root_key,
+		     error ) != 1 )
+		{
+			libcerror_error_set(
+			 error,
+			 LIBCERROR_ERROR_DOMAIN_RUNTIME,
+			 LIBCERROR_RUNTIME_ERROR_FINALIZE_FAILED,
+			 "%s: unable to free root key.",
+			 function );
+
+			goto on_error;
+		}
+	}
+
+	is_corrupted = libregf_file_is_corrupted(
+	                info_handle->input_file,
+	                error );
+
+	if( is_corrupted == -1 )
+	{
+		libcerror_error_set(
+		 error,
+		 LIBCERROR_ERROR_DOMAIN_RUNTIME,
+		 LIBCERROR_RUNTIME_ERROR_GET_FAILED,
+		 "%s: unable to determine if file is corrupted.",
+		 function );
+
+		return( -1 );
+	}
+	if( is_corrupted != 0 )
+	{
+		fprintf(
+		 info_handle->notify_stream,
+		 "File is corrupted\n\n" );
+	}
+    /*
+    fprintf(
+		 info_handle->notify_stream,
+		 "=========================================================\n"
+         );
+    */
+    quicksort_key_list( 0, key_list_index-1 );
+    /*
+    int run = 0;
+    for ( ; run < key_list_index ; run++ ) {
+        fprintf(
+		 info_handle->notify_stream,
+		 "list key:\t%s\nlist offset:\t%d\nname_size:%"PRIu64 " data_size:%"PRIu64"\n",
+         key_list[run].key,
+         key_list[run].offset,
+         key_list[run].name_size,
+         key_list[run].data_size );
+    } // for
+    fprintf(
+		 info_handle->notify_stream,
+		 "=========================================================\n"
+    );
+    */
+	return( 1 );
+
+on_error:
+	if( root_key != NULL )
+	{
+		libregf_key_free(
+		 &root_key,
+		 NULL );
+	}
+	return( -1 );
+}
+
+void quicksort_key_list(int left, int right)
+{
+    int pivot, i, j;
+
+    if (left >= right) { return; }
+
+    pivot = key_list[left].offset;
+    i = left + 1;
+    j = right;
+
+    while (1)
+    {
+        while (i <= right)
+        {
+            if (key_list[i].offset > pivot)
+            {
+                break;
+            }
+
+            i = i + 1;
+        }
+
+        while (j > left)
+        {
+            if (key_list[j].offset < pivot)
+            {
+                break;
+            }
+
+            j = j - 1;
+        }
+
+        if (i > j) { break; }
+   
+        swap_key_list(&key_list[i], &key_list[j]);
+    }
+
+    swap_key_list(&key_list[left], &key_list[j]);
+
+    quicksort_key_list( left, j - 1);
+    quicksort_key_list( j + 1, right);
+}
+
+void swap_key_list(key_offset_list* a, key_offset_list* b)
+{
+    key_offset_list temp = *a;
+    *a = *b;
+    *b = temp;
+}
+

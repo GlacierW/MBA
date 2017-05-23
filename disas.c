@@ -342,7 +342,7 @@ void target_disas(FILE *out, CPUArchState *env, target_ulong code,
            bit 16 indicates little endian.
     other targets - unused
  */
-void target_disas_inst_count(FILE *out, CPUArchState *env, target_ulong code,
+int target_disas_inst_count(FILE *out, CPUArchState *env, target_ulong code,
                   target_ulong size, int num_inst, int flags)
 {
     target_ulong pc;
@@ -455,8 +455,8 @@ void target_disas_inst_count(FILE *out, CPUArchState *env, target_ulong code,
     }
 
     for (pc = code, i=0 ; size > 0 && i < num_inst ; pc += count, size -= count, i++) {
-	fprintf(out, "0x" TARGET_FMT_lx ":  ", pc);
-	count = print_insn(pc, &s.info);
+        fprintf(out, "0x" TARGET_FMT_lx ":  ", pc);
+        count = print_insn(pc, &s.info);
 #if 0
         {
             int i;
@@ -469,9 +469,9 @@ void target_disas_inst_count(FILE *out, CPUArchState *env, target_ulong code,
             fprintf(out, " }");
         }
 #endif
-	fprintf(out, "\n");
-	if (count < 0)
-	    break;
+        fprintf(out, "\n");
+        if (count < 0)
+            break;
         if (size < count) {
             fprintf(out,
                     "Disassembler disagrees with translator over instruction "
@@ -480,6 +480,7 @@ void target_disas_inst_count(FILE *out, CPUArchState *env, target_ulong code,
             break;
         }
     }
+    return pc - code;
 }
 /* Disassemble this for me please... (debugging). */
 void disas(FILE *out, void *code, unsigned long size)

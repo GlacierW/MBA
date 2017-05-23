@@ -1,1 +1,41 @@
-{"MODULE":{"AGENT":"no","DIFT":"no","NETTRAMON":"no"},"TAINT":{"ENABLE":"no","TAG":"1"},"SYSCALL_TRACER":{"ENABLE":"no"}}
+{
+    "MODULE":
+    {
+        "AGENT":"no",
+        "DIFT":"no",
+        "NETTRAMON":
+        {
+            "ENABLE":"no",
+            "ALL":"RELATIVE_OR_ABSOLUTE_PATH_TO_THE_FILE",
+            "TCP":"RELATIVE_OR_ABSOLUTE_PATH_TO_THE_FILE",
+            "UDP":"RELATIVE_OR_ABSOLUTE_PATH_TO_THE_FILE",
+            "ICMP":"RELATIVE_OR_ABSOLUTE_PATH_TO_THE_FILE"
+        }
+    },
+    "TAINT":
+    {
+        "ENABLE":"no",
+        "PACKET":"no",
+        "TAG":"0_TO_255"
+    },
+    "SYSCALL_TRACER":
+    {
+        "ENABLE":"no"
+    },
+    "INSTR_TRACER":
+    {
+        "ENABLE":"no",
+        "STRUCTURE":"RELATIVE_OR_ABSOLUTE_PATH_TO_THE_FILE",
+        "GLOBALVAR":"RELATIVE_OR_ABSOLUTE_PATH_TO_THE_FILE",
+        "INSTR":
+        {
+            "ENABLE":"no",
+            "IS_KERNEL":"no"
+        },
+        "BLOCK":
+        {
+            "ENABLE":"no",
+            "IS_KERNEL":"no"
+        }
+    }
+}

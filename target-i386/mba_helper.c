@@ -3,6 +3,8 @@
  *      Out-of-Box Hook
  *
  *  Copyright (c)   2016 Chiawei Wang
+ *                  2016 ChongKuan Chen
+ *                  2017 JuiChien Jao
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -42,7 +44,7 @@ void helper_obhook_dispatcher( CPUX86State* env ) {
     if( cb_list != NULL ) {
         LL_FOREACH( cb_list, cb_rec ) {
             if( cb_rec->enabled )
-                cb_rec->cb_func( ENV_GET_CPU(env) );
+                cb_rec->cb_func( ENV_GET_CPU(env), cb_rec->cb_arg );
         }
     }
 
@@ -51,7 +53,7 @@ void helper_obhook_dispatcher( CPUX86State* env ) {
     if( cb_list != NULL ) {
         LL_FOREACH( cb_list, cb_rec ) {
             if( cb_rec->enabled )
-                cb_rec->cb_func( ENV_GET_CPU(env) );
+                cb_rec->cb_func( ENV_GET_CPU(env), cb_rec->cb_arg );
         }
     }
 }
@@ -64,7 +66,7 @@ void helper_tracer_dispatcher( CPUX86State* env, uint64_t pc ) {
     if(tracer_ctx.process_tracer_head!=NULL && !tracer_is_kern_addr(pc)){
     	LL_FOREACH( tracer_ctx.process_tracer_head , cb_rec){
         	if( env->cr[3] == cb_rec->cr3 && cb_rec->enabled == 1){
-                	cb_rec->cb_func( ENV_GET_CPU(env), pc, 0 );
+                	cb_rec->cb_func( ENV_GET_CPU(env), pc, 0, cb_rec->cb_arg );
         	}
     	}
     }
@@ -72,14 +74,14 @@ void helper_tracer_dispatcher( CPUX86State* env, uint64_t pc ) {
     if( tracer_ctx.universal_kernel_tracer_head!=NULL && tracer_is_kern_addr(pc) ){
             LL_FOREACH( tracer_ctx.universal_kernel_tracer_head , cb_rec){
             if(cb_rec->enabled == 1)
-                cb_rec->cb_func( ENV_GET_CPU(env), pc, 0 );
+                cb_rec->cb_func( ENV_GET_CPU(env), pc, 0, cb_rec->cb_arg  );
         }
     }
 
     if( tracer_ctx.universal_tracer_head!=NULL && !tracer_is_kern_addr(pc) ){
             LL_FOREACH( tracer_ctx.universal_tracer_head , cb_rec){
             if(cb_rec->enabled == 1)
-                cb_rec->cb_func( ENV_GET_CPU(env), pc, 0 );
+                cb_rec->cb_func( ENV_GET_CPU(env), pc, 0, cb_rec->cb_arg  );
         }
     }    
 }
@@ -90,21 +92,21 @@ void helper_btracer_dispatcher( CPUX86State* env, uint64_t bstart, uint64_t bend
     if( tracer_ctx.process_btracer_head!=NULL && !tracer_is_kern_addr(bstart) ){
             LL_FOREACH( tracer_ctx.process_btracer_head , cb_rec){
             if(env->cr[3] == cb_rec->cr3  && cb_rec->enabled == 1)
-                cb_rec->cb_func( ENV_GET_CPU(env), bstart, bend );
+                cb_rec->cb_func( ENV_GET_CPU(env), bstart, bend, cb_rec->cb_arg  );
         }
     }
 
     if( tracer_ctx.universal_kernel_btracer_head!=NULL && tracer_is_kern_addr(bstart) ){
             LL_FOREACH( tracer_ctx.universal_kernel_btracer_head , cb_rec){
             if(cb_rec->enabled == 1)
-                cb_rec->cb_func( ENV_GET_CPU(env), bstart, bend );
+                cb_rec->cb_func( ENV_GET_CPU(env), bstart, bend, cb_rec->cb_arg  );
         }
     }
 
     if( tracer_ctx.universal_btracer_head!=NULL && !tracer_is_kern_addr(bstart) ){
             LL_FOREACH( tracer_ctx.universal_btracer_head , cb_rec){
             if(cb_rec->enabled == 1)
-                cb_rec->cb_func( ENV_GET_CPU(env), bstart, bend );
+                cb_rec->cb_func( ENV_GET_CPU(env), bstart, bend, cb_rec->cb_arg  );
         }
     }
 }

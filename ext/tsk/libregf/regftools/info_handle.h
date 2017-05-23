@@ -34,11 +34,11 @@ extern "C" {
 #endif
 
 typedef struct info_handle info_handle_t;
-
+typedef struct key_offset key_offset_list;
 /*
  * MBA - Adding some definition of string array for map memory registry path
  */
-#define StringLength 100
+#define StringLength 1000
 typedef char Str[StringLength];
 typedef Str StrArray[StringLength];
 
@@ -60,6 +60,18 @@ struct info_handle
 	 */
 	int abort;
 };
+
+struct key_offset
+{
+    uint64_t offset;
+    Str key;
+    uint64_t name_size;
+    uint64_t data_size;
+};
+
+void quicksort_key_list(int left, int right);
+
+void swap_key_list(key_offset_list* a, key_offset_list* b);
 
 int info_handle_initialize(
      info_handle_t **info_handle,
@@ -126,6 +138,9 @@ int info_handle_file_fprint_registry_path(
 		StrArray keyPath,
 		int keyPathLen,
 		libcerror_error_t **error );
+int info_handle_file_print_by_address(
+                info_handle_t *info_handle,
+                libcerror_error_t **error );
 #if defined( __cplusplus )
 }
 #endif

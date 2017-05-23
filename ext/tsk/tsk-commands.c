@@ -45,6 +45,8 @@ info_handle_t *regfinfo_info_handle = NULL;
 Str registryPath[StringLength];
 Str registrySource[CHECK_REGISTRY_PATH];
 int registryPathLen;
+extern key_offset_list key_list[];
+extern int key_list_index;
 static char* get_imagepath_by_block_id(const char* dev_id);
 
 void do_get_filename_by_haddr(Monitor *mon, const QDict *qdict)
@@ -77,7 +79,6 @@ void do_get_filename_by_haddr(Monitor *mon, const QDict *qdict)
     return;  
 }
 
-static int disk_offset_tuple_cmp(const void *a, const void *b);
 
 static void sort_and_merge_continuous_address(UT_array *arr);
 
@@ -100,7 +101,8 @@ void do_get_haddr_by_filename(Monitor *mon, const QDict *qdict)
         return;
     }
 
-    sort_and_merge_continuous_address(blocks);
+    // sort_and_merge_continuous_address(blocks);
+    merge_continuous_address(blocks);
     for (p=(TSK_DADDR_T*)utarray_front(blocks);
             p != NULL;
             p=(TSK_DADDR_T*)utarray_next(blocks, p))
@@ -147,15 +149,17 @@ void do_get_file(Monitor *mon, const QDict *qdict)
     {
         monitor_printf(mon, "Cannot get file path\n");
     }
- 
-    tsk_get_file(imgname, haddr_img_offset, file_path, destiation );
+    
+    size_t default_file_size = 150000000;
+    tsk_get_file(imgname, haddr_img_offset, file_path, destiation, 0, default_file_size );
 }
 
-int get_hive_file( Monitor *mon, const char* sourcePath, const char* destination) {
+int get_hive_file( const char* sourcePath, const char* destination) {
     char* device_id;
     UT_array* blocks;
     int cnt = 0;
     TSK_DADDR_T *p = NULL;
+    size_t default_file_size = 150000000;
     uint64_t haddr_img_offset = 0;
     //temporary hardcode image path   
     device_id = calloc( 10, sizeof(char*));
@@ -165,7 +169,7 @@ int get_hive_file( Monitor *mon, const char* sourcePath, const char* destination
     blocks = tsk_find_haddr_by_filename(imgname, sourcePath);
     if(blocks==NULL)
     {
-        monitor_printf(mon, "No such file found\n");
+        // monitor_printf(mon, "No such file found\n");
         return -1;
     }
 
@@ -181,14 +185,58 @@ int get_hive_file( Monitor *mon, const char* sourcePath, const char* destination
     imgname = get_imagepath_by_block_id(device_id);
     if(imgname == NULL)
     {
-        monitor_printf(mon, "Cannot get image by path\n");
-        return -1;
+        // monitor_printf(mon, "Cannot get image by path\n");
+        return -2;
     }
  
-    tsk_get_file(imgname, haddr_img_offset, sourcePath, destination );
+    tsk_get_file(imgname, haddr_img_offset, sourcePath, destination, 0, default_file_size );
     return 1;
 }
 
+void do_get_part_file(Monitor *mon, const QDict *qdict)
+{
+    const char* device_id = qdict_get_str(qdict, "dev");
+    const char* file_path = qdict_get_str(qdict, "filename");
+    const char* destiation = qdict_get_str(qdict, "destination");
+    const char* offset = qdict_get_str(qdict, "offset");
+    const char* len = qdict_get_str(qdict, "len");
+
+    UT_array* blocks;
+    int cnt = 0;
+    TSK_DADDR_T *p = NULL;
+    uint64_t haddr_img_offset = 0;
+
+
+    //temporary hardcode image path
+    const char* imgname = get_imagepath_by_block_id(device_id);;
+
+    blocks = tsk_find_haddr_by_filename(imgname, file_path);
+    if(blocks==NULL)
+    {
+        monitor_printf(mon, "No such file found\n");
+        return;
+    }
+
+    sort_and_merge_continuous_address(blocks);
+    for (p=(TSK_DADDR_T*)utarray_front(blocks);
+            p != NULL;
+            p=(TSK_DADDR_T*)utarray_next(blocks, p), cnt++ )
+    {
+        haddr_img_offset = p[0];
+    }
+
+    //temporary hardcode image path
+    imgname = get_imagepath_by_block_id(device_id);
+
+    if(imgname == NULL)
+    {
+        monitor_printf(mon, "Cannot get file path\n");
+    }
+    
+    size_t file_size = strtol( len, NULL, 10 );
+    uint64_t i_offset = strtol(offset, NULL, 10 );
+    tsk_get_file(imgname, haddr_img_offset, file_path, destiation, i_offset, file_size );
+}
 static char* get_imagepath_by_block_id(const char* dev_id)
 {
     BlockInfoList *block_list, *info;
@@ -203,7 +251,7 @@ static char* get_imagepath_by_block_id(const char* dev_id)
     }
     return NULL;
 }
-static int disk_offset_tuple_cmp(const void *a, const void *b){
+int disk_offset_tuple_cmp(const void *a, const void *b){
     TSK_DADDR_T *p = (TSK_DADDR_T*)a;
     TSK_DADDR_T *q = (TSK_DADDR_T*)b;
 
@@ -236,15 +284,36 @@ static void sort_and_merge_continuous_address(UT_array *arr){
         }
     }
 }
+void merge_continuous_address(UT_array *arr){
+    int i;
+    TSK_DADDR_T *prev;
+    TSK_DADDR_T *p;
+    int len;
+    len = utarray_len(arr);
+    
+    for (i=1; i<len;)
+    {
+        prev = (TSK_DADDR_T*)utarray_eltptr(arr, i-1);
+        p    = (TSK_DADDR_T*)utarray_eltptr(arr, i);
+        if (prev[1]+1 == p[0]){
+            prev[1] = p[1];
+            utarray_erase(arr, i, 1);
+            len--;
+        }
+        else {
+            i++;
+        }
+    }
+}
 void download_hive_to_tmp(Monitor *mon) {
-    if ( get_hive_file(mon,"/Windows/System32/config/SAM", "./SAM") < 0 )
-        monitor_printf(mon, "Download SAM to tmp failed\n"); 
-    if ( get_hive_file(mon,"/Windows/System32/config/SYSTEM", "./SYSTEM") < 0 )
-        monitor_printf(mon, "Download SYSTEM to tmp failed\n");
-    if ( get_hive_file(mon,"/Windows/System32/config/SECURITY", "./SECURITY") < 0 )
-        monitor_printf(mon, "Download SECURITY to tmp failed\n");
-    if ( get_hive_file(mon,"/Windows/System32/config/SOFTWARE", "./SOFTWARE") < 0 )
-        monitor_printf(mon, "Download SOFTWARE to tmp failed\n");
+    if ( get_hive_file( "/Windows/System32/config/SAM", "./SAM") < 0 )
+        monitor_printf(mon, "Download SAM failed\n"); 
+    if ( get_hive_file( "/Windows/System32/config/SYSTEM", "./SYSTEM") < 0 )
+        monitor_printf(mon, "Download SYSTEM failed\n");
+    if ( get_hive_file( "/Windows/System32/config/SECURITY", "./SECURITY") < 0 )
+        monitor_printf(mon, "Download SECURITY failed\n");
+    if ( get_hive_file( "/Windows/System32/config/SOFTWARE", "./SOFTWARE") < 0 )
+        monitor_printf(mon, "Download SOFTWARE failed\n");
 }
 void do_search_registry_by_key(Monitor *mon, const QDict *qdict) {
     const char* key = qdict_get_str(qdict, "key"); 
@@ -411,13 +480,13 @@ void pathHandle(const char* path) {
         registryPathLen++;
 }
 
-void do_print_by_registry_path(Monitor *mon, const QDict *qdict) {
+void do_print_registry_by_path(Monitor *mon, const QDict *qdict) {
     const char* path = qdict_get_str(qdict, "path");
     download_hive_to_tmp(mon);
-    if( print_by_registry_path(path) != 0 )
+    if( print_registry_by_path(path) != 0 )
         printf("print hive fail\n");
 }  
-int print_by_registry_path(const char* path) {
+int print_registry_by_path(const char* path) {
     libcerror_error_t *error                             = NULL;
     system_character_t *source                           = NULL;
     int verbose                                          = 0;
@@ -562,5 +631,404 @@ int print_by_registry_path(const char* path) {
                     NULL);
         }
         return (EXIT_FAILURE);
+}
+
+static uint64_t char_convert_uint64(const char *text)
+{
+    uint64_t number=0;
+
+    for(; *text; text++)
+    {
+        char digit=*text-'0';           
+        number=(number*10)+digit;
+    }
+
+    return number;
+}
+void do_print_registry_by_address(Monitor *mon, const QDict *qdict) {
+    const char* address = qdict_get_str(qdict, "address");
+    download_hive_to_tmp(mon);
+    if( print_registry_by_address(address) == NULL )
+        printf("print hive fail\n");
+}  
+UT_array* print_registry_by_address(const char* address) {
+    const char* device_id = "ide0-hd0";
+    char* filename = NULL;
+    libcerror_error_t *error                             = NULL;
+    system_character_t *source                           = NULL;
+    int verbose = 0, runPrint = 0;
+    UT_array* ret;
+
+    filename = calloc( StringLength, sizeof(char*) );
+    source = calloc( StringLength, sizeof(char*) );
+    utarray_new( ret, &ut_str_icd );
+
+    for ( ; runPrint < 4 ; runPrint++ ) {
+        if ( runPrint == 0 ) {
+            strcpy( filename, "/Windows/System32/config/SOFTWARE" );
+            strcpy( source, "./SOFTWARE" );
+        } // if
+        else if ( runPrint == 1 ) {
+            strcpy( filename, "/Windows/System32/config/SYSTEM" );
+            strcpy( source, "./SYSTEM" );
+        } // else if
+        else if ( runPrint == 2 ) {     
+            strcpy( filename, "/Windows/System32/config/SECURITY" );
+            strcpy( source, "./SECURITY" );
+        } // else if
+        else if ( runPrint == 3 ) {            
+            strcpy( filename, "/Windows/System32/config/SAM" );
+            strcpy( source, "./SAM" );
+        } // else if
+        
+
+    UT_array* blocks;
+    uint64_t input_address = char_convert_uint64(address), offset_total = 0;
+    TSK_DADDR_T *p = NULL;
+    //extern key_offset_list key_list[800000];
+    //temporary hardcode image path
+    const char* tmp = get_imagepath_by_block_id(device_id);;
+
+    // printf("Getting address of  %s, in image %s\n", filename, tmp);
+    key_list_index = 0;
+    blocks = tsk_find_haddr_by_filename(tmp, filename);
+    if(blocks==NULL)
+    {
+        printf( "No such file found\n");
+        return NULL;
+    }
+      
+    merge_continuous_address(blocks);
+    /*
+    for ( p=(TSK_DADDR_T*)utarray_front(blocks);
+          p != NULL;
+          p=(TSK_DADDR_T*)utarray_next(blocks, p)) {
+        if ( input_address >= p[0] && input_address < p[1] ) {
+            break;
+        } // if
+        else if ((TSK_DADDR_T*)utarray_next(blocks, p) == NULL ) {
+            isRegistry = 1;
+            break;
+        } // else if
+    } // for
+
+    if ( isRegistry == 1 )
+        continue;
+    printf("out\n");
+    */
+
+    libcnotify_stream_set(
+            stderr,
+            NULL );
+    libcnotify_verbose_set(
+            1 );
+
+    if( libclocale_initialize(
+            "regftools",
+            &error ) != 1 )
+    {
+        fprintf(
+                stderr,
+                "Unable to initialize locale values.\n" );
+
+        goto on_error;
+    }
+    if( libcsystem_initialize(
+            _IONBF,
+            &error ) != 1 )
+    {
+        fprintf(
+                stderr,
+                "Unable to initialize system values.\n" );
+
+        goto on_error;
+    }
+
+            
+    libcnotify_verbose_set(verbose);
+	    libregf_notify_set_stream(
+		        stderr,
+		        NULL);
+	    libregf_notify_set_verbose(
+		        verbose);
+	    if (info_handle_initialize(
+		    &regfinfo_info_handle,
+		    &error) != 1) {
+		    fprintf(
+		            stderr,
+		            "Unable to initialize info handle.\n");
+
+		    goto on_error;
+	    }
+	    if (info_handle_open_input(
+		    regfinfo_info_handle,
+		    source,
+		    &error) != 1) {
+		    fprintf(
+		            stderr,
+		            "Unable to open: %"
+		            PRIs_SYSTEM
+		            ".\n", source );
+
+		    goto on_error;
+	    }
+	    if (info_handle_file_print_by_address(
+		    regfinfo_info_handle,
+		    &error) != 1) {
+		    fprintf(
+		            stderr,
+		            "Unable to print file information.\n");
+
+		    goto on_error;
+	    }
+	    if (info_handle_close_input(
+		    regfinfo_info_handle,
+		    &error) != 0) {
+		    fprintf(
+		            stderr,
+		            "Unable to close info handle.\n");
+
+		    goto on_error;
+	    }
+	    if (info_handle_free(
+		    &regfinfo_info_handle,
+		    &error) != 1) {
+		    fprintf(
+		        stderr,
+		        "Unable to free info handle.\n");
+
+		    goto on_error;
+	    }
+
+            merge_continuous_address(blocks);
+            for (p=(TSK_DADDR_T*)utarray_front(blocks);
+                 p != NULL;
+                 p=(TSK_DADDR_T*)utarray_next(blocks, p))
+            {
+                // printf("%d - %lu ~ %lu\n", cnt++, p[0], p[1]);
+                if ( input_address >= p[0] && input_address < p[1] ) {
+                    int search_address = 0;
+                    for ( ; search_address < key_list_index ; search_address++ ) {
+                       if ( offset_total + ( input_address - p[0] ) >= key_list[search_address].offset 
+                         && offset_total + ( input_address - p[0] ) < key_list[search_address].offset + key_list[search_address].name_size + key_list[search_address].data_size + 20 ) {
+                           const char *temp_to_push = key_list[search_address].key;
+                           utarray_push_back( ret, &temp_to_push ); 
+                           printf( "search key%s  key_list_index:%d\n", key_list[search_address].key, key_list_index );
+                           break;
+                       } // if
+                    } // for 
+                } // if
+                else {
+                    offset_total += p[1] - p[0];
+                } // else
+            } // for 
+  
+    } // for
+
+    return ret;
+
+    on_error:
+        if (error != NULL) {
+            libcnotify_print_error_backtrace(
+                    error);
+            libcerror_error_free(
+                    &error);
+        }
+        if (regfinfo_info_handle != NULL) {
+            info_handle_free(
+                    &regfinfo_info_handle,
+                    NULL);
+        }
+        return NULL;
+}
+
+void tsk_parse_registry(int hive_file_type) {
+    char* filename             = NULL;
+    libcerror_error_t *error   = NULL;
+    system_character_t *source = NULL;
+    int verbose                = 0;
+
+    filename = calloc( StringLength, sizeof(char*) );
+    source = calloc( StringLength, sizeof(char*) );
+
+    if ( hive_file_type == 0 ) {
+        strcpy( filename, "/Windows/System32/config/SOFTWARE" );
+        strcpy( source, "./SOFTWARE" );
+    } // if
+    else if ( hive_file_type == 1 ) {
+        strcpy( filename, "/Windows/System32/config/SYSTEM" );
+        strcpy( source, "./SYSTEM" );
+    } // else if
+    else if ( hive_file_type == 2 ) {     
+        strcpy( filename, "/Windows/System32/config/SECURITY" );
+        strcpy( source, "./SECURITY" );
+    } // else if
+    else if ( hive_file_type == 3 ) {            
+        strcpy( filename, "/Windows/System32/config/SAM" );
+        strcpy( source, "./SAM" );
+    } // else if
+        
+
+    //temporary hardcode image path
+    key_list_index = 0;
+      
+    libcnotify_stream_set(
+            stderr,
+            NULL );
+    libcnotify_verbose_set(
+            1 );
+
+    if( libclocale_initialize(
+            "regftools",
+            &error ) != 1 )
+    {
+        fprintf(
+                stderr,
+                "Unable to initialize locale values.\n" );
+
+        goto on_error;
+    }
+    if( libcsystem_initialize(
+            _IONBF,
+            &error ) != 1 )
+    {
+        fprintf(
+                stderr,
+                "Unable to initialize system values.\n" );
+
+        goto on_error;
+    }
+            
+    libcnotify_verbose_set(verbose);
+	    libregf_notify_set_stream(
+		        stderr,
+		        NULL);
+	    libregf_notify_set_verbose(
+		        verbose);
+	    if (info_handle_initialize(
+		    &regfinfo_info_handle,
+		    &error) != 1) {
+		    fprintf(
+		            stderr,
+		            "Unable to initialize info handle.\n");
+
+		    goto on_error;
+	    }
+	    if (info_handle_open_input(
+		    regfinfo_info_handle,
+		    source,
+		    &error) != 1) {
+		    fprintf(
+		            stderr,
+		            "Unable to open: %"
+		            PRIs_SYSTEM
+		            ".\n", source );
+
+		    goto on_error;
+	    }
+	    if (info_handle_file_print_by_address(
+		    regfinfo_info_handle,
+		    &error) != 1) {
+		    fprintf(
+		            stderr,
+		            "Unable to print file information.\n");
+
+		    goto on_error;
+	    }
+	    if (info_handle_close_input(
+		    regfinfo_info_handle,
+		    &error) != 0) {
+		    fprintf(
+		            stderr,
+		            "Unable to close info handle.\n");
+
+		    goto on_error;
+	    }
+	    if (info_handle_free(
+		    &regfinfo_info_handle,
+		    &error) != 1) {
+		    fprintf(
+		        stderr,
+		        "Unable to free info handle.\n");
+
+		    goto on_error;
+	    }
+
+        on_error:
+        if (error != NULL) {
+            libcnotify_print_error_backtrace(
+                    error);
+            libcerror_error_free(
+                    &error);
+        }
+        if (regfinfo_info_handle != NULL) {
+            info_handle_free(
+                    &regfinfo_info_handle,
+                    NULL);
+        }
+
+        return;   
+}
+static void hive_header_to_path( int hive_type, int* search_address, char* path ) {
+    if ( hive_type == 0 ) {
+        strcpy( path, "HKLM\\SOFTWARE" ); 
+        strcat( path, key_list[*search_address].key );
+    } // if
+    else if ( hive_type == 1 ) {
+        strcpy( path, "HKLM\\SYSTEM" ); 
+        strcat( path, key_list[*search_address].key );
+    } // else if                    
+    else if ( hive_type == 2 ) {
+        strcpy( path, "HKLM\\SECURITY" ); 
+        strcat( path, key_list[*search_address].key ); 
+    } // else if              
+    else if ( hive_type == 3 ) {
+        strcpy( path, "HKLM\\SAM" ); 
+        strcat( path, key_list[*search_address].key ); 
+    } // else if
+}
+UT_array* tsk_get_registry_value_by_address(const char* address, UT_array* blocks, int* search_address, uint64_t* haddr, int hive_type ) {
+    uint64_t input_address = char_convert_uint64(address), offset_total = 0;
+    TSK_DADDR_T *p = NULL;
+    UT_array* ret;
+    utarray_new( ret, &ut_str_icd );    
+
+    for (p=(TSK_DADDR_T*)utarray_front(blocks);
+         p != NULL;
+         p=(TSK_DADDR_T*)utarray_next(blocks, p)) {
+        
+        if ( input_address >= p[0] && input_address < p[1] ) {
+            int low = 0, high = key_list_index - 1;
+            while ( low <= high ) {
+                *search_address = (low + high) / 2;
+                if ( offset_total + ( input_address - p[0] ) >= key_list[*search_address].offset 
+                  && offset_total + ( input_address - p[0] ) < key_list[*search_address].offset + key_list[*search_address].name_size + key_list[*search_address].data_size + REGISTRY_VALUE_LEN ) {
+                    char *temp_to_push = (char*)calloc( REGISTRY_PATH_MAX_LENGTH, sizeof(char) );
+                    hive_header_to_path( hive_type, search_address, temp_to_push );
+                    if ( temp_to_push != NULL )
+                        utarray_push_back( ret, &temp_to_push ); 
+                    //printf( "search key%s  key_list_index:%d\n", key_list[*search_address].key, key_list_index );
+                    *haddr += 20 + key_list[*search_address].name_size + key_list[*search_address].data_size;
+                    if ( *haddr >= p[1] )
+                        *haddr = p[1];
+                    return ret;
+                } // if
+                else if ( offset_total + ( input_address - p[0] ) < key_list[*search_address].offset ) {
+                    high = *search_address - 1;
+                } // else if  
+                else if ( offset_total + ( input_address - p[0] ) >= key_list[*search_address].offset + key_list[*search_address].name_size + key_list[*search_address].data_size + 20 ) {
+                    low = *search_address + 1;
+                } // else if
+            } // while
+        } // if
+        else {
+            offset_total += p[1] - p[0];
+        } // else
+        
+
+
+    } // for 
+    
+    return ret;
 }
 
