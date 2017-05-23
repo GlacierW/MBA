@@ -386,15 +386,75 @@ static void get_registry_address(const char* img) {
     UT_NTUSER_LOG2 = tsk_find_haddr_by_filename( img, "/Users/dsns/NTUSER.DAT.LOG2");     
     merge_continuous_address(UT_NTUSER_LOG2);    
 }
-
-static UT_array* search_registry_log( int hive_type, UT_array* UT_registry, UT_array* UT_log, dba_context* ctx ) {
+static void recovery_registry_by_log(dba_context* ctx, int log_type ) {
+    if ( log_type == SOFTWARE_LOG1 ) {
+        if ( get_hive_file( "/Windows/System32/config/SOFTWARE.LOG1", "./SOFTWARE.LOG1") < 0 )
+            monitor_printf( ctx->mon, "Download SOFTWARE.LOG1 failed\n");
+        else 
+            recovery_registry_log("./SOFTWARE.LOG1", "./SOFTWARE" );
+    } // if
+    else if ( log_type == SOFTWARE_LOG2 ) {       
+        if ( get_hive_file( "/Windows/System32/config/SOFTWARE.LOG2", "./SOFTWARE.LOG2") < 0 )
+            monitor_printf( ctx->mon, "Download SOFTWARE.LOG2 failed\n");
+        else 
+            recovery_registry_log("./SOFTWARE.LOG2", "./SOFTWARE" );
+    } // else if
+    else if ( log_type == SYSTEM_LOG1 ) {
+        if ( get_hive_file( "/Windows/System32/config/SYSTEM.LOG1", "./SYSTEM.LOG1") < 0 )
+            monitor_printf( ctx->mon, "Download SYSTEM.LOG1 failed\n");
+        else 
+            recovery_registry_log("./SYSTEM.LOG1", "./SYSTEM" );
+    } // else if   
+    else if ( log_type == SYSTEM_LOG2 ) {        
+        if ( get_hive_file( "/Windows/System32/config/SYSTEM.LOG2", "./SYSTEM.LOG2") < 0 )
+            monitor_printf( ctx->mon, "Download SYSTEM.LOG2 failed\n");
+        else 
+            recovery_registry_log("./SYSTEM.LOG2", "./SYSTEM" );    
+    } // else if    
+    else if ( log_type == SECURITY_LOG1 ) {
+        if ( get_hive_file( "/Windows/System32/config/SECURITY.LOG1", "./SECURITY.LOG1") < 0 )
+            monitor_printf( ctx->mon, "Download SECURITY.LOG1 failed\n");
+        else 
+            recovery_registry_log("./SECURITY.LOG1", "./SECURITY" );
+    } // else if    
+    else if ( log_type == SECURITY_LOG2 ) {      
+        if ( get_hive_file( "/Windows/System32/config/SECURITY.LOG2", "./SECURITY.LOG2") < 0 )
+            monitor_printf( ctx->mon, "Download SECURITY.LOG2 failed\n");
+        else 
+            recovery_registry_log("./SECURITY.LOG2", "./SECURITY" ); 
+    } // else if
+    else if ( log_type == SAM_LOG1 ) {
+        if ( get_hive_file( "/Windows/System32/config/SAM.LOG1", "./SAM.LOG1") < 0 )
+            monitor_printf( ctx->mon, "Download SAM.LOG1 failed\n");
+        else 
+            recovery_registry_log("./SAM.LOG1", "./SAM" );
+    } // else if
+    else if ( log_type == SAM_LOG2 ) {
+        if ( get_hive_file( "/Windows/System32/config/SAM.LOG2", "./SAM.LOG2") < 0 )
+            monitor_printf( ctx->mon, "Download SAM.LOG2 failed\n");
+        else 
+            recovery_registry_log("./SAM.LOG2", "./SAM" );    
+    } // else if    
+    else if ( log_type == NTUSER_LOG1 ) {
+        if ( get_hive_file( "/Users/dsns/NTUSER.DAT.LOG1", "./NTUSER.DAT.LOG1") < 0 )
+            monitor_printf( ctx->mon, "Download NTUSER.DAT.LOG1 failed\n");
+        else 
+            recovery_registry_log("./NTUSER.DAT.LOG1", "./NTUSER.DAT" );
+    } // else if
+    else if ( log_type == NTUSER_LOG2 ) {
+        if ( get_hive_file( "/Users/dsns/NTUSER.DAT.LOG2", "./NTUSER.DAT.LOG2") < 0 )
+            monitor_printf( ctx->mon, "Download NTUSER.DAT.LOG2 failed\n");
+        else 
+            recovery_registry_log("./NTUSER.DAT.LOG2", "./NTUSER.DAT" ); 
+    } // else if
+}
+static UT_array* search_registry_log( int hive_type, UT_array* UT_registry, UT_array* UT_log, dba_context* ctx, int log_type ) {
     TSK_DADDR_T *p, *hive_haddr;
     UT_array* fnames      = NULL;
     UT_array* fnames_part = NULL;
 
     uint64_t haddr, offset_total = 0;
-
-    tsk_parse_registry(hive_type); 
+    int hasTainted = 0;   
     for ( p=(TSK_DADDR_T*)utarray_front(UT_log);
           p != NULL;
           p=(TSK_DADDR_T*)utarray_next(UT_log, p)) {
@@ -402,6 +462,12 @@ static UT_array* search_registry_log( int hive_type, UT_array* UT_registry, UT_a
             // check disk address is tainted
             if( (dift_get_disk_dirty(haddr) & ctx->taint.tag) == 0 )
                 continue;
+            if ( hasTainted == 0 ) {
+                hasTainted = 1;
+                recovery_registry_by_log(ctx, log_type );
+                tsk_parse_registry(hive_type); 
+            } // if
+
             uint64_t log_offset = haddr - p[0] + offset_total, taint_registry_haddr = 0;
             int search_address = 0, log_entry_index = 0, dirty_page_index = 0;
             for ( log_entry_index = 0 ; log_entry_index < log_index ; log_entry_index++ ) {
@@ -490,59 +556,6 @@ static UT_array* search_registry( int hive_type, UT_array* UT_registry, dba_cont
 
     return fnames;
 }
-static void recovery_registry_by_log(dba_context* ctx ) {
-    // For SAM.LOG
-    if ( get_hive_file( "/Windows/System32/config/SAM.LOG1", "./SAM.LOG1") < 0 )
-        monitor_printf( ctx->mon, "Download SAM.LOG1 failed\n");
-    else 
-        recovery_registry_log("./SAM.LOG1", "./SAM" );
-    if ( get_hive_file( "/Windows/System32/config/SAM.LOG2", "./SAM.LOG2") < 0 )
-        monitor_printf( ctx->mon, "Download SAM.LOG2 failed\n");
-    else 
-        recovery_registry_log("./SAM.LOG2", "./SAM" ); 
-
-    // For SYSTEM.LOG
-    if ( get_hive_file( "/Windows/System32/config/SYSTEM.LOG1", "./SYSTEM.LOG1") < 0 )
-        monitor_printf( ctx->mon, "Download SYSTEM.LOG1 failed\n");
-    else 
-        recovery_registry_log("./SYSTEM.LOG1", "./SYSTEM" );
-    if ( get_hive_file( "/Windows/System32/config/SYSTEM.LOG2", "./SYSTEM.LOG2") < 0 )
-        monitor_printf( ctx->mon, "Download SYSTEM.LOG2 failed\n");
-    else 
-        recovery_registry_log("./SYSTEM.LOG2", "./SYSTEM" ); 
-
-    // For SECURITY.LOG
-    if ( get_hive_file( "/Windows/System32/config/SECURITY.LOG1", "./SECURITY.LOG1") < 0 )
-        monitor_printf( ctx->mon, "Download SECURITY.LOG1 failed\n");
-    else 
-        recovery_registry_log("./SECURITY.LOG1", "./SECURITY" );
-    if ( get_hive_file( "/Windows/System32/config/SECURITY.LOG2", "./SECURITY.LOG2") < 0 )
-        monitor_printf( ctx->mon, "Download SECURITY.LOG2 failed\n");
-    else 
-        recovery_registry_log("./SECURITY.LOG2", "./SECURITY" ); 
-
-    // For SOFTWARE.LOG
-    if ( get_hive_file( "/Windows/System32/config/SOFTWARE.LOG1", "./SOFTWARE.LOG1") < 0 )
-        monitor_printf( ctx->mon, "Download SOFTWARE.LOG1 failed\n");
-    else 
-        recovery_registry_log("./SOFTWARE.LOG1", "./SOFTWARE" );
-    if ( get_hive_file( "/Windows/System32/config/SOFTWARE.LOG2", "./SOFTWARE.LOG2") < 0 )
-        monitor_printf( ctx->mon, "Download SOFTWARE.LOG2 failed\n");
-    else 
-        recovery_registry_log("./SOFTWARE.LOG2", "./SOFTWARE" );
-    /*
-    // if recovery HKCU\NTUSER.DAT will fail. 
-    // For NTUSER.LOG
-    if ( get_hive_file( "/Users/dsns/NTUSER.DAT.LOG1", "./NTUSER.DAT.LOG1") < 0 )
-        monitor_printf( ctx->mon, "Download NTUSER.DAT.LOG1 failed\n");
-    else 
-        recovery_registry_log("./NTUSER.DAT.LOG1", "./NTUSER.DAT" );
-    if ( get_hive_file( "/Users/dsns/NTUSER.DAT.LOG2", "./NTUSER.DAT.LOG2") < 0 )
-        monitor_printf( ctx->mon, "Download NTUSER.DAT.LOG2 failed\n");
-    else 
-        recovery_registry_log("./NTUSER.DAT.LOG2", "./NTUSER.DAT" ); 
-    */
-}
 static void dba_download_registry( dba_context* ctx ) {
     if ( get_hive_file( "/Windows/System32/config/SAM", "./SAM") < 0 )    
         monitor_printf( ctx->mon, "Download SAM failed\n");
@@ -581,10 +594,8 @@ int enum_tainted_registry( dba_context* ctx ) {
     dba_download_registry(ctx);
     get_registry_address(img);
 
-    // printf("find SOFTWARE\n");
     fnames = search_registry( SOFTWARE, UT_SOFTWARE, ctx );
 
-    // printf("find SAM\n");
     fnames_part = search_registry( SAM, UT_SAM, ctx );
     if ( fnames == NULL )
         fnames = fnames_part;
@@ -593,8 +604,6 @@ int enum_tainted_registry( dba_context* ctx ) {
         utarray_free( fnames_part );
     } // else if
 
-    
-    // printf("find SYSTEM\n");
     fnames_part = search_registry( SYSTEM, UT_SYSTEM, ctx );
     if ( fnames == NULL )
         fnames = fnames_part;
@@ -603,8 +612,6 @@ int enum_tainted_registry( dba_context* ctx ) {
         utarray_free( fnames_part );
     } // else if
 
-    
-    // printf("find SECURITY\n");
     fnames_part = search_registry( SECURITY, UT_SECURITY, ctx );
     if ( fnames == NULL )
         fnames = fnames_part;
@@ -613,7 +620,6 @@ int enum_tainted_registry( dba_context* ctx ) {
         utarray_free( fnames_part );
     } // if
 
-    // printf("find NTUSER\n");
     fnames_part = search_registry( NTUSER, UT_NTUSER, ctx );
     if ( fnames == NULL )
         fnames = fnames_part;
@@ -622,9 +628,7 @@ int enum_tainted_registry( dba_context* ctx ) {
         utarray_free( fnames_part );
     } // if    
 
-    recovery_registry_by_log(ctx);
-    // printf("find SOFTWARE.LOG1\n");
-    fnames_part = search_registry_log( SOFTWARE, UT_SOFTWARE, UT_SOFTWARE_LOG1, ctx );
+    fnames_part = search_registry_log( SOFTWARE, UT_SOFTWARE, UT_SOFTWARE_LOG1, ctx, SOFTWARE_LOG1 );
     if ( fnames == NULL )
         fnames = fnames_part;
     else if ( fnames_part != NULL ) {
@@ -632,8 +636,7 @@ int enum_tainted_registry( dba_context* ctx ) {
         utarray_free( fnames_part );  
     } // else if
 
-    // printf("find SOFTWARE.LOG2\n");
-    fnames_part = search_registry_log( SOFTWARE, UT_SOFTWARE, UT_SOFTWARE_LOG2, ctx );
+    fnames_part = search_registry_log( SOFTWARE, UT_SOFTWARE, UT_SOFTWARE_LOG2, ctx, SOFTWARE_LOG2 );
     if ( fnames == NULL )
         fnames = fnames_part;
     else if ( fnames_part != NULL ) {
@@ -641,8 +644,7 @@ int enum_tainted_registry( dba_context* ctx ) {
         utarray_free( fnames_part );  
     } // else if
 
-    // printf("find SAM.LOG1\n");
-    fnames_part = search_registry_log( SAM, UT_SAM, UT_SAM_LOG1, ctx );
+    fnames_part = search_registry_log( SAM, UT_SAM, UT_SAM_LOG1, ctx, SAM_LOG1 );
     if ( fnames == NULL )
         fnames = fnames_part;
     else if ( fnames_part != NULL ) {
@@ -650,8 +652,7 @@ int enum_tainted_registry( dba_context* ctx ) {
         utarray_free( fnames_part );  
     } // else if
 
-    // printf("find SAM.LOG2\n");
-    fnames_part = search_registry_log( SAM, UT_SAM, UT_SAM_LOG2, ctx );
+    fnames_part = search_registry_log( SAM, UT_SAM, UT_SAM_LOG2, ctx, SAM_LOG2 );
     if ( fnames == NULL )
         fnames = fnames_part;
     else if ( fnames_part != NULL ) {
@@ -659,8 +660,7 @@ int enum_tainted_registry( dba_context* ctx ) {
         utarray_free( fnames_part );  
     } // else if
 
-    // printf("find SYSTEM.LOG1\n");
-    fnames_part = search_registry_log( SYSTEM, UT_SYSTEM, UT_SYSTEM_LOG1, ctx );
+    fnames_part = search_registry_log( SYSTEM, UT_SYSTEM, UT_SYSTEM_LOG1, ctx, SYSTEM_LOG1 );
     if ( fnames == NULL )
         fnames = fnames_part;
     else if ( fnames_part != NULL ) {
@@ -668,8 +668,7 @@ int enum_tainted_registry( dba_context* ctx ) {
         utarray_free( fnames_part );  
     } // else if
 
-    // printf("find SYSTEM.LOG2\n");
-    fnames_part = search_registry_log( SYSTEM, UT_SYSTEM, UT_SYSTEM_LOG2, ctx );
+    fnames_part = search_registry_log( SYSTEM, UT_SYSTEM, UT_SYSTEM_LOG2, ctx, SYSTEM_LOG2 );
     if ( fnames == NULL )
         fnames = fnames_part;
     else if ( fnames_part != NULL ) {
@@ -677,8 +676,7 @@ int enum_tainted_registry( dba_context* ctx ) {
         utarray_free( fnames_part );  
     } // else if
 
-    // printf("find SECURITY.LOG1\n");
-    fnames_part = search_registry_log( SECURITY, UT_SECURITY, UT_SECURITY_LOG1, ctx );
+    fnames_part = search_registry_log( SECURITY, UT_SECURITY, UT_SECURITY_LOG1, ctx, SECURITY_LOG1 );
     if ( fnames == NULL )
         fnames = fnames_part;
     else if ( fnames_part != NULL ) {
@@ -686,14 +684,30 @@ int enum_tainted_registry( dba_context* ctx ) {
         utarray_free( fnames_part );  
     } // else if
 
-    // printf("find SECURITY.LOG2\n");
-    fnames_part = search_registry_log( SECURITY, UT_SECURITY, UT_SECURITY_LOG2, ctx );
+    fnames_part = search_registry_log( SECURITY, UT_SECURITY, UT_SECURITY_LOG2, ctx, SECURITY_LOG2 );
     if ( fnames == NULL )
         fnames = fnames_part;
     else if ( fnames_part != NULL ) {
         utarray_concat( fnames, fnames_part ); 
         utarray_free( fnames_part );  
     } // else if
+
+    fnames_part = search_registry_log( NTUSER, UT_NTUSER, UT_NTUSER_LOG1, ctx, NTUSER_LOG1 );
+    if ( fnames == NULL )
+        fnames = fnames_part;
+    else if ( fnames_part != NULL ) {
+        utarray_concat( fnames, fnames_part ); 
+        utarray_free( fnames_part );  
+    } // else if
+    
+    fnames_part = search_registry_log( NTUSER, UT_NTUSER, UT_NTUSER_LOG2, ctx, NTUSER_LOG2 );
+    if ( fnames == NULL )
+        fnames = fnames_part;
+    else if ( fnames_part != NULL ) {
+        utarray_concat( fnames, fnames_part ); 
+        utarray_free( fnames_part );  
+    } // else if
+
 
     // empty record, return
     if( fnames == NULL ) {

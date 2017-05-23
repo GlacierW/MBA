@@ -22,11 +22,21 @@
  */
 #ifndef _TSK_H
 #define _TSK_H
-#define SOFTWARE 0
-#define SYSTEM   1
-#define SECURITY 2
-#define SAM      3
-#define NTUSER   4
+#define SOFTWARE       0
+#define SYSTEM         1
+#define SECURITY       2
+#define SAM            3
+#define NTUSER         4
+#define SOFTWARE_LOG1  5
+#define SOFTWARE_LOG2  6
+#define SYSTEM_LOG1    7
+#define SYSTEM_LOG2    8
+#define SECURITY_LOG1  9
+#define SECURITY_LOG2  10
+#define SAM_LOG1       11
+#define SAM_LOG2       12
+#define NTUSER_LOG1    13
+#define NTUSER_LOG2    14
 
 #define REGISTRY_PATH_MAX_LENGTH 500
 #define REGISTRY_VALUE_LEN 20
