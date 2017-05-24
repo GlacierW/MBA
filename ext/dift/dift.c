@@ -1295,13 +1295,17 @@ CONTAMINATION_RECORD dift_get_disk_dirty( uint64_t haddr ) {
 }
 
 void dift_enable( void ) {
-    if( !dift_enabled )
+    if( !dift_enabled ) {
+        dift_enabled = !dift_enabled;
         dift_switch_pending = true;
+    }
 }
 
 void dift_disable( void ) {
-    if( dift_enabled )
+    if( dift_enabled ) {
+        dift_enabled = !dift_enabled;
         dift_switch_pending = true;
+    }
 }
 
 bool dift_is_enabled( void ) {

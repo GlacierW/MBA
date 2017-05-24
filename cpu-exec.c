@@ -494,13 +494,10 @@ int cpu_exec(CPUArchState *env)
                 if( dift_code_top + 10000 > CONFIG_MAX_TB_ESTI )
                     tb_flush( env );
 
-                // if a pending DIFT switch on/off, flush the 
-                // translated code blocks and flip the DIFT status
+                // if a pending DIFT switch on/off, 
+                // flush the translated code blocks
                 if( dift_switch_pending ) {
-
                     tb_flush( env );
-
-                    dift_enabled = !dift_enabled;
                     dift_switch_pending = false;
                 }
 #endif
