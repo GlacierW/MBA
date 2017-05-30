@@ -31,9 +31,10 @@ void do_add_systrace(Monitor *mon, const QDict *qdict)
     const char* label = qdict_get_str(qdict, "label");
     uint64_t cr3 = qdict_get_int(qdict, "cr3"); 
     int syscall_num = qdict_get_int(qdict, "sycall_num");
+    bool is_entry = qdict_get_bool(qdict, "is_entry");
     int handle = -1;
     monitor_printf(mon, "Create systracer '%s': cr3 %016lx, syscall %d\n", label, cr3, syscall_num);
-    handle = systrace_add( cr3, syscall_num, cb_log_syscall_info, NULL );
+    handle = systrace_add( label, cr3, syscall_num, is_entry , cb_log_syscall_info, NULL );
     monitor_printf(mon, "Creation finished, hadle = %d\n", handle);
 }
 
@@ -44,3 +45,9 @@ void do_delete_systrace(Monitor *mon, const QDict *qdict)
     ret = systrace_delete(id);
     monitor_printf(mon, "Delete systracer id %d ret %d \n", id, ret);
 }
+
+void do_list_systrace(Monitor *mon, const QDict *qdict)
+{
+    systrace_list();
+}
+

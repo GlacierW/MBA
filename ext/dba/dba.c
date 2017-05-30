@@ -19,7 +19,6 @@
 
 #include "dba.h"
 #include "dba_taint.h"
-#include "dba_syscall.h"
 
 #include "net/slirp.h"
 #include "qmp-commands.h"
@@ -187,10 +186,6 @@ static void* dba_main_internal( void* ctx_arg ) {
         // ---------- Start to capture packets ---------- //
         nettramon_start( NULL );
     }
-    if( ctx->syscall.is_enabled ) {
-        json_object_object_add( ctx->result, DBA_JSON_KEY_SYSCALL, json_object_new_object() );
-        init_syscall_analysis( ctx );
-    }
 
     // Start to execute sample
     invoke_sample( ctx );
@@ -201,9 +196,6 @@ static void* dba_main_internal( void* ctx_arg ) {
         nettramon_delete_cb( ntm_cb_id );
 
         enum_tainted_file( ctx );
-    }
-    if( ctx->syscall.is_enabled ) {
-        clean_syscall_analysis( ctx );
     }
 
     ctx->state = DBA_TASK_DONE;
