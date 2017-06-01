@@ -976,6 +976,7 @@ void do_show_dba_result( Monitor* mon, const QDict* qdict ) {
 
     json_object* taint_report;
     json_object* tracer_report;
+    json_object* syscall_report;
 
     int i,
         tid = qdict_get_int( qdict, "tid" );
@@ -1045,6 +1046,7 @@ void do_show_dba_result( Monitor* mon, const QDict* qdict ) {
                 }
             }
         }
+
         if (ctx->syscall.is_enabled) {
             json_object_object_get_ex( ctx->result, DBA_JSON_KEY_SYSCALL, &syscall_report );
             show_dba_report_title( NULL, fp, DBA_JSON_KEY_SYSCALL );
