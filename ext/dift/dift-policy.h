@@ -1086,7 +1086,7 @@ DIFT_DEBUG_CONDITION
 }
 #endif
 
-    set_mem_dirty(dc, wa, dc->reg_dirty_tbl[i][k], 0);
+    set_mem_dirty(dc, wa, 1, dc->reg_dirty_tbl[i][k], false);
 
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
@@ -1228,7 +1228,7 @@ DIFT_DEBUG_CONDITION
 }
 #endif
 
-    set_mem_dirty(dc, wa, dc->reg_dirty_tbl[i][k], 1);
+    set_mem_dirty(dc, wa, 1, dc->reg_dirty_tbl[i][k], true);
 
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
@@ -1370,8 +1370,7 @@ DIFT_DEBUG_CONDITION
 
     t = dc->reg_dirty_tbl[i][0] | dc->reg_dirty_tbl[i][1];
 
-    set_mem_dirty(dc, wa, t, 0);
-    set_mem_dirty(dc, wa + 1, t, 0);
+    set_mem_dirty(dc, wa, 2, t, false);
 
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
@@ -1409,10 +1408,7 @@ DIFT_DEBUG_CONDITION
     t =   dc->reg_dirty_tbl[i][0] | dc->reg_dirty_tbl[i][1]
         | dc->reg_dirty_tbl[i][2] | dc->reg_dirty_tbl[i][3];
 
-    set_mem_dirty(dc, wa, t, 0);
-    set_mem_dirty(dc, wa + 1, t, 0);
-    set_mem_dirty(dc, wa + 2, t, 0);
-    set_mem_dirty(dc, wa + 3, t, 0);
+    set_mem_dirty(dc, wa, 4, t, false);
 
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
@@ -1452,14 +1448,7 @@ DIFT_DEBUG_CONDITION
         | dc->reg_dirty_tbl[i][4] | dc->reg_dirty_tbl[i][5]
         | dc->reg_dirty_tbl[i][6] | dc->reg_dirty_tbl[i][7];
 
-    set_mem_dirty(dc, wa,     t, 0);
-    set_mem_dirty(dc, wa + 1, t, 0);
-    set_mem_dirty(dc, wa + 2, t, 0);
-    set_mem_dirty(dc, wa + 3, t, 0);
-    set_mem_dirty(dc, wa + 4, t, 0);
-    set_mem_dirty(dc, wa + 5, t, 0);
-    set_mem_dirty(dc, wa + 6, t, 0);
-    set_mem_dirty(dc, wa + 7, t, 0);
+    set_mem_dirty(dc, wa, 8, t, false);
 
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
@@ -1497,8 +1486,7 @@ DIFT_DEBUG_CONDITION
     t = dc->reg_dirty_tbl[i][0] | dc->reg_dirty_tbl[i][1]
         | get_mem_dirty(dc, wa) | get_mem_dirty(dc, wa + 1);
 
-    set_mem_dirty(dc, wa, t, 1);
-    set_mem_dirty(dc, wa + 1, t, 1);
+    set_mem_dirty(dc, wa, 2, t, true);
 
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
@@ -1538,10 +1526,7 @@ DIFT_DEBUG_CONDITION
         | get_mem_dirty(dc, wa)     | get_mem_dirty(dc, wa + 1)
         | get_mem_dirty(dc, wa + 2) | get_mem_dirty(dc, wa + 3);
 
-    set_mem_dirty(dc, wa,     t, 1);
-    set_mem_dirty(dc, wa + 1, t, 1);
-    set_mem_dirty(dc, wa + 2, t, 1);
-    set_mem_dirty(dc, wa + 3, t, 1);
+    set_mem_dirty(dc, wa, 4, t, true);
 
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
@@ -1585,14 +1570,7 @@ DIFT_DEBUG_CONDITION
         | get_mem_dirty(dc, wa + 4) | get_mem_dirty(dc, wa + 5)
         | get_mem_dirty(dc, wa + 6) | get_mem_dirty(dc, wa + 7);
 
-    set_mem_dirty(dc, wa,     t, 1);
-    set_mem_dirty(dc, wa + 1, t, 1);
-    set_mem_dirty(dc, wa + 2, t, 1);
-    set_mem_dirty(dc, wa + 3, t, 1);
-    set_mem_dirty(dc, wa + 4, t, 1);
-    set_mem_dirty(dc, wa + 5, t, 1);
-    set_mem_dirty(dc, wa + 6, t, 1);
-    set_mem_dirty(dc, wa + 7, t, 1);
+    set_mem_dirty(dc, wa, 8, t, true);
 
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
@@ -2907,8 +2885,7 @@ DIFT_DEBUG_CONDITION
 }
 #endif
 
-    for( i = 0 ; i < l ; ++i )
-        set_mem_dirty( dc, wa + i, j, 1 );
+    set_mem_dirty( dc, wa, l, j, true );
 
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
@@ -2936,8 +2913,7 @@ DIFT_DEBUG_CONDITION
 }
 #endif
 
-    for( i = 0 ; i < l ; ++i )
-        and_mem_dirty( dc, wa + i, j );
+    and_mem_dirty( dc, wa, l, j );
 
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
@@ -2964,8 +2940,8 @@ DIFT_DEBUG_CONDITION
 }
 #endif
 
-    for(i = 0 ; i < l ; i++)
-        set_hd_dirty_or(dc, hdaddr + i, j);
+    //for(i = 0 ; i < l ; i++)
+    set_hd_dirty_or(dc, hdaddr, l, j);
 
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
@@ -2992,8 +2968,7 @@ DIFT_DEBUG_CONDITION
 }
 #endif
 
-    for(i = 0 ; i < l ; i++)
-        set_hd_dirty_and(dc, hdaddr + i, j);
+    set_hd_dirty_and(dc, hdaddr, l, j);
 
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION
@@ -3019,8 +2994,7 @@ DIFT_DEBUG_CONDITION
 }
 #endif
 
-    for(i = 0; i < l; i++)
-        set_mem_dirty(dc, wa + i, 0, 0);
+    set_mem_dirty(dc, wa, l, 0, false);
 
 #if defined(CONFIG_DIFT_DEBUG)
 DIFT_DEBUG_CONDITION

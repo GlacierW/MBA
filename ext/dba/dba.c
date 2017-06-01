@@ -316,6 +316,7 @@ static int finish_tasks( dba_context* ctx ) {
 static void* dba_main_internal( void* ctx_arg ) {
 
     dba_context* ctx = ctx_arg;
+
     MBA_AGENT_RETURN aret;
 
     ctx->state = DBA_TASK_BUSY;

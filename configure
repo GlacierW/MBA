@@ -1185,6 +1185,7 @@ for opt do
     dba="yes"
     systrace="yes"
     tracer="yes"
+    systrace="yes"
   ;;
   --disable-dift) dift="no"
   ;;

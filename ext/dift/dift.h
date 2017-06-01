@@ -143,12 +143,14 @@
 #define CONTAMINATION_RECORD uint8_t
 
 // Return Code of Public API
-enum DIFT_RETURN_CODE {
+enum DIFT_STATUS {
     DIFT_SUCCESS,
     DIFT_ERR_OUTOFRANGE,
     DIFT_ERR_INVALIDTAG,
-    DIFT_ERR_FAIL,
+    DIFT_ERR_FAIL
 };
+typedef enum DIFT_STATUS DIFT_STATUS;
+
 
 ///
 /// We use 2-layer page table to record the harddisk taint status
@@ -367,7 +369,7 @@ struct dift_context {
 
 /// 
 /// The following variables are declared as global variables for DIFT implementation
-/// It is STRONGLY recommanded that you should AVOID accessing them directly.
+/// It is STRONGLY NOT recommanded to access them directly.
 /// Instead, DIFT-related features should be used via the exported "dift_xxx" APIs
 ///
 typedef struct dift_context dift_context;
@@ -413,6 +415,8 @@ extern uint8_t* rt_enqueue_one_rec;
 extern uint8_t* rt_enqueue_raddr;
 extern uint8_t* rt_enqueue_waddr;
 
+extern dift_context dc[];
+
 /// Inform dift system and then block(spinning) until
 /// dift system declares to accept more IFcodes.
 /// Current Called before translating every code blocks.
@@ -429,14 +433,13 @@ extern void dift_sync(void);
 extern FILE* dift_logfile;
 extern int   dift_log( const char*, ... );
 
-
 /// Initializes dift function.
 /// Currently called in pc_init1() (in Pc_piix.c)
 /// 
 /// No parameter
 /// 
-/// Returns 1 if create dift thread successfully,0 otherwise.
-extern int dift_start(void);
+/// Returns DIFT_SUCCESS on success, DIFT_ERR_FAIL otherwise
+extern DIFT_STATUS dift_start(void);
 
 /// Pushes a "struct dift_record", or additional information(like addr) into the queue.
 /// 
@@ -476,7 +479,7 @@ extern bool dift_is_enabled(void);
 /// \param ot		operand type(8,16,32,etc)
 /// \param effect   effect type
 ///
-/// No return value
+/// Return DIFT record case number
 extern uint8_t dift_rec_case_nb(uint8_t dst_type, uint8_t src_type, uint8_t ot, uint8_t effect);
 
 /// Set the contaminate record to the result of or operation with tag.
@@ -485,8 +488,8 @@ extern uint8_t dift_rec_case_nb(uint8_t dst_type, uint8_t src_type, uint8_t ot, 
 /// \param len      The length(in bytes) to be set
 /// \param tag      The contaminate value
 /// 
-/// Returns DIFT_SUCCESS while success, DIFT_ERR_FAIL otherwise.
-extern int dift_contaminate_memory_or(uint64_t addr, uint64_t len, CONTAMINATION_RECORD tag);
+/// Return DIFT_STATUS code
+extern DIFT_STATUS dift_contaminate_memory_or(uint64_t addr, uint64_t len, CONTAMINATION_RECORD tag);
 
 /// Set the contaminate record to the result of and operation with tag.
 /// 
@@ -494,8 +497,8 @@ extern int dift_contaminate_memory_or(uint64_t addr, uint64_t len, CONTAMINATION
 /// \param len      The length(in bytes) to be set
 /// \param tag      The contaminate value
 /// 
-/// Returns DIFT_SUCCESS while success, DIFT_ERR_FAIL otherwise.
-extern int dift_contaminate_memory_and(uint64_t addr, uint64_t len, CONTAMINATION_RECORD tag);
+/// Return DIFT_STATUS code
+extern DIFT_STATUS dift_contaminate_memory_and(uint64_t addr, uint64_t len, CONTAMINATION_RECORD tag);
 
 /// Set the contaminate record to the result of or operation with tag.
 /// 
@@ -503,8 +506,8 @@ extern int dift_contaminate_memory_and(uint64_t addr, uint64_t len, CONTAMINATIO
 /// \param len      The length(in bytes) to be set
 /// \param tag      The contaminate value
 /// 
-/// Returns DIFT_SUCCESS while success, DIFT_ERR_FAIL otherwise.
-extern int dift_contaminate_disk_or(uint64_t addr, uint64_t len, CONTAMINATION_RECORD tag);
+/// Return DIFT_STATUS code
+extern DIFT_STATUS dift_contaminate_disk_or(uint64_t addr, uint64_t len, CONTAMINATION_RECORD tag);
 
 /// Set the contaminate record to the result of and operation with tag.
 /// 
@@ -512,15 +515,15 @@ extern int dift_contaminate_disk_or(uint64_t addr, uint64_t len, CONTAMINATION_R
 /// \param len      The length(in bytes) to be set
 /// \param tag      The contaminate value
 /// 
-/// Returns DIFT_SUCCESS while success, DIFT_ERR_FAIL otherwise.
-extern int dift_contaminate_disk_and(uint64_t addr, uint64_t len, CONTAMINATION_RECORD tag);
+/// Return DIFT_STATUS code
+extern DIFT_STATUS dift_contaminate_disk_and(uint64_t addr, uint64_t len, CONTAMINATION_RECORD tag);
 
 /// Get the contamination status of a phsical memory byte.
 /// The most significant bit is used for marking whether a code block contains tainted code.
 /// 
 /// \param offset   The address of the byte in memory to be checked
 /// 
-/// Returns CONTAMINATION_RECORD type.
+/// Return taint tag
 extern CONTAMINATION_RECORD dift_get_memory_dirty(uint64_t offset);
 
 /// Get the contamination status of a disk byte.
@@ -528,21 +531,8 @@ extern CONTAMINATION_RECORD dift_get_memory_dirty(uint64_t offset);
 /// 
 /// \param hdaddr   The address of the byte in disk to be checked
 /// 
-/// Returns CONTAMINATION_RECORD type.
+/// Return taint tag
 extern CONTAMINATION_RECORD dift_get_disk_dirty(uint64_t hdaddr);
 
-/// Flush the record queue if needed.
-///
-/// \param cnt   Number of sets of records that have already been enqueued. Each set of records
-///              may be enqueued by several enqueue() call.
-/// FIXME(misterlihao): Definition not found.
-void record_queue_flush(size_t cnt);
-
-/// FIXME(misterlihao): Definition not found.
-extern void clear_memory(uint64_t, uint64_t);
-
-
-// DIFT context
-extern dift_context dc[];
 #endif
 

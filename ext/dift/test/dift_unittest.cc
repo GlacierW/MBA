@@ -502,17 +502,18 @@ TEST_F( Tainting, SET_MEM_DIRTY ) {
     GEN_MOCK_OBJECT( mock );
     uint64_t const test_addr = 0x0000000000000000;
     EXPECT_CALL( mock, is_valid_mem_range(_,_) ).WillRepeatedly( Invoke(_is_valid_mem_range) );
+    EXPECT_CALL( mock, is_valid_tag(_) ).WillRepeatedly( Invoke(_is_valid_tag) );
 
     ASSERT_EQ( 0x0, get_mem_dirty(dc, test_addr) )
         << "should be clear before taint test";
 
-    set_mem_dirty( dc, test_addr, 0x1, 0 );
+    ASSERT_EQ( DIFT_SUCCESS, set_mem_dirty(dc, test_addr, 1, 0x1, false) );
     ASSERT_EQ( 0x1, get_mem_dirty(dc, test_addr) );
 
-    set_mem_dirty( dc, test_addr, 0x2, 1 );
+    ASSERT_EQ( DIFT_SUCCESS, set_mem_dirty(dc, test_addr, 1, 0x2, true) );
     ASSERT_EQ( 0x3, get_mem_dirty(dc, test_addr) );
 
-    and_mem_dirty( dc, test_addr, 0x1 );
+    ASSERT_EQ( DIFT_SUCCESS, and_mem_dirty(dc, test_addr, 1, 0x1) );
     ASSERT_EQ( 0x1, get_mem_dirty(dc, test_addr) );
 }
 
@@ -520,10 +521,11 @@ TEST_F( Tainting, GET_MEM_DIRTY ) {
     GEN_MOCK_OBJECT( mock );
     uint64_t const test_addr = 0x0;
     EXPECT_CALL( mock, is_valid_mem_range(_,_) ).WillRepeatedly( Invoke(_is_valid_mem_range) );
+    EXPECT_CALL( mock, is_valid_tag(_) ).WillRepeatedly( Invoke(_is_valid_tag) );
 
     ASSERT_EQ( 0x0, get_mem_dirty(dc, test_addr) );
 
-    set_mem_dirty( dc, test_addr, 0x4, 0 );
+    set_mem_dirty( dc, test_addr, 1, 0x4, false );
     ASSERT_EQ( 0x4, get_mem_dirty(dc, test_addr) );
     /*TODO:check below two calls fail
     get_mem_dirty( dc, -1 );
@@ -534,7 +536,8 @@ TEST_F( Tainting, GET_MEM_DIRTY ) {
 TEST_F( Tainting, SET_HD_DIRTY ) {
     GEN_MOCK_OBJECT( mock );
 
-    EXPECT_CALL( mock, is_valid_disk_range(_,_) ).WillRepeatedly( Return(1) );
+    EXPECT_CALL( mock, is_valid_disk_range(_,_) ).WillRepeatedly( Invoke(_is_valid_disk_range) );
+    EXPECT_CALL( mock, is_valid_tag(_) ).WillRepeatedly( Invoke(_is_valid_tag) );
     CONTAMINATION_RECORD page[HD_L2_SIZE] = {};
     EXPECT_CALL( mock, alloc_hd_dirty_page() ).WillOnce(Return(page) );
     uint64_t const test_addr = 0x0000000000000000;
@@ -542,27 +545,28 @@ TEST_F( Tainting, SET_HD_DIRTY ) {
     ASSERT_EQ( 0x0, get_hd_dirty(dc, test_addr) )
         << "should be clear before taint test";
 
-    set_hd_dirty_or( dc, test_addr, 0x4 );
+    set_hd_dirty_or( dc, test_addr, 1, 0x4 );
     ASSERT_EQ( 0x4, get_hd_dirty(dc, test_addr) );
 
-    set_hd_dirty_or( dc, test_addr, 0x8 );
+    set_hd_dirty_or( dc, test_addr, 1, 0x8 );
     ASSERT_EQ( 0xc, get_hd_dirty(dc, test_addr) );
 
-    set_hd_dirty_and( dc, test_addr, 0x4 );
+    set_hd_dirty_and( dc, test_addr, 1, 0x4 );
     ASSERT_EQ( 0x4, get_hd_dirty(dc, test_addr) );
 }
 
 TEST_F( Tainting, GET_HD_DIRTY ) {
     GEN_MOCK_OBJECT( mock );
     uint64_t const test_addr = 0x0000000000000000;
-    EXPECT_CALL( mock, is_valid_disk_range(_,_) ).WillRepeatedly( Return(1) );
+    EXPECT_CALL( mock, is_valid_disk_range(_,_) ).WillRepeatedly( Return(true) );
+    EXPECT_CALL( mock, is_valid_tag(_) ).WillRepeatedly( Return(true) );
 
     ASSERT_EQ( 0x0, get_hd_dirty(dc, test_addr) );
 
     CONTAMINATION_RECORD page[HD_L2_SIZE] = {};
     EXPECT_CALL( mock, alloc_hd_dirty_page() ).WillOnce(Return(page) );
 
-    set_hd_dirty_or( dc, test_addr, 0x4 );
+    set_hd_dirty_or( dc, test_addr, 1, 0x4 );
     ASSERT_EQ( 0x4, get_hd_dirty(dc, test_addr) );
     /*TODO:check above two calls fail
     get_hd_dirty( dc, -1 );
@@ -572,7 +576,7 @@ TEST_F( Tainting, GET_HD_DIRTY ) {
 
 TEST_F( Tainting, MEM_TO_HD ) {
     GEN_MOCK_OBJECT( mock );
-    EXPECT_CALL( mock, is_valid_mem_range(_,_) ).WillRepeatedly( Return(1) );
+    EXPECT_CALL( mock, is_valid_mem_range(_,_) ).WillRepeatedly( Invoke(_is_valid_mem_range) );
 
     uint64_t const tag = SHARE_VALUE_NOT_ZERO;
     uint64_t const hd_addr        = 0x0000000000000000;
@@ -581,11 +585,12 @@ TEST_F( Tainting, MEM_TO_HD ) {
     ASSERT_EQ( NULL, dc->hd_l1_dirty_tbl[HD_L1_INDEX(hd_addr)] )
         << "check HD clear before test";
 
-    EXPECT_CALL( mock, is_valid_disk_range(_,_) ).WillRepeatedly( Return(1) );
+    EXPECT_CALL( mock, is_valid_disk_range(_,_) ).WillRepeatedly( Invoke(_is_valid_disk_range) );
+    EXPECT_CALL( mock, is_valid_tag(_) ).WillRepeatedly( Invoke(_is_valid_tag) );
     CONTAMINATION_RECORD page[ HD_L2_SIZE ] = {};
     EXPECT_CALL( mock, alloc_hd_dirty_page() ).WillOnce( Return(page) );
 
-    set_mem_dirty( dc, mem_addr, tag, 0 );
+    set_mem_dirty( dc, mem_addr, 1, tag, false );
     copy_contamination_hd_mem( dc, hd_addr, mem_addr, 1 );
     ASSERT_EQ( tag, get_hd_dirty(dc, hd_addr) );
 
@@ -600,7 +605,7 @@ TEST_F( Tainting, MEM_TO_HD ) {
 
     EXPECT_CALL( mock, alloc_hd_dirty_page() ).WillRepeatedly( Return(page) );
 
-    set_mem_dirty( dc, last_mem_addr, tag, 0);
+    set_mem_dirty( dc, last_mem_addr, 1, tag, false);
     copy_contamination_hd_mem( dc, begin_hd_addr, begin_mem_addr, copy_len );
     ASSERT_EQ( tag, get_hd_dirty(dc, last_hd_addr) );
     int const count_pages = 1 + ( (copy_len - 1) / HD_L2_SIZE );
@@ -613,7 +618,7 @@ TEST_F( Tainting, MEM_TO_HD ) {
 
 TEST_F( Tainting, HD_TO_MEM ) {
     GEN_MOCK_OBJECT( mock );
-    EXPECT_CALL( mock, is_valid_mem_range(_,_) ).WillRepeatedly( Return(1) );
+    EXPECT_CALL( mock, is_valid_mem_range(_,_) ).WillRepeatedly( Invoke(_is_valid_mem_range) );
 
     uint64_t const tag = SHARE_VALUE_NOT_ZERO;
     uint64_t const mem_addr = 0x0000000000000000;
@@ -622,11 +627,12 @@ TEST_F( Tainting, HD_TO_MEM ) {
     ASSERT_EQ( 0x0, get_mem_dirty(dc, mem_addr) )
         << "check MEM clear before test";
 
-    EXPECT_CALL( mock, is_valid_disk_range(_,_) ).WillRepeatedly( Return(1) );
+    EXPECT_CALL( mock, is_valid_disk_range(_,_) ).WillRepeatedly( Invoke(_is_valid_disk_range) );
+    EXPECT_CALL( mock, is_valid_tag(_) ).WillRepeatedly( Invoke(_is_valid_tag) );
     CONTAMINATION_RECORD page[HD_L2_SIZE] = {};
-    EXPECT_CALL( mock, alloc_hd_dirty_page() ).WillOnce( Return(page) );
 
-    set_hd_dirty_or( dc, hd_addr, tag );
+    EXPECT_CALL( mock, alloc_hd_dirty_page() ).WillRepeatedly( Return(page) );
+    set_hd_dirty_or( dc, hd_addr, 1, tag );
     copy_contamination_mem_hd( dc, mem_addr, hd_addr, 1 );
     ASSERT_EQ( tag, get_mem_dirty(dc, mem_addr) );
 
@@ -643,7 +649,7 @@ TEST_F( Tainting, HD_TO_MEM ) {
 
     EXPECT_CALL( mock, alloc_hd_dirty_page() ).WillRepeatedly( Return(page) );
 
-    set_hd_dirty_or( dc, last_hd_addr, tag );
+    set_hd_dirty_or( dc, last_hd_addr, 1, tag );
     copy_contamination_mem_hd( dc, begin_mem_addr, begin_hd_addr, copy_len );
     ASSERT_EQ( tag, get_hd_dirty(dc, last_mem_addr) );
 }
@@ -989,171 +995,45 @@ TEST( DiftUnitTest, DIFT_START_PTHREAD_ERROR ) {
     ASSERT_STREQ( error_message, "Fail to startup DIFT analysis thread\n" );
 }
 
-TEST( DiftUnitTest, DIFT_COMTAMINATE_MEM_OR ) {
-    InSequence dummy;
-    phys_ram_size = 0x300000000;
-    CONTAMINATION_RECORD tag = 0x0;
-    uint64_t len_pt = 1, len_max = 0xffffffff, one = 0x0, two = 0xffffffff, three = 0x1fffffffe;
-    GEN_NICEMOCK_OBJECT( mock ); 
-    dift_record recTemp = { 0 }, recFirst = { 0 }, recSecond = { 0 };
-    recTemp.case_nb = REC_CONTAMINATE_MEM_OR;
-
-    *((uint64_t*)&recTemp) |= ((0x00000000000000ff & tag ) << 8 );
-    *((uint64_t*)&recTemp) |= ((0x00000000ffffffff & len_max ) << 16 ); 
-    memcpy( &recFirst, &recTemp, sizeof(recTemp)); 
-
-    *((uint64_t*)&recTemp) |= ((0x00000000000000ff & tag ) << 8 );
-    *((uint64_t*)&recTemp) |= ((0x00000000ffffffff & len_max ) << 16 );
-    memcpy( &recSecond, &recTemp, sizeof(recTemp));
-   
-    *((uint64_t*)&recTemp) |= ((0x00000000000000ff & tag ) << 8 );
-    *((uint64_t*)&recTemp) |= ((0x00000000ffffffff & len_pt ) << 16 );
-   
-    EXPECT_CALL(mock, fopen(_,_)).WillOnce(Invoke(fopen));
-    EXPECT_CALL(mock, getpagesize()).WillRepeatedly(Invoke(getpagesize));
-    EXPECT_CALL(mock, calloc(_,_)).WillRepeatedly(Invoke(calloc)); 
-    EXPECT_CALL(mock, is_valid_tag(_)).WillOnce(Invoke(_is_valid_tag));
-    EXPECT_CALL(mock, is_valid_mem_range(_,_)).WillOnce(Invoke(_is_valid_mem_range));
-    EXPECT_CALL(mock, dift_rec_enqueue(*((uint64_t*)&recFirst))).Times(1);
-    EXPECT_CALL(mock, dift_rec_enqueue(one)).Times(1);
-    EXPECT_CALL(mock, dift_rec_enqueue(*((uint64_t*)&recSecond))).Times(1);
-    EXPECT_CALL(mock, dift_rec_enqueue(two)).Times(1);
-    EXPECT_CALL(mock, dift_rec_enqueue(*((uint64_t*)&recTemp))).Times(1);
-    EXPECT_CALL(mock, dift_rec_enqueue(three)).Times(1);                     
-
-    dift_start();
-    int dift_code = dift_contaminate_memory_or(0x0, 0x1ffffffff, tag );
-    ASSERT_EQ( dift_code, 0 );
-}
-
-TEST( DiftUnitTest, DIFT_COMTAMINATE_MEM_AND ) {
-    InSequence dummy;
-    phys_ram_size = 0x300000000;
-    CONTAMINATION_RECORD tag = 0x0;
-    uint64_t len_pt = 1, len_max = 0xffffffff, one = 0x0, two = 0xffffffff, three = 0x1fffffffe;
-    GEN_NICEMOCK_OBJECT( mock ); 
-    dift_record recTemp = { 0 }, recFirst = { 0 }, recSecond = { 0 };
-    recTemp.case_nb = REC_CONTAMINATE_MEM_AND;
-
-    *((uint64_t*)&recTemp) |= ((0x00000000000000ff & tag ) << 8 );
-    *((uint64_t*)&recTemp) |= ((0x00000000ffffffff & len_max ) << 16 ); 
-    memcpy( &recFirst, &recTemp, sizeof(recTemp)); 
-
-    *((uint64_t*)&recTemp) |= ((0x00000000000000ff & tag ) << 8 );
-    *((uint64_t*)&recTemp) |= ((0x00000000ffffffff & len_max ) << 16 );
-    memcpy( &recSecond, &recTemp, sizeof(recTemp));
-   
-    *((uint64_t*)&recTemp) |= ((0x00000000000000ff & tag ) << 8 );
-    *((uint64_t*)&recTemp) |= ((0x00000000ffffffff & len_pt ) << 16 );
-  
-    EXPECT_CALL(mock, fopen(_,_)).WillOnce(Invoke(fopen)); 
-    EXPECT_CALL(mock, getpagesize()).WillRepeatedly(Invoke(getpagesize));
-    EXPECT_CALL(mock, calloc(_,_)).WillRepeatedly(Invoke(calloc)); 
-    EXPECT_CALL(mock, is_valid_tag(_)).WillOnce(Invoke(_is_valid_tag));
-    EXPECT_CALL(mock, is_valid_mem_range(_,_)).WillOnce(Invoke(_is_valid_mem_range));
-    EXPECT_CALL(mock, dift_rec_enqueue(*((uint64_t*)&recFirst))).Times(1);
-    EXPECT_CALL(mock, dift_rec_enqueue(one)).Times(1);
-    EXPECT_CALL(mock, dift_rec_enqueue(*((uint64_t*)&recSecond))).Times(1);
-    EXPECT_CALL(mock, dift_rec_enqueue(two)).Times(1);
-    EXPECT_CALL(mock, dift_rec_enqueue(*((uint64_t*)&recTemp))).Times(1);
-    EXPECT_CALL(mock, dift_rec_enqueue(three)).Times(1);                     
-
-    dift_start();
-    int dift_code = dift_contaminate_memory_and(0x0, 0x1ffffffff, tag );
-    ASSERT_EQ( dift_code, 0 );
-}
-  
-TEST( DiftUnitTest, DIFT_COMTAMINATE_HD_OR ) {
-    InSequence dummy;
-    phys_ram_size = 0x300000000;
-    CONTAMINATION_RECORD tag = 0x0;
-    const uint64_t len = 0x10, haddr = 0x0;
-    GEN_NICEMOCK_OBJECT( mock ); 
-    dift_record recTemp = { 0 };
-    recTemp.case_nb = REC_CONTAMINATE_HD_OR;
-    *((uint64_t*)&recTemp) |= ((0x00000000000000ff & tag ) << 8 );
-      
-    EXPECT_CALL(mock, fopen(_,_)).WillOnce(Invoke(fopen));
-    EXPECT_CALL(mock, getpagesize()).WillRepeatedly(Invoke(getpagesize));
-    EXPECT_CALL(mock, calloc(_,_)).WillRepeatedly(Invoke(calloc)); 
-    EXPECT_CALL(mock, is_valid_tag(_)).WillOnce(Invoke(_is_valid_tag));
-    EXPECT_CALL(mock, is_valid_disk_range(_,_)).WillOnce(Invoke(_is_valid_disk_range));
-    EXPECT_CALL(mock, dift_rec_enqueue(*((uint64_t*)&recTemp))).Times(1);
-    EXPECT_CALL(mock, dift_rec_enqueue(haddr)).Times(1);
-    EXPECT_CALL(mock, dift_rec_enqueue(len)).Times(1);    
-
-    dift_start();
-    int dift_code = dift_contaminate_disk_or(haddr, len, tag );
-    ASSERT_EQ( dift_code, 0 );
-}
-
-TEST( DiftUnitTest, DIFT_COMTAMINATE_HD_AND ) {
-    InSequence dummy;
-    phys_ram_size = 0x300000000;
-    CONTAMINATION_RECORD tag = 0x0;
-    const uint64_t len = 0x10, haddr = 0x0;
-    GEN_NICEMOCK_OBJECT( mock ); 
-    dift_record recTemp = { 0 };
-    recTemp.case_nb = REC_CONTAMINATE_HD_AND;
-    *((uint64_t*)&recTemp) |= ((0x00000000000000ff & tag ) << 8 );
-      
-    EXPECT_CALL(mock, fopen(_,_)).WillOnce(Invoke(fopen));
-    EXPECT_CALL(mock, getpagesize()).WillRepeatedly(Invoke(getpagesize));
-    EXPECT_CALL(mock, calloc(_,_)).WillRepeatedly(Invoke(calloc)); 
-    EXPECT_CALL(mock, is_valid_tag(_)).WillOnce(Invoke(_is_valid_tag));
-    EXPECT_CALL(mock, is_valid_disk_range(_,_)).WillOnce(Invoke(_is_valid_disk_range));
-    EXPECT_CALL(mock, dift_rec_enqueue(*((uint64_t*)&recTemp))).Times(1);
-    EXPECT_CALL(mock, dift_rec_enqueue(haddr)).Times(1);
-    EXPECT_CALL(mock, dift_rec_enqueue(len)).Times(1);    
-
-    dift_start();
-    int dift_code = dift_contaminate_disk_and(haddr, len, tag );
-    ASSERT_EQ( dift_code, 0 );
-}
-
 TEST( DiftUnitTest, DIFT_COMTAMINATE_MEM_OR_IS_VALID_TAG_ERROR ) {
-    phys_ram_size = 0x100;
-    int dift_code = 0;
+    int dift_code = DIFT_SUCCESS;
     GEN_MOCK_OBJECT( mock );
-    EXPECT_CALL(mock, calloc(_,_)).WillRepeatedly(Invoke(calloc));
-    EXPECT_CALL(mock, getpagesize()).WillRepeatedly(Invoke(getpagesize));
-    EXPECT_CALL(mock, dift_rec_enqueue(_)).Times(0);
-    EXPECT_CALL(mock, is_valid_tag(_)).WillRepeatedly(Return(false));
-    EXPECT_CALL(mock, is_valid_mem_range(_,_)).Times(0);
-    EXPECT_CALL(mock, is_valid_disk_range(_,_)).Times(0);
-    dift_code = dift_contaminate_memory_or(0x0,99999, 0x0);
-    ASSERT_EQ( dift_code, 2 );
-    dift_code = 0;
+    
+    phys_ram_size = 0x100;
+    EXPECT_CALL(mock, is_valid_mem_range(_,_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(mock, is_valid_disk_range(_,_)).WillRepeatedly(Return(true));
+    EXPECT_CALL(mock, is_valid_tag(_)).WillRepeatedly(Invoke(_is_valid_tag));
+    
+    dift_code = dift_contaminate_memory_or(0x0, 0x1, 0x80);
+    ASSERT_EQ( dift_code, DIFT_ERR_INVALIDTAG );
+    dift_code = DIFT_SUCCESS;
 
-    dift_code = dift_contaminate_memory_and(0x0,99999, 0x0);
-    ASSERT_EQ( dift_code, 2 );
-    dift_code = 0;
+    dift_code = dift_contaminate_memory_and(0x0, 0x1, 0x80);
+    ASSERT_EQ( dift_code, DIFT_ERR_INVALIDTAG );
+    dift_code = DIFT_SUCCESS;
 
-    dift_code = dift_contaminate_disk_or(0x0,99999, 0x0);
-    ASSERT_EQ( dift_code, 2 );
-    dift_code = 0;
+    dift_code = dift_contaminate_disk_or(0x0, 0x1, 0x80);
+    ASSERT_EQ( dift_code, DIFT_ERR_INVALIDTAG );
+    dift_code = DIFT_SUCCESS;
 
-    dift_code = dift_contaminate_disk_and(0x0,99999, 0x0);
-    ASSERT_EQ( dift_code, 2 );
+    dift_code = dift_contaminate_disk_and(0x0, 0x1, 0x80);
+    ASSERT_EQ( dift_code, DIFT_ERR_INVALIDTAG );
 }
-
 
 TEST( DiftUnitTest, DIFT_COMTAMINATE_IS_VALID_MEM_ERROR ) {
     int dift_code = 0;
     GEN_MOCK_OBJECT( mock );
     
     phys_ram_size = 0x100;
-    EXPECT_CALL(mock, calloc(_,_)).WillRepeatedly(Invoke(calloc));
-    EXPECT_CALL(mock, getpagesize()).WillRepeatedly(Invoke(getpagesize));
-    EXPECT_CALL(mock, dift_rec_enqueue(_)).Times(0);
     EXPECT_CALL(mock, is_valid_tag(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(mock, is_valid_mem_range(_,_)).WillRepeatedly(Return(false));
+
     dift_code = dift_contaminate_memory_or(0x0, 99999, 0x0);
-    ASSERT_EQ( dift_code, 1 );  
+    ASSERT_EQ( dift_code, DIFT_ERR_OUTOFRANGE );  
     dift_code = 0;    
 
     dift_code = dift_contaminate_memory_and(0x0, 9999, 0x0);
-    ASSERT_EQ( dift_code, 1 );
+    ASSERT_EQ( dift_code, DIFT_ERR_OUTOFRANGE );
     dift_code = 0;
 }
 
@@ -1162,16 +1042,13 @@ TEST( DiftUnitTest, DIFT_COMTAMINATE_IS_VALID_HD_ERROR ) {
     GEN_MOCK_OBJECT( mock );
     
     phys_ram_size = 0x100;
-    EXPECT_CALL(mock, calloc(_,_)).WillRepeatedly(Invoke(calloc));
-    EXPECT_CALL(mock, getpagesize()).WillRepeatedly(Invoke(getpagesize));
-    EXPECT_CALL(mock, dift_rec_enqueue(_)).Times(0);
     EXPECT_CALL(mock, is_valid_tag(_)).WillRepeatedly(Return(true));
     EXPECT_CALL(mock, is_valid_disk_range(_,_)).WillRepeatedly(Return(false)); 
 
     dift_code = dift_contaminate_disk_or(0x0, 9999, 0x0);
-    ASSERT_EQ( dift_code, 1 );
+    ASSERT_EQ( dift_code, DIFT_ERR_OUTOFRANGE );
     dift_code = 0;
 
     dift_code = dift_contaminate_disk_and(0x0, 9999, 0x0);
-    ASSERT_EQ( dift_code, 1 );
+    ASSERT_EQ( dift_code, DIFT_ERR_OUTOFRANGE );
 }

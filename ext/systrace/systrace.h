@@ -45,8 +45,15 @@ typedef enum {
 } SYSTRACE_ERRNO;
 extern SYSTRACE_ERRNO systrace_errno;
 
+typedef struct syscall_context{
+    uint64_t      context_key;
+    int           syscall_number;
+    UT_array *argument_arr;
+    UT_hash_handle hh;
+} syscall_context;
+
 // callback type 'systrace_cb' declaration
-typedef void ( *systrace_cb )( X86CPU*, bool is_invoke, void* args );
+typedef void ( *systrace_cb )( X86CPU*, bool is_invoke, void* user_args, const syscall_context* syscall_info );
 
 // module APIs
 
@@ -59,7 +66,7 @@ typedef void ( *systrace_cb )( X86CPU*, bool is_invoke, void* args );
 ///     \param  cb_args  argument for the given callback routine, simply copy by value
 ///
 /// Return a new systrace descriptor on success, otherwise -1 is returned and the systrace_errno is set
-extern int systrace_add( const char* label, target_ulong cr3, int syscall, systrace_cb callback, void *cb_args );
+extern int systrace_add( const char* label, target_ulong cr3, int syscall, bool is_entry, systrace_cb callback, void *cb_args );
 
 /// Delete a system call trace, given handle from systrace_add
 ///

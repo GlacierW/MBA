@@ -113,6 +113,7 @@ extern float memfrs_get_windows_version( uint64_t kpcr_ptr, CPUState *cpu );
 extern current_thread *memfrs_get_current_thread( CPUState *cpu );
 
 extern bool memfrs_check_network_struct_info(void);
+extern bool memfrs_check_globalvar_info(void);
 extern int memfrs_load_structs( const char* type_filename);
 extern json_object* memfrs_q_struct(const char* ds_name);
 extern field_info* memfrs_q_field( json_object* struc, const char* field_name  );

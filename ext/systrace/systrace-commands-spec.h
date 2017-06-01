@@ -18,13 +18,20 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+
+/******************************************************************
+* PURPOSE : Add a new system call tracer
+******************************************************************/
 {
         .name      = "mba_add_systrace",
-        .args_type = "label:s,cr3:l,sycall_num:i",
-        .params    = "label cr3 sycall_num",
+        .args_type = "label:s,cr3:l,is_entry:b,sycall_num:i",
+        .params    = "label cr3 is_entry sycall_num",
         .help      = "Trace `sycall_num` system call for process with `cr3`",
         .mhandler.cmd = do_add_systrace,
 },
+/******************************************************************
+* PURPOSE : Delete a existed system tracer by id
+******************************************************************/
 {
         .name      = "mba_delete_systrace",
         .args_type = "id:i",
@@ -32,6 +39,10 @@
         .help      = "Delete the syscall tracer with given id",
         .mhandler.cmd = do_delete_systrace,
 },
+
+/******************************************************************
+* PURPOSE : List all system call tracer
+******************************************************************/
 {
         .name      = "mba_list_systrace",
         .args_type = "",
