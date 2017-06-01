@@ -7,3 +7,5 @@ Note that each directory must containt the source and the test/ directory for th
     4. AGENT       The in-VM agent for Windows 10 x64 guest OS
     5. OBHOOK      The Out-of-Box Hooking, a VM-based whole-system hook against guest OS
     6. NETTRAMON   Network Traffic Monitor for guest OS
+    7. TRACER      Instruction trace logger
+    8  SYSTRACER   System call invocation trace logger

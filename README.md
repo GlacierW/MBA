@@ -8,7 +8,7 @@ Currently, MBA is mainly for the x86_64 architecture and Win10 x64 guest OS.
 The following features are supported:
 
     1. De-coupled Information Flow Tracking (DIFT)
-       It is also known as taint analysis.
+       It is also known as taint analysis. 
        Leveraging the DIFT feature, the contamination 
        conducted by malware to the guest OS can be identified.
 
@@ -17,10 +17,10 @@ The following features are supported:
        original DIFT is mainly for x86 platform. In this project,
        the DIFT is upgraded to support modern x86_64 platform.
 
-       For the academic paper published by Chi-Wei, Wang, please cite
-       C. W. Wang and S. P. Shieh, "SWIFT: Decoupled System-Wide 
-       Information Flow Tracking and its Optimizations," Journal of 
-       Information Science and Engineering, JISE, 2015.
+       For the academic paper published by Chi-Wei, Wang, please
+       cite CW Wang and SP Shieh, "SWIFT: Decoupled System-Wide 
+       Information Flow Tracking and its Optimizations," Journal
+       of Information Science and Engineering, JISE, 2015.
        http://www.iis.sinica.edu.tw/page/jise/2015/201507_15.pdf
 
     2. Disk Forensics (Tsk)
@@ -50,11 +50,19 @@ The following features are supported:
        inserted to the guest, and thus prevent the interference of malware.
 
     6. Network Traffic Monitor (NetTraMon)
-       The nettramon extension performs monitoring the network traffic of the guest OS.
-       This extension provides sniffing, parsing, and filtering packets, and supports protrocols of TCP, UDP and ICMP.
-       User can also set files for storing parsed packets according to protocols.
+       The nettramon extension performs monitoring the network traffic of 
+       the guest OS. This extension provides sniffing, parsing, and filtering
+       packets, and supports protrocols of TCP, UDP and ICMP. User can also 
+       set files for storing parsed packets according to protocols.
 
-More features are under development.
+    7. Instruction Tracer (Tracer)
+       The tracer extension supports the runtime instruction trace executed 
+       by a subject sample. This extension provides user-space/kernel-space
+       tracing instruction tracing functionality
+
+    8. System Call Tracer (Systrace)
+       The systrace extension provides the system call trace of a subject 
+       sample during its runtime phase. 
 
 # Quick Start
 Download MBA source 
@@ -84,8 +92,8 @@ Due to the implementation issue, 2048MB RAM and 16GB disk space for the guest OS
 
 Now the VNC server should be able to connect to via the port 5901.  
 
-The APIs of each MBA extension can be found under the `ext` directory.  
-The documents are under preparation.
+The APIs of each MBA extension can be found in the under the `ext` directory.
+e.g. ext/dift.h for APIs of the DIFT extension 
 
 # Members
 Chi-Wei, Wang       cwwangabc@gmail.com  
@@ -96,5 +104,5 @@ Jui-Chien, Jao      jcjao0120@gmail.com
 Chuan-Hua, Cheng    newchengxx@gmail.com  
 E-Lin, Ho           dennisieur210@gmail.com  
 
-Network Security Lab,  
+Distributed System and Network Security Lab,
 National Chiao-Tung University, Taiwan
