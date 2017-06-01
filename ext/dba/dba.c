@@ -168,7 +168,7 @@ static void* dba_main_internal( void* ctx_arg ) {
 
     MBA_AGENT_RETURN aret;
     dba_context* ctx = ctx_arg;
-    int ntm_cb_id;
+    int ntm_cb_id = 0;
 
     ctx->state = DBA_TASK_BUSY;
 
@@ -185,18 +185,17 @@ static void* dba_main_internal( void* ctx_arg ) {
         ntm_cb_id = nettramon_set_cb( &tainted_packet_cb, ctx_arg );
         // ---------- Start to capture packets ---------- //
         nettramon_start( NULL );
+    }
 
-        // Start to execute sample
-        invoke_sample( ctx );
+    // Start to execute sample
+    invoke_sample( ctx );
 
+    if( ctx->taint.is_enabled ) {
         // ---------- Delete the ntm call back funciton ---------- //
         nettramon_stop();
         nettramon_delete_cb( ntm_cb_id );
 
         enum_tainted_file( ctx );
-    }
-    else {
-        invoke_sample( ctx );
     }
 
     ctx->state = DBA_TASK_DONE;

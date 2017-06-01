@@ -71,7 +71,6 @@ static void cb_dba_confirm( void* mon, const char* yn, void* opaque ) {
    
     // confirmed, start analysis
     if( strcasecmp( "y", yn ) == 0 || strcasecmp( "yes", yn ) == 0 ) {
-
         // initiate DBA analysis
         if( dba_start_analysis((DBA_TID)opaque) != 0 ) {
 
@@ -489,6 +488,7 @@ void do_show_dba_result( Monitor* mon, const QDict* qdict ) {
     const dba_context* ctx;
 
     json_object* taint_report;
+    json_object* syscall_report;
 
     int i,
         tid = qdict_get_int( qdict, "tid" );
@@ -523,6 +523,18 @@ void do_show_dba_result( Monitor* mon, const QDict* qdict ) {
                 }
             }
         }
+        if (ctx->syscall.is_enabled) {
+            json_object_object_get_ex( ctx->result, DBA_JSON_KEY_SYSCALL, &syscall_report );
+            show_dba_report_title( mon, NULL, DBA_JSON_KEY_SYSCALL );
+            json_object_object_foreach( syscall_report, syscall_field, syscall_info  ) {
+                monitor_printf( mon, "%s:\n", syscall_field );
+
+                for( i = 0; i < json_object_array_length(syscall_info); ++i ) {
+                    monitor_printf( mon, "    %s\n",
+                            json_object_get_string(json_object_array_get_idx(syscall_info, i)) );
+                }
+            }
+        }
     }
     else {
         FILE* fp = fopen( file_path, "a" );
@@ -541,6 +553,18 @@ void do_show_dba_result( Monitor* mon, const QDict* qdict ) {
                 for( i = 0; i < json_object_array_length(taint_records); ++i ) {
                     fprintf( fp, "    %s\n",
                             json_object_get_string(json_object_array_get_idx(taint_records, i)) );
+                }
+            }
+        }
+        if (ctx->syscall.is_enabled) {
+            json_object_object_get_ex( ctx->result, DBA_JSON_KEY_SYSCALL, &syscall_report );
+            show_dba_report_title( NULL, fp, DBA_JSON_KEY_SYSCALL );
+            json_object_object_foreach( syscall_report, syscall_field, syscall_info  ) {
+                fprintf( fp, "%s:\n", syscall_field );
+
+                for( i = 0; i < json_object_array_length(syscall_info); ++i ) {
+                    fprintf( fp, "    %s\n",
+                            json_object_get_string(json_object_array_get_idx(syscall_info, i)) );
                 }
             }
         }

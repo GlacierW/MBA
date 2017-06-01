@@ -230,6 +230,11 @@ all-obj-y += ../ext/tracer/tracer-commands.o
 all-obj-y += ../ext/tracer/tracer.o
 endif
 
+ifdef CONFIG_SYSTRACE
+all-obj-y += ../ext/systrace/systrace-commands.o
+all-obj-y += ../ext/systrace/systrace.o
+endif
+
 $(QEMU_PROG_BUILD): config-devices.mak
 
 # build either PROG or PROGW
