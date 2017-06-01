@@ -345,7 +345,6 @@ memfrs="no"
 tsk="no"
 obhook="no"
 nettramon="no"
-dba="no"
 tracer="no"
 systrace="no"
 #########################
@@ -1168,12 +1167,7 @@ for opt do
   ;;
   --enable-nettramon) nettramon="yes"
   ;;
-  --enable-dba) 
-    echo "NOTE: DBA relies on almost every MBA extension!!"
-    dba="yes"
-  ;;
-  --enable-systrace)
-    systrace="yes"
+  --enable-systrace) systrace="yes"
   ;;
   --enable-mba-all)
     dift="yes"
@@ -1182,7 +1176,6 @@ for opt do
     tsk="yes"
     obhook="yes"
     nettramon="yes"
-    dba="yes"
     systrace="yes"
     tracer="yes"
     systrace="yes"
@@ -1202,8 +1195,6 @@ for opt do
   --disable-tracer) tracer="no"
   ;;
   --disable-nettramon) nettramon="no"
-  ;;
-  --disable-dba) dba="no"
   ;;
   #########################
   *)
@@ -4563,7 +4554,6 @@ echo "Disk forensics(tsk) support       $tsk"
 echo "Out-of-Box hook support           $obhook"
 echo "Tracer                            $tracer"
 echo "Network Traffic Monitor           $nettramon"
-echo "Dynamic behavior analysis support $dba"
 echo "System Call Tracing               $systrace"
 #########################
 
@@ -5473,11 +5463,6 @@ fi
 if test "$nettramon" = "yes"; then
   echo "CONFIG_NETTRAMON=y" >> $config_host_mak
   echo "CONFIG_NETTRAMON=y" >> $config_target_mak
-fi
-
-if test "$dba" = "yes"; then
-  echo "CONFIG_DBA=y" >> $config_host_mak
-  echo "CONFIG_DBA=y" >> $config_target_mak
 fi
 
 if test "$tracer" = "yes"; then

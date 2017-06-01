@@ -216,17 +216,6 @@ all-obj-y += ../ext/nettramon/nettramon-commands.o
 ../ext/nettramon/nettramon.o-cflags := -I$(SRC_PATH)/ext/nettramon/libpcap
 endif
 
-ifdef CONFIG_DBA
-all-obj-y += ../ext/dba/dba.o
-all-obj-y += ../ext/dba/dba_taint.o
-all-obj-y += ../ext/dba/dba_tracer.o
-all-obj-y += ../ext/dba/dba-commands.o
-../ext/dba/dba.o-cflags := -DHAVE_CONFIG_H -I$(SRC_PATH)/ext/tsk/sleuthkit
-../ext/dba/dba_taint.o-cflags := -DHAVE_CONFIG_H -I$(SRC_PATH)/ext/tsk/sleuthkit
-../ext/dba/dba_tracer.o-cflags := -DHAVE_CONFIG_H -I$(SRC_PATH)/ext/tsk/sleuthkit
-../ext/dba/dba-commands.o-cflags := -DHAVE_CONFIG_H -I$(SRC_PATH)/ext/tsk/sleuthkit
-endif
-
 ifdef CONFIG_TRACER
 all-obj-y += ../ext/tracer/tracer-commands.o
 all-obj-y += ../ext/tracer/tracer.o

@@ -114,10 +114,6 @@
 #include "ext/systrace/systrace-commands.h"
 #endif
 
-#if defined(CONFIG_DBA)
-#include "ext/dba/dba-commands.h"
-#endif
-
 //#define DEBUG
 //#define DEBUG_COMPLETION
 
@@ -3012,10 +3008,6 @@ static mon_cmd_t mon_cmds[] = {
 
 #if defined(CONFIG_SYSTRACE)
 #include "ext/systrace/systrace-commands-spec.h"
-#endif
-
-#if defined(CONFIG_DBA)
-#include "ext/dba/dba-commands-spec.h"
 #endif
 
     { NULL, NULL, },
