@@ -777,7 +777,8 @@ int recovery_registry_log( const char* log_path, const char* hive_path ) {
   int filesize, write_log_index = 0, sequence1 = 0, sequence2 = 0, has_next_log = -1, position = 0;
   unsigned char buff[3];
   unsigned char HvLE[] = "HvLE";
-  
+ 
+  log_index = 0; 
   // ----------------LOG1-----------------------------------
   fp = fopen(log_path, "rb+");
   if (!fp) {
@@ -849,7 +850,7 @@ int recovery_registry_log( const char* log_path, const char* hive_path ) {
   
   for ( ; write_log_index < log_index ; write_log_index++ ) {
       int write_dirtypage_index = 0;     
-      if ( sequence1 >= logEntry[write_log_index].sequence_Number || sequence2 >= logEntry[write_log_index].sequence_Number ) {
+      if ( sequence1 > logEntry[write_log_index].sequence_Number || sequence2 > logEntry[write_log_index].sequence_Number ) {
       	continue;      	
 	  }
           

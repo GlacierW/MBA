@@ -866,7 +866,6 @@ void tsk_parse_registry(int hive_file_type) {
     libcerror_error_t *error   = NULL;
     system_character_t *source = NULL;
     int verbose                = 0;
-
     filename = calloc( StringLength, sizeof(char*) );
     source = calloc( StringLength, sizeof(char*) );
 
@@ -891,10 +890,8 @@ void tsk_parse_registry(int hive_file_type) {
         strcpy( source, "./NTUSER.DAT" );      
     } // else if
   
-
-    //temporary hardcode image path
     key_list_index = 0;
-      
+    
     libcnotify_stream_set(
             stderr,
             NULL );
@@ -923,32 +920,32 @@ void tsk_parse_registry(int hive_file_type) {
     }
             
     libcnotify_verbose_set(verbose);
-	    libregf_notify_set_stream(
+	libregf_notify_set_stream(
 		        stderr,
 		        NULL);
-	    libregf_notify_set_verbose(
+	libregf_notify_set_verbose(
 		        verbose);
-	    if (info_handle_initialize(
-		    &regfinfo_info_handle,
-		    &error) != 1) {
-		    fprintf(
-		            stderr,
-		            "Unable to initialize info handle.\n");
+	if (info_handle_initialize(
+	    &regfinfo_info_handle,
+	    &error) != 1) {
+		fprintf(
+		        stderr,
+		        "Unable to initialize info handle.\n");
 
 		    goto on_error;
-	    }
-	    if (info_handle_open_input(
-		    regfinfo_info_handle,
-		    source,
-		    &error) != 1) {
-		    fprintf(
-		            stderr,
-		            "Unable to open: %"
-		            PRIs_SYSTEM
+	}
+	if (info_handle_open_input(
+	    regfinfo_info_handle,
+		source,
+	    &error) != 1) {
+		fprintf(
+		        stderr,
+		        "Unable to open: %"
+		        PRIs_SYSTEM
 		            ".\n", source );
 
-		    goto on_error;
-	    }
+		goto on_error;
+	}
 	    if (info_handle_file_print_by_address(
 		    regfinfo_info_handle,
 		    &error) != 1) {
@@ -958,6 +955,7 @@ void tsk_parse_registry(int hive_file_type) {
 
 		    goto on_error;
 	    }
+
 	    if (info_handle_close_input(
 		    regfinfo_info_handle,
 		    &error) != 0) {
@@ -1019,7 +1017,6 @@ UT_array* tsk_get_registry_value_by_address(const char* address, UT_array* block
     TSK_DADDR_T *p = NULL;
     UT_array* ret;
     utarray_new( ret, &ut_str_icd );    
-
     for (p=(TSK_DADDR_T*)utarray_front(blocks);
          p != NULL;
          p=(TSK_DADDR_T*)utarray_next(blocks, p)) {
@@ -1057,5 +1054,13 @@ UT_array* tsk_get_registry_value_by_address(const char* address, UT_array* block
     } // for 
     
     return ret;
+}
+void do_print_keylist(Monitor *mon, const QDict *qdict) {
+    int run = 0;
+    int hive_type = qdict_get_int(qdict, "hive_type");
+    tsk_parse_registry(hive_type); 
+    for ( ; run < key_list_index ; run++ ) {
+        printf("offset:%"PRIu64"\nkey:%s\nname_size:%"PRIu64"\ndata_size:%"PRIu64"\n\n", key_list[run].offset, key_list[run].key, key_list[run].name_size, key_list[run].data_size );
+    } // for
 }
 

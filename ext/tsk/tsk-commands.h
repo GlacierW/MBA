@@ -36,6 +36,7 @@ void do_print_registry_by_path(Monitor *mon, const QDict *qdict);
 int print_registry_by_path(const char* path);
 void pathHandle(const char* path);
 void do_print_registry_by_address(Monitor *mon, const QDict *qdict);
+void do_print_keylist(Monitor *mon, const QDict *qdict);
 
 // Get all registry hive file to MBA folder.
 // 

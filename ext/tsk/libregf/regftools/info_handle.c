@@ -2031,6 +2031,17 @@ on_error:
 
 
 
+static void clear_key_list(void) {
+    int key_clear = 0;
+    for ( ; key_clear < key_list_index ; key_clear++ ) {
+        key_list[key_clear].offset = 0;
+        key_list[key_clear].name_size = 0;
+        key_list[key_clear].data_size = 0; 
+        strcpy( key_list[key_clear].key, "" );        
+    } // for
+
+    key_list_index = 0;    
+}
 
 int info_handle_key_print_by_address(
      info_handle_t *info_handle,
@@ -2039,7 +2050,7 @@ int info_handle_key_print_by_address(
      Str key_full_path,
      libregf_error_t **error )
 {
-        Str key_temp_path;
+    Str key_temp_path;
 	system_character_t *name = NULL;
 	libregf_key_t *sub_key              = NULL;
 	libregf_value_t *value              = NULL;
@@ -2453,6 +2464,8 @@ on_error:
 		memory_free(
 		 name );
 	}
+
+    clear_key_list();
 	return( -1 );
 }
 
